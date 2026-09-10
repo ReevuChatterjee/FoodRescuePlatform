@@ -85,3 +85,19 @@ def require_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
             },
         )
     return user
+
+
+def require_ngo(user: Annotated[User, Depends(get_current_user)]) -> User:
+    """Ensure that the caller is an NGO user."""
+    if user.role != "NGO":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": {
+                    "code": "FORBIDDEN",
+                    "message": "You are not authorized to access NGO resources.",
+                    "field": None,
+                }
+            },
+        )
+    return user

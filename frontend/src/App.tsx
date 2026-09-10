@@ -16,6 +16,7 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { NGOVerificationQueue } from './pages/admin/NGOVerificationQueue';
 import { useAuthStore } from './hooks/useAuthStore';
+import { NGODashboard } from './pages/ngo/NGODashboard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,7 +55,7 @@ function App() {
 
           {/* Placeholder routes for other modules */}
           <Route path="/donor" element={<div>Donor Dashboard (Person 2)</div>} />
-          <Route path="/ngo" element={<div>NGO Dashboard (Person 3)</div>} />
+          <Route path="/ngo" element={<ProtectedRoute requiredRole="NGO"><NGODashboard /></ProtectedRoute>} />
           <Route path="/driver" element={<div>Driver Dashboard (Person 5)</div>} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
