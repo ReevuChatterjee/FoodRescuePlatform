@@ -3,6 +3,7 @@ NGOs router — the demand side of the contract. Person 1 owns this backend
 surface; Person 3's NGO UI writes capacity/demand through it, Person 4 reads
 it for scoring, Person 6 reads it for verification. See §4.
 
+GET   /api/v1/ngos                 — list NGOs (ADMIN, filterable by verification_status)
 GET   /api/v1/ngos/{id}            — profile
 PATCH /api/v1/ngos/{id}            — profile fields (address, hours, categories)
 PATCH /api/v1/ngos/{id}/demand     — upsert current demand (Person 4 input D)
@@ -10,9 +11,9 @@ PATCH /api/v1/ngos/{id}/capacity   — update available capacity (hard-constrain
 GET   /api/v1/ngos/{id}/incoming   — donations currently offered to this NGO
 """
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,12 +26,50 @@ from app.models import (
     DonationStatus,
     NGODemand,
     NGOFoodCategory,
+    NGOVerificationStatus,
     User,
     UserRole,
 )
 from app.ngos.schemas import UpdateCapacityRequest, UpdateDemandRequest, UpdateNGOProfileRequest
 
 router = APIRouter(prefix="/api/v1/ngos", tags=["ngos"])
+
+
+@router.get("")
+async def list_ngos(
+    admin_user: Annotated[User, Depends(require_role("ADMIN"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    verification_status: Optional[str] = Query(None, alias="verification_status"),
+):
+    """List NGOs with optional verification_status filter. ADMIN only.
+
+    Used by the admin NGO verification queue (Person 6 frontend).
+    Response shape matches the TypeScript NGO interface in types/api.ts.
+    """
+    query = select(NGO)
+    if verification_status is not None:
+        try:
+            vs = NGOVerificationStatus(verification_status)
+        except ValueError:
+            raise api_error(400, "INVALID_STATUS", f"Unknown verification_status: {verification_status}", "verification_status")
+        query = query.where(NGO.verification_status == vs)
+
+    result = await db.execute(query.order_by(NGO.created_at.desc()))
+    ngos = result.scalars().all()
+
+    data = [
+        {
+            "id": ngo.id,
+            "organisation_name": ngo.organisation_name,
+            "address": ngo.address,
+            "storage_capacity_kg": round(ngo.storage_capacity_kg, 1),
+            "available_capacity_kg": round(ngo.available_capacity_kg, 1),
+            "verification_status": ngo.verification_status.value,
+            "created_at": iso_z(ngo.created_at),
+        }
+        for ngo in ngos
+    ]
+    return envelope(data)
 
 
 async def _get_ngo_or_404(ngo_id: str, db: AsyncSession) -> NGO:
