@@ -299,3 +299,76 @@ Person 6 is responsible for:
 - Tests cover all 7 required scenarios from Section H
 - Frontend ready for integration with completed backends
 - WebSocket implementation deferred until Person 1-5 endpoints stabilize
+
+## Person 1 Module — Backend Auth, Donations/NGO/Driver/Delivery CRUD, WebSocket Broker
+
+**Module owner:** Person 1 (Backend, Database & Authentication)
+**Branch:** `feature/person1-backend-auth` (PR open against `main`)
+**Status:** Core scope complete and verified against real Postgres + Redis
+
+### What's implemented
+
+**Auth** (`app/auth/`)
+- `POST /api/v1/auth/register` — creates User + role-specific Donor/NGO/Vehicle row
+- `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`
+- `GET /api/v1/auth/me` — profile + linked donor_id/ngo_id/driver_id
+- JWT via `Authorization: Bearer <token>`; `require_admin` and `require_role(...)` dependencies in `app/auth/dependencies.py` for route protection — Person 6's admin/analytics routers already use `require_admin` from this same file
+
+**Donations** (`app/donations/`) — §3
+- Full CRUD: `POST/GET/PATCH /api/v1/donations`, `PATCH .../cancel`, `POST .../photos`
+- `PATCH /donations/{id}` accepts `status`, `matched_ngo_id`, `match_score`, `weights_version_id` — this is the endpoint Person 4's matching engine should call to write match results
+
+**NGOs** (`app/ngos/`) — §4
+- `GET/PATCH /api/v1/ngos/{id}`, `PATCH .../demand`, `PATCH .../capacity`, `GET .../incoming`
+- `GET /ngos/{id}` returns `is_verified` (bool) and `verification_status` — Person 4's candidate filter should check `is_verified`, and Person 6's `PATCH /admin/ngos/{id}/verify` already writes to the same `verification_status` field this reads
+
+**Drivers** (`app/drivers/`) — §6
+- `GET /api/v1/drivers?status=AVAILABLE`, `POST /api/v1/drivers/location` (rate-limited 1/5s)
+
+**Deliveries + handover** (`app/deliveries/`) — §5, §6
+- `GET /api/v1/deliveries/{id}`, `POST .../pickup`, `POST .../deliver`, `POST /api/v1/handover/{id}`
+- All mutating calls require `Idempotency-Key: <uuid>` header (400 if missing) — replaying the same key returns the cached response instead of reprocessing
+- **No dispatch/assignment endpoint exists yet** — nothing currently creates a Delivery row. Person 5 needs to add that; these endpoints assume a Delivery already exists with a driver_id assigned
+
+**WebSocket broker** (`app/ws/`)
+- `/ws/donations`, `/ws/deliveries`, `/ws/drivers` — connect with `?token=<jwt>` query param (not header, since browsers can't set custom WS handshake headers)
+- Invalid/missing token → connection closes with code 4401
+- Events currently broadcast: `donation.created`, `donation.status_changed`, `donation.cancelled`, `delivery.status_changed`, `delivery.handover_confirmed`, `driver.location_update`, `delivery.location_update`
+- Import `from app.ws.manager import manager` and call `await manager.broadcast(channel, event_dict)` to emit more events from other modules — this is the shared broker everyone should use, not a separate implementation
+
+### Database changes
+
+- Migration `002_donation_contract_fields.py` (on top of Person 6's `001_initial_schema`):
+  - `donations.pickup_location`: String → JSON `{latitude, longitude, address}`
+  - Added `donations.special_handling` (Text) and `donations.food_safety_info` (JSON)
+- `require_role(*roles)` added to `app/auth/dependencies.py` alongside the existing `require_admin` — same pattern, generalized
+
+### Verified (not just "should work")
+
+Tested end-to-end against real Postgres 16 + Redis 7 (docker-compose, not SQLite):
+- Both migrations apply cleanly via `alembic upgrade head`
+- Register/login/me for all three roles (DONOR/NGO/DRIVER), correct FK linkage
+- Donation create/list/get/patch/cancel
+- NGO capacity/demand update and read-back
+- Driver pool listing + location update + rate limiting
+- Full pickup → deliver → handover lifecycle including idempotency-key replay (verified identical response on replay, not reprocessing) and 403 for a driver not assigned to that delivery
+- WebSocket: valid-token connect accepted, invalid/missing-token connect rejected with 4401, live broadcast received by a connected client on donation creation and driver location updates
+
+### Bugs found and fixed during verification
+
+1. `passlib` 1.7.4 is incompatible with `bcrypt` ≥4.1 — broke all password hashing. Pinned `bcrypt<4.1` in `pyproject.toml`.
+2. Timestamps parsed from client `"...Z"` input got a double timezone suffix (`"...+00:00Z"`) on the way back out — fixed with a shared `iso_z()` helper in `app/core/envelope.py`.
+3. `register()` had no ORM `relationship()` between `User` and the role-specific profile row, so SQLAlchemy fell back to alphabetical insert order on flush — violated the FK on Postgres for DONOR/NGO (invisible on SQLite, which doesn't enforce FKs by default). Fixed with an explicit `db.flush()`.
+4. WebSocket auth rejection called `close(code=4401)` before `accept()` — per the ASGI spec, a custom close code needs an accepted connection to be delivered, so real clients were getting a generic HTTP 403 instead of 4401. Fixed by accepting first.
+
+### Known simplifications (flagged, not blockers)
+
+- `POST /donations/{id}/photos` writes an audit log entry with a placeholder storage path — no real object storage (S3/local disk) wired up yet
+- `PATCH /ngos/{id}/demand` currently appends a new NGODemand row rather than replacing the existing one per food_category — `GET /ngos/{id}` returns every demand row ever inserted (not deduplicated per category), so repeated updates for the same category accumulate rather than the latest replacing older ones; will need real upsert semantics eventually
+
+### For Person 6 (integration)
+
+- Auth is fully live — `POST /api/v1/auth/login` works now, so admin JWT can be obtained for smoke-testing your analytics/admin endpoints instead of waiting
+- Seed an initial admin: `python -m app.scripts.seed_admin --email admin@cpi.local --password <yours>`
+- `NGO.verification_status` (read via `GET /ngos/{id}`, written via your `PATCH /admin/ngos/{id}/verify`) is the same field Person 4's matching engine should filter on
+- WebSocket broker is live — if your admin dashboard wants real-time NGO verification updates, emit them via `manager.broadcast("donations", {...})` (or add a new channel) from your verify endpoint the same way donations/router.py does

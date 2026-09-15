@@ -1,31 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  body {
+    @apply font-sans antialiased bg-zinc-50 text-zinc-900;
+  }
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-#root {
-  width: 100%;
-  min-height: 100vh;
+@layer utilities {
+  .bg-grid-pattern {
+    background-image: 
+      linear-gradient(to right, rgb(228 228 231 / 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(228 228 231 / 0.5) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .bg-grid-pattern-dark {
+    background-image: 
+      linear-gradient(to right, rgb(24 24 27 / 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(24 24 27 / 0.5) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
 }

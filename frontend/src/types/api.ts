@@ -150,6 +150,8 @@ export interface Donation {
   food_name: string;
   food_category: string;
   quantity_kg: number;
+  expiry_time: string;
+  pickup_location: { latitude: number; longitude: number; address: string };
   status: DonationStatus;
   matched_ngo_id: string | null;
   driver_id: string | null;

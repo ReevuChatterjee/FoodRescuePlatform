@@ -4,14 +4,40 @@ import type { DemandPriority, IncomingDonation, NGODemand, NGOProfile, SuccessEn
 
 type ProfileInput = Omit<NGOProfile, 'id' | 'verification_status' | 'created_at'>;
 type DemandInput = Omit<NGODemand, 'id' | 'updated_at'>;
+type ConsolidatedNGOProfile = {
+  ngo_id: string;
+  organisation_name: string;
+  address: string;
+  location_text: string;
+  storage_capacity_kg: number;
+  available_capacity_kg: number;
+  operating_hours: { start: string; end: string };
+  verification_status: NGOProfile['verification_status'];
+  created_at: string;
+};
 
 const unwrap = <T>(response: { data: SuccessEnvelope<T> }) => response.data.data;
+const normalizeProfile = (profile: ConsolidatedNGOProfile | null): NGOProfile | null => {
+  if (profile === null) return null;
+
+  return {
+    id: profile.ngo_id,
+    organisation_name: profile.organisation_name,
+    address: profile.address,
+    location: profile.location_text,
+    storage_capacity_kg: profile.storage_capacity_kg,
+    available_capacity_kg: profile.available_capacity_kg,
+    operating_start: profile.operating_hours.start,
+    operating_end: profile.operating_hours.end,
+    verification_status: profile.verification_status,
+    created_at: profile.created_at,
+  };
+};
 
 export function useMyNGO() {
   return useQuery({
     queryKey: ['ngo', 'profile'],
-    queryFn: async () => unwrap(await apiClient.get<SuccessEnvelope<NGOProfile[]>>('/api/v1/ngos')),
-    select: (ngos) => ngos[0] ?? null,
+    queryFn: async () => normalizeProfile(unwrap(await apiClient.get<SuccessEnvelope<ConsolidatedNGOProfile | null>>('/api/v1/ngos/me'))),
   });
 }
 
@@ -19,9 +45,9 @@ export function useSaveNGO() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, profile }: { id?: string; profile: ProfileInput }) =>
-      unwrap(id
-        ? await apiClient.patch<SuccessEnvelope<NGOProfile>>(`/api/v1/ngos/${id}`, profile)
-        : await apiClient.post<SuccessEnvelope<NGOProfile>>('/api/v1/ngos', profile)),
+      normalizeProfile(unwrap(id
+        ? await apiClient.patch<SuccessEnvelope<ConsolidatedNGOProfile>>(`/api/v1/ngos/${id}`, profile)
+        : await apiClient.post<SuccessEnvelope<ConsolidatedNGOProfile>>('/api/v1/ngos', profile))),
     onSuccess: () => client.invalidateQueries({ queryKey: ['ngo'] }),
   });
 }

@@ -63,6 +63,10 @@ dist-ssr/
 *.sqlite3
 postgres_data/
 
+# Local-only dev scripts (not part of the app, never committed)
+backend/_local_*.py
+docker-compose.override.yml
+
 # Docker
 .dockerignore
 

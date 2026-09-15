@@ -87,17 +87,32 @@ def require_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
     return user
 
 
+def require_role(*roles: str):
+    """
+    Dependency factory: ensures current user's role is one of `roles`.
+    Same 403-is-the-real-boundary pattern as require_admin, generalized so
+    donor/NGO/driver-scoped routers don't each hand-roll their own check.
+
+    Usage: donor: Annotated[User, Depends(require_role("DONOR"))]
+    """
+
+    def dependency(user: Annotated[User, Depends(get_current_user)]) -> User:
+        if user.role not in roles:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": {
+                        "code": "FORBIDDEN",
+                        "message": "You are not authorized to perform this action.",
+                        "field": None,
+                    }
+                },
+            )
+        return user
+
+    return dependency
+
+
 def require_ngo(user: Annotated[User, Depends(get_current_user)]) -> User:
-    """Ensure that the caller is an NGO user."""
-    if user.role != "NGO":
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": {
-                    "code": "FORBIDDEN",
-                    "message": "You are not authorized to access NGO resources.",
-                    "field": None,
-                }
-            },
-        )
-    return user
+    """Compatibility dependency for Person 3 NGO-only routes."""
+    return require_role("NGO")(user)

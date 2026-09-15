@@ -129,8 +129,13 @@ class Donation(Base):
     prepared_at: Mapped[datetime] = mapped_column(DateTime)
     available_from: Mapped[datetime] = mapped_column(DateTime)
     expiry_time: Mapped[datetime] = mapped_column(DateTime, index=True)
-    pickup_location: Mapped[str] = mapped_column(String(200))  # PostGIS POINT in production
-    special_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # JSON {"latitude": ..., "longitude": ..., "address": ...} per §3 POST /donations shape.
+    # PostGIS POINT column can replace this later for spatial queries without changing the API.
+    pickup_location: Mapped[dict] = mapped_column(JSON)
+    special_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)  # legacy, kept for back-compat
+    special_handling: Mapped[str | None] = mapped_column(Text, nullable=True)  # contract field name, §3
+    # JSON {"storage_temp_required", "allergen_tags", "packaging_type"} per §3
+    food_safety_info: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     status: Mapped[DonationStatus] = mapped_column(Enum(DonationStatus), index=True)
     matched_ngo_id: Mapped[str | None] = mapped_column(ForeignKey("ngos.id"), nullable=True, index=True)
     match_score: Mapped[float | None] = mapped_column(Float, nullable=True)

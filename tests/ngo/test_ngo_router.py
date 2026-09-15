@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 from httpx import AsyncClient
 
-from app.auth.dependencies import require_ngo
+from app.auth.dependencies import get_current_user, require_ngo
 from app.core.database import get_db
 from app.main import app
 from app.models import Donation, DonationStatus, User, UserRole
@@ -32,11 +32,11 @@ async def ngo_client(db_session, seed_users):
     async def override_get_db():
         yield db_session
 
-    def override_require_ngo():
+    def override_current_user():
         return seed_users["ngo_001"]
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[require_ngo] = override_require_ngo
+    app.dependency_overrides[get_current_user] = override_current_user
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
     app.dependency_overrides.clear()
@@ -67,9 +67,9 @@ async def test_ngo_registration_and_profile_is_scoped_to_current_ngo(ngo_client)
     assert ngo["organisation_name"] == "Community Food Bank"
     assert ngo["available_capacity_kg"] == 75.0
 
-    listed = await ngo_client.get("/api/v1/ngos")
+    listed = await ngo_client.get("/api/v1/ngos/me")
     assert listed.status_code == 200
-    assert [item["id"] for item in listed.json()["data"]] == [ngo["id"]]
+    assert listed.json()["data"]["ngo_id"] == ngo["ngo_id"]
 
 
 @pytest.mark.asyncio
@@ -90,7 +90,7 @@ async def test_registration_rejects_invalid_capacity(ngo_client, payload):
 @pytest.mark.asyncio
 async def test_capacity_update_cannot_exceed_storage(ngo_client):
     created = await ngo_client.post("/api/v1/ngos", json=ngo_payload(storage_capacity_kg=50, available_capacity_kg=20))
-    ngo_id = created.json()["data"]["id"]
+    ngo_id = created.json()["data"]["ngo_id"]
 
     invalid = await ngo_client.patch(f"/api/v1/ngos/{ngo_id}/capacity", json={"available_capacity_kg": 51})
     valid = await ngo_client.patch(f"/api/v1/ngos/{ngo_id}/capacity", json={"available_capacity_kg": 50})
@@ -103,7 +103,7 @@ async def test_capacity_update_cannot_exceed_storage(ngo_client):
 @pytest.mark.asyncio
 async def test_categories_and_demand_crud(ngo_client):
     created = await ngo_client.post("/api/v1/ngos", json=ngo_payload())
-    ngo_id = created.json()["data"]["id"]
+    ngo_id = created.json()["data"]["ngo_id"]
 
     categories = await ngo_client.put(f"/api/v1/ngos/{ngo_id}/categories", json={"categories": ["prepared_meals", "packaged"]})
     assert categories.status_code == 200
