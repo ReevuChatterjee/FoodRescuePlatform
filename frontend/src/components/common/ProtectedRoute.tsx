@@ -8,7 +8,7 @@
 
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../hooks/useAuthStore';
+import { useAuthStore } from '../../hooks/useAuthStore';
 
 interface ProtectedRouteProps {
   children: ReactNode;

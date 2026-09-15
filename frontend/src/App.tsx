@@ -16,6 +16,10 @@ import { ProtectedRoute } from './components/common/ProtectedRoute';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { NGOVerificationQueue } from './pages/admin/NGOVerificationQueue';
 import { useAuthStore } from './hooks/useAuthStore';
+import { DonorLayout } from './components/donor/DonorLayout';
+import { DonorDashboard } from './pages/donor/DonorDashboard';
+import { CreateDonation } from './pages/donor/CreateDonation';
+import { DonationDetails } from './pages/donor/DonationDetails';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,8 +56,19 @@ function App() {
             }
           />
 
-          {/* Placeholder routes for other modules */}
-          <Route path="/donor" element={<div>Donor Dashboard (Person 2)</div>} />
+          {/* Donor Routes */}
+          <Route
+            path="/donor"
+            element={
+              <ProtectedRoute requiredRole="DONOR">
+                <DonorLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DonorDashboard />} />
+            <Route path="donate" element={<CreateDonation />} />
+            <Route path="donation/:id" element={<DonationDetails />} />
+          </Route>
           <Route path="/ngo" element={<div>NGO Dashboard (Person 3)</div>} />
           <Route path="/driver" element={<div>Driver Dashboard (Person 5)</div>} />
 
