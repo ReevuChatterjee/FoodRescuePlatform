@@ -77,13 +77,14 @@ export function LoginPage() {
       const res = await apiClient.post('/api/v1/auth/login', data);
       const { access_token, refresh_token, user } = res.data.data;
       setAuth(
-        { id: user.user_id, name: user.name, email: user.email, role: user.role },
+        { id: user.id, name: user.name, email: user.email, role: user.role },
         access_token,
         refresh_token,
       );
       navigate(ROLE_ROUTES[user.role] || '/');
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Login failed. Check your credentials.');
+      const errorMsg = err.response?.data?.detail?.error?.message || err.response?.data?.error?.message || 'Login failed. Check your credentials.';
+      setError(errorMsg);
     }
   });
 
@@ -99,7 +100,7 @@ export function LoginPage() {
       });
       const { access_token, refresh_token, user } = loginRes.data.data;
       setAuth(
-        { id: user.user_id, name: user.name, email: user.email, role: user.role },
+        { id: user.id, name: user.name, email: user.email, role: user.role },
         access_token,
         refresh_token,
       );
@@ -119,63 +120,60 @@ export function LoginPage() {
   const isRegisterPending = registerForm.formState.isSubmitting;
 
   return (
-    <div className="min-h-screen flex bg-black text-zinc-300">
+    <div className="min-h-screen flex bg-[var(--bg-page)] text-[var(--text-primary)]">
       {/* Left branding panel */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col relative bg-zinc-950 border-r border-zinc-900">
+      <div className="hidden lg:flex lg:w-1/2 flex-col relative bg-[var(--bg-panel)] border-r border-[var(--border-subtle)]">
         <div className="relative z-10 flex flex-col h-full px-16 py-12">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-600 rounded-sm flex items-center justify-center">
-              <Leaf size={20} className="text-emerald-50" />
+            <div className="w-10 h-10 bg-[var(--brand)] rounded-sm flex items-center justify-center">
+              <Leaf size={20} className="text-black" />
             </div>
-            <span className="text-zinc-100 font-bold tracking-tight text-lg">RePlate</span>
+            <span className="text-[var(--text-primary)] font-semibold tracking-tight text-lg">RePlate Ops</span>
           </div>
 
           {/* Content */}
           <div className="flex-1 flex flex-col justify-center">
-            <h1 className="text-5xl font-bold tracking-tight leading-tight mb-6 text-zinc-100">
-              Rescue food.<br />
-              <span className="text-emerald-500">Feed communities.</span>
+            <h1 className="heading-major leading-tight mb-6 text-[var(--text-primary)]">
+              Operations <br />
+              Logistics Terminal.
             </h1>
-            <p className="text-lg leading-relaxed mb-12 text-zinc-400">
-              The algorithmic micro-donation platform that connects surplus food
-              with the NGOs that need it most — in real time.
+            <p className="text-lg leading-relaxed mb-12 text-[var(--text-secondary)]">
+              Authorized access only. Enter your credentials to manage incoming surplus, route drivers, and trace completed handoffs.
             </p>
-
-
           </div>
 
           {/* Footer */}
-          <p className="text-xs text-zinc-600 uppercase tracking-wide font-medium">
-            RePlate © 2026
+          <p className="text-xs text-[var(--text-muted)] font-mono-data">
+            SYSTEM BUILD 2026.4
           </p>
         </div>
       </div>
 
       {/* Right auth panel */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-16 bg-black">
+      <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-16 bg-[var(--bg-page)]">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-9 h-9 bg-emerald-600 rounded-sm flex items-center justify-center">
-              <Leaf size={18} className="text-emerald-50" />
+            <div className="w-9 h-9 bg-[var(--brand)] rounded-sm flex items-center justify-center">
+              <Leaf size={18} className="text-black" />
             </div>
-            <span className="font-bold tracking-tight text-zinc-100">RePlate</span>
+            <span className="font-semibold tracking-tight text-[var(--text-primary)]">RePlate Ops</span>
           </div>
 
           {/* Tab switcher */}
-          <div className="flex p-1 bg-zinc-900 border border-zinc-800 rounded-sm mb-8">
+          <div className="flex p-1 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-sm mb-8">
             {(['login', 'register'] as const).map((m) => {
               const isActive = mode === m;
               return (
                 <button
                   key={m}
                   onClick={() => { setMode(m); setError(null); }}
-                  className={`flex-1 py-2 rounded-sm text-sm font-semibold uppercase tracking-wide transition-colors ${
-                    isActive ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+                  className={`flex-1 py-2 rounded-sm text-sm font-semibold tracking-wide transition-colors ${
+                    isActive ? 'bg-[var(--bg-panel-hover)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-page)]'
                   }`}
                 >
-                  {m === 'login' ? 'Sign In' : 'Register'}
+                  {m === 'login' ? 'Authentication' : 'Registration'}
                 </button>
               );
             })}
@@ -183,7 +181,7 @@ export function LoginPage() {
 
           {/* Error */}
           {error && (
-            <div className="mb-6 px-4 py-3 rounded-sm text-sm font-medium bg-red-950/50 border border-red-900 text-red-500">
+            <div className="mb-6 px-4 py-3 rounded-md text-sm font-medium bg-[var(--error)]/10 border border-[var(--error)]/20 text-[var(--error)]">
               {error}
             </div>
           )}
@@ -192,20 +190,20 @@ export function LoginPage() {
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-5">
               <div>
-                <label className="form-label">Email address</label>
+                <label className="form-label">System Email</label>
                 <input {...loginForm.register('email')} type="email" className="input-base"
-                  placeholder="you@example.com" autoComplete="email" />
+                  placeholder="operator@replate.local" autoComplete="email" />
                 {loginForm.formState.errors.email && (
                   <p className="form-error">{loginForm.formState.errors.email.message}</p>
                 )}
               </div>
               <div>
-                <label className="form-label">Password</label>
+                <label className="form-label">Passcode</label>
                 <div className="relative">
                   <input {...loginForm.register('password')} type={showPassword ? 'text' : 'password'}
-                    className="input-base pr-12" placeholder="••••••••" autoComplete="current-password" />
+                    className="input-base pr-12 font-mono" placeholder="••••••••" autoComplete="current-password" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-zinc-300">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
@@ -215,16 +213,16 @@ export function LoginPage() {
               </div>
 
               <button type="submit" className="btn-primary w-full py-3 mt-2" disabled={isLoginPending}>
-                {isLoginPending ? <Loader2 size={18} className="animate-spin" /> : <>Sign In <ArrowRight size={16} /></>}
+                {isLoginPending ? <Loader2 size={18} className="animate-spin" /> : <>Authorize Access <ArrowRight size={16} /></>}
               </button>
 
-              <p className="text-center text-sm text-zinc-500 mt-6">
-                Demo admin:{' '}
+              <div className="mt-6 border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-4 rounded-md">
+                <p className="text-xs text-[var(--text-secondary)] font-medium mb-1 tracking-wide uppercase">Diagnostics Access</p>
                 <button type="button" onClick={() => {
                   loginForm.setValue('email', 'admin@cpi.com');
                   loginForm.setValue('password', 'admin123');
-                }} className="text-emerald-500 hover:text-emerald-400 font-medium">admin@cpi.com / admin123</button>
-              </p>
+                }} className="text-sm font-mono-data text-[var(--text-primary)] hover:text-[var(--brand)]">admin@cpi.com</button>
+              </div>
 
             </form>
           )}
@@ -234,7 +232,7 @@ export function LoginPage() {
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="form-label">Full name</label>
+                  <label className="form-label">Operator Name</label>
                   <input {...registerForm.register('name')} className="input-base" placeholder="Jane Doe" />
                   {registerForm.formState.errors.name && (
                     <p className="form-error">{registerForm.formState.errors.name.message}</p>
@@ -242,14 +240,14 @@ export function LoginPage() {
                 </div>
                 <div>
                   <label className="form-label">Email</label>
-                  <input {...registerForm.register('email')} type="email" className="input-base" placeholder="you@example.com" />
+                  <input {...registerForm.register('email')} type="email" className="input-base" placeholder="node@example.com" />
                   {registerForm.formState.errors.email && (
                     <p className="form-error">{registerForm.formState.errors.email.message}</p>
                   )}
                 </div>
                 <div>
                   <label className="form-label">Phone</label>
-                  <input {...registerForm.register('phone')} className="input-base tabular-nums" placeholder="9876543210" />
+                  <input {...registerForm.register('phone')} className="input-base font-mono-data" placeholder="9876543210" />
                   {registerForm.formState.errors.phone && (
                     <p className="form-error">{registerForm.formState.errors.phone.message}</p>
                   )}
@@ -257,12 +255,12 @@ export function LoginPage() {
               </div>
 
               <div>
-                <label className="form-label">Password</label>
+                <label className="form-label">Secure Passcode</label>
                 <div className="relative">
                   <input {...registerForm.register('password')} type={showPassword ? 'text' : 'password'}
-                    className="input-base pr-12" placeholder="Min. 8 characters" />
+                    className="input-base pr-12 font-mono" placeholder="Min. 8 characters" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-zinc-300">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
@@ -272,11 +270,11 @@ export function LoginPage() {
               </div>
 
               <div>
-                <label className="form-label">I am a</label>
+                <label className="form-label">Node Designation</label>
                 <select {...registerForm.register('role')} className="select-base">
-                  <option value="DONOR">Food Donor (restaurant, caterer, hotel)</option>
-                  <option value="NGO">NGO (food bank, charity)</option>
-                  <option value="DRIVER">Volunteer Driver</option>
+                  <option value="DONOR">Supplier (Donor)</option>
+                  <option value="NGO">Distributor (NGO)</option>
+                  <option value="DRIVER">Logistics (Driver)</option>
                 </select>
               </div>
 
@@ -284,11 +282,11 @@ export function LoginPage() {
               {watchedRole === 'DONOR' && (
                 <>
                   <div>
-                    <label className="form-label">Organisation name</label>
+                    <label className="form-label">Facility Name</label>
                     <input {...registerForm.register('organisation_name')} className="input-base" placeholder="e.g. Green Kitchen Restaurant" />
                   </div>
                   <div>
-                    <label className="form-label">Address</label>
+                    <label className="form-label">Pickup Coordinates / Address</label>
                     <input {...registerForm.register('address')} className="input-base" placeholder="Full pickup address" />
                   </div>
                 </>
@@ -298,17 +296,17 @@ export function LoginPage() {
               {watchedRole === 'NGO' && (
                 <>
                   <div>
-                    <label className="form-label">Organisation name</label>
+                    <label className="form-label">Organization Name</label>
                     <input {...registerForm.register('organisation_name')} className="input-base" placeholder="e.g. City Food Bank" />
                   </div>
                   <div>
-                    <label className="form-label">Address</label>
+                    <label className="form-label">Delivery Location</label>
                     <input {...registerForm.register('address')} className="input-base" placeholder="Full address" />
                   </div>
                   <div>
-                    <label className="form-label">Storage capacity (kg)</label>
+                    <label className="form-label">Total Storage Capacity (kg)</label>
                     <input {...registerForm.register('storage_capacity_kg')}
-                      type="number" min="1" className="input-base tabular-nums" placeholder="e.g. 500" />
+                      type="number" min="1" className="input-base font-mono-data" placeholder="e.g. 500" />
                     {registerForm.formState.errors.storage_capacity_kg && (
                       <p className="form-error">{registerForm.formState.errors.storage_capacity_kg.message}</p>
                     )}
@@ -319,9 +317,9 @@ export function LoginPage() {
               {/* DRIVER fields */}
               {watchedRole === 'DRIVER' && (
                 <div>
-                  <label className="form-label">Vehicle capacity (kg)</label>
+                  <label className="form-label">Transit Capacity (kg)</label>
                   <input {...registerForm.register('vehicle_capacity_kg')}
-                    type="number" min="1" className="input-base tabular-nums" placeholder="e.g. 100" />
+                    type="number" min="1" className="input-base font-mono-data" placeholder="e.g. 100" />
                   {registerForm.formState.errors.vehicle_capacity_kg && (
                     <p className="form-error">{registerForm.formState.errors.vehicle_capacity_kg.message}</p>
                   )}
@@ -329,7 +327,7 @@ export function LoginPage() {
               )}
 
               <button type="submit" className="btn-primary w-full py-3" disabled={isRegisterPending}>
-                {isRegisterPending ? <Loader2 size={18} className="animate-spin" /> : <>Create Account <ArrowRight size={16} /></>}
+                {isRegisterPending ? <Loader2 size={18} className="animate-spin" /> : <>Register Node <ArrowRight size={16} /></>}
               </button>
             </form>
           )}
@@ -338,3 +336,4 @@ export function LoginPage() {
     </div>
   );
 }
+

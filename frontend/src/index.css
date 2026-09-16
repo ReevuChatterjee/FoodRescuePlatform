@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,12 +6,12 @@
 
 @layer base {
   :root {
-    /* Stark, high-contrast dark theme */
-    --brand: #10b981;
+    /* Product-specific Operational Palette */
+    --brand: #10b981; /* Operational Green */
     --brand-dark: #059669;
     
-    --bg-page: #09090b;
-    --bg-panel: #18181b;
+    --bg-page: #09090b; /* Deep Charcoal for primary surface */
+    --bg-panel: #18181b; /* Secondary separated work area */
     --bg-panel-hover: #27272a;
     
     --text-primary: #fafafa;
@@ -20,6 +20,11 @@
     
     --border-subtle: #27272a;
     --border-strong: #3f3f46;
+
+    /* Semantic Status Colors */
+    --success: #10b981;
+    --warning: #fb923c; /* Amber/Terracotta */
+    --error: #ef4444;
   }
 
   * {
@@ -38,6 +43,7 @@
     background-color: var(--bg-page);
     color: var(--text-primary);
     min-height: 100vh;
+    font-size: 16px; /* Body scale */
   }
 
   #root {
@@ -55,7 +61,7 @@
   }
   ::-webkit-scrollbar-thumb {
     background: var(--border-strong);
-    border-radius: 2px;
+    border-radius: 0; /* Removing generic rounded for structural feel */
   }
   ::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
@@ -65,24 +71,47 @@
   *:focus-visible {
     outline: 2px solid var(--brand);
     outline-offset: 2px;
-    border-radius: 2px;
+    border-radius: 4px;
+  }
+
+  /* Tabular figures for data */
+  .font-mono-data {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer components {
   /* Core layout components */
   .panel {
-    @apply rounded-md border p-6;
+    @apply border p-6;
     background: var(--bg-panel);
     border-color: var(--border-subtle);
+    border-radius: 8px; /* Distinct radius for panels, not generic 3xl */
+  }
+
+  .panel-dense {
+    @apply border p-4;
+    background: var(--bg-panel);
+    border-color: var(--border-subtle);
+    border-radius: 4px; /* Tighter radius for dense information/tables */
+  }
+
+  .elevated-layer {
+    @apply border;
+    background: var(--bg-panel);
+    border-color: var(--border-strong);
+    border-radius: 12px; /* Drawers/Modals get 12px */
+    box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5); /* Subtle shadow for genuine elevation */
   }
 
   /* Input fields */
   .input-base {
-    @apply w-full rounded-sm border px-3 py-2 text-sm transition-colors;
+    @apply w-full border px-3 py-2 text-sm transition-colors;
     background: var(--bg-page);
     border-color: var(--border-strong);
     color: var(--text-primary);
+    border-radius: 6px;
   }
   .input-base::placeholder {
     color: var(--text-muted);
@@ -109,9 +138,10 @@
 
   /* Buttons */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-medium transition-colors;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors;
     background: var(--brand);
     color: #000000;
+    border-radius: 6px;
   }
   .btn-primary:hover:not(:disabled) {
     background: var(--brand-dark);
@@ -122,10 +152,11 @@
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-medium transition-colors;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors;
     background: var(--bg-panel);
     border: 1px solid var(--border-strong);
     color: var(--text-primary);
+    border-radius: 6px;
   }
   .btn-secondary:hover:not(:disabled) {
     background: var(--bg-panel-hover);
@@ -136,9 +167,10 @@
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-medium transition-colors;
-    background: #ef4444;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors;
+    background: var(--error);
     color: #ffffff;
+    border-radius: 6px;
   }
   .btn-danger:hover:not(:disabled) {
     background: #dc2626;
@@ -149,32 +181,39 @@
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-sm px-3 py-1.5 text-sm font-medium transition-colors;
+    @apply inline-flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium transition-colors;
     color: var(--text-secondary);
+    border-radius: 6px;
   }
   .btn-ghost:hover:not(:disabled) {
     background: var(--bg-panel);
     color: var(--text-primary);
   }
 
-  /* Badges - solid colors, no gradients */
+  /* Badges - solid colors, compact scale */
   .badge {
-    @apply inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium;
+    border-radius: 4px; /* No pills unless explicitly required */
   }
   .badge-green {
     @apply badge;
     background: #064e3b;
-    color: #34d399;
+    color: var(--success);
   }
   .badge-yellow {
     @apply badge;
     background: #78350f;
-    color: #fbbf24;
+    color: #fcd34d;
+  }
+  .badge-orange {
+    @apply badge;
+    background: #7c2d12;
+    color: var(--warning);
   }
   .badge-red {
     @apply badge;
     background: #7f1d1d;
-    color: #f87171;
+    color: var(--error);
   }
   .badge-blue {
     @apply badge;
@@ -186,15 +225,15 @@
     background: var(--bg-panel-hover);
     color: var(--text-secondary);
   }
-  .badge-orange {
-    @apply badge;
-    background: #7c2d12;
-    color: #fb923c;
-  }
 
-  /* Typography */
+  /* Typography Scale */
+  .heading-major {
+    @apply text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight;
+    color: var(--text-primary);
+  }
+  
   .section-title {
-    @apply text-base font-semibold mb-4 flex items-center gap-2;
+    @apply text-2xl font-semibold mb-4 flex items-center gap-2;
     color: var(--text-primary);
   }
 
@@ -204,7 +243,7 @@
   }
   
   .page-title {
-    @apply text-xl font-semibold;
+    @apply text-xl font-semibold tracking-tight;
     color: var(--text-primary);
   }
   
@@ -220,13 +259,14 @@
 
   .form-error {
     @apply text-xs mt-1 font-medium;
-    color: #f87171;
+    color: var(--error);
   }
 
   /* AppLayout Nav */
   .nav-item {
-    @apply flex items-center gap-3 rounded-sm px-3 py-2 text-sm font-medium transition-colors;
+    @apply flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors;
     color: var(--text-secondary);
+    border-radius: 6px;
   }
   .nav-item:hover {
     background: var(--bg-panel-hover);
@@ -236,6 +276,7 @@
     background: var(--bg-panel-hover);
     color: var(--text-primary);
     border-left: 2px solid var(--brand);
+    border-radius: 0 6px 6px 0;
   }
 
   /* Skeleton - solid color flash */
@@ -259,9 +300,9 @@
     background: var(--brand);
   }
   .capacity-fill.warning {
-    background: #f59e0b;
+    background: var(--warning);
   }
   .capacity-fill.critical {
-    background: #ef4444;
+    background: var(--error);
   }
 }

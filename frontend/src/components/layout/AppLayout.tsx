@@ -1,7 +1,7 @@
 /**
  * AppLayout — shared sidebar + topbar for all authenticated roles.
  * Renders role-specific nav items and provides content area.
- * Utilitarian, flat design system.
+ * Utilitarian, flat design system with operational colors.
  */
 
 import { useState } from 'react';
@@ -20,21 +20,21 @@ interface NavItem {
 
 const NAV_ITEMS: Record<string, NavItem[]> = {
   ADMIN: [
-    { label: 'Dashboard', href: '/admin', icon: <BarChart2 size={16} /> },
-    { label: 'NGO Verification', href: '/admin/ngos/verify', icon: <CheckSquare size={16} /> },
-    { label: 'All NGOs', href: '/admin/ngos', icon: <Users size={16} /> },
+    { label: 'Network Overview', href: '/admin', icon: <BarChart2 size={16} /> },
+    { label: 'Verification Queue', href: '/admin/ngos/verify', icon: <CheckSquare size={16} /> },
+    { label: 'NGO Registry', href: '/admin/ngos', icon: <Users size={16} /> },
   ],
   DONOR: [
-    { label: 'My Donations', href: '/donor', icon: <LayoutDashboard size={16} /> },
-    { label: 'New Donation', href: '/donor/donate', icon: <Plus size={16} /> },
+    { label: 'Donation Activity', href: '/donor', icon: <LayoutDashboard size={16} /> },
+    { label: 'Create Donation', href: '/donor/donate', icon: <Plus size={16} /> },
   ],
   NGO: [
-    { label: 'Dashboard', href: '/ngo', icon: <LayoutDashboard size={16} /> },
-    { label: 'Incoming Offers', href: '/ngo/incoming', icon: <Package size={16} /> },
+    { label: 'Distribution Desk', href: '/ngo', icon: <LayoutDashboard size={16} /> },
+    { label: 'Incoming Supply', href: '/ngo/incoming', icon: <Package size={16} /> },
     { label: 'Settings', href: '/ngo/settings', icon: <Settings size={16} /> },
   ],
   DRIVER: [
-    { label: 'Dashboard', href: '/driver', icon: <Truck size={16} /> },
+    { label: 'Active Route', href: '/driver', icon: <Truck size={16} /> },
   ],
 };
 
@@ -75,12 +75,12 @@ export function AppLayout({ children }: AppLayoutProps) {
       className={`flex flex-col h-full bg-[var(--bg-panel)] border-r border-[var(--border-subtle)] ${mobile ? '' : 'w-64'}`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-[var(--border-subtle)]">
-        <div className="w-6 h-6 bg-emerald-600 rounded-sm flex items-center justify-center">
-          <Leaf size={14} className="text-white" />
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)]">
+        <div className="w-6 h-6 bg-[var(--brand)] rounded-sm flex items-center justify-center">
+          <Leaf size={14} className="text-black" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-[var(--text-primary)]">RePlate</p>
+          <p className="text-sm font-semibold tracking-tight text-[var(--text-primary)]">RePlate Ops</p>
         </div>
         {mobile && (
           <button className="ml-auto btn-ghost" onClick={() => setSidebarOpen(false)}>
@@ -111,12 +111,12 @@ export function AppLayout({ children }: AppLayoutProps) {
 
       {/* User */}
       <div className="p-4 border-t border-[var(--border-subtle)]">
-        <div className="bg-[var(--bg-page)] border border-[var(--border-strong)] rounded-md p-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm bg-emerald-600 flex items-center justify-center text-xs font-semibold text-white">
+        <div className="bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-md p-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-sm bg-[var(--bg-panel-hover)] border border-[var(--border-strong)] flex items-center justify-center text-xs font-semibold text-[var(--text-primary)]">
             {user?.name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate text-[var(--text-primary)]">
+            <p className="text-sm font-semibold truncate text-[var(--text-primary)] tracking-tight">
               {user?.name || 'User'}
             </p>
             <span className={`${ROLE_COLORS[user?.role || 'DONOR']} mt-1`}>
@@ -138,8 +138,8 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/80" onClick={() => setSidebarOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-[var(--bg-panel)]">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 w-72 bg-[var(--bg-panel)] shadow-xl border-r border-[var(--border-subtle)]">
             <Sidebar mobile />
           </div>
         </div>
@@ -148,41 +148,41 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Main content area */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Topbar */}
-        <header className="flex items-center gap-4 px-6 py-4 flex-shrink-0 bg-[var(--bg-panel)] border-b border-[var(--border-subtle)]">
+        <header className="flex items-center gap-4 px-6 py-4 flex-shrink-0 bg-[var(--bg-page)] border-b border-[var(--border-subtle)]">
           <button className="btn-ghost lg:hidden p-2" onClick={() => setSidebarOpen(true)}>
             <Menu size={20} />
           </button>
 
-          {/* Breadcrumb / Title area */}
+          {/* Contextual Space */}
           <div className="flex-1" />
 
           {/* Topbar actions */}
           <button className="btn-ghost p-2 relative" title="Notifications">
             <Bell size={16} />
-            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-none bg-[var(--warning)]" />
           </button>
 
           {/* Profile dropdown */}
           <div className="relative">
             <button
-              className="flex items-center gap-2 btn-ghost px-2 py-1.5"
+              className="flex items-center gap-2 btn-ghost px-2 py-1.5 border border-transparent hover:border-[var(--border-strong)]"
               onClick={() => setProfileOpen(!profileOpen)}
             >
-              <div className="w-6 h-6 rounded-sm bg-emerald-600 flex items-center justify-center text-xs font-semibold text-white">
+              <div className="w-6 h-6 rounded-sm bg-[var(--bg-panel-hover)] flex items-center justify-center text-xs font-mono text-[var(--text-primary)]">
                 {user?.name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
               <ChevronDown size={14} className="text-[var(--text-muted)]" />
             </button>
 
             {profileOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded-md shadow-lg z-50 py-1">
+              <div className="absolute right-0 mt-2 w-48 elevated-layer z-50 py-1">
                 <div className="px-4 py-3 border-b border-[var(--border-subtle)]">
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">{user?.name}</p>
+                  <p className="text-sm font-semibold tracking-tight text-[var(--text-primary)]">{user?.name}</p>
                   <p className="text-xs text-[var(--text-secondary)] mt-0.5">{user?.email}</p>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+                  className="w-full text-left flex items-center gap-2 px-4 py-2 text-sm text-[var(--error)] hover:bg-[var(--error)]/10 transition-colors"
                 >
                   <LogOut size={14} />
                   Sign out
@@ -193,7 +193,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-6xl mx-auto">
             {children}
           </div>
@@ -202,3 +202,4 @@ export function AppLayout({ children }: AppLayoutProps) {
     </div>
   );
 }
+

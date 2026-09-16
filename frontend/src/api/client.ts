@@ -34,8 +34,9 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If 401 and not already retrying, attempt refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // If 401 and not already retrying, and the request wasn't for login/register/refresh
+    const isAuthEndpoint = originalRequest.url?.includes('/api/v1/auth/');
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       try {

@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Package, MapPin, Shield, ArrowLeft, ArrowRight, Loader2, X } from 'lucide-react';
+import { Package, MapPin, Shield, ArrowLeft, ArrowRight, Loader2, X, Info } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { AppLayout } from '../../components/layout/AppLayout';
 
@@ -37,9 +37,9 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const STEPS = [
-  { id: 1, label: 'Food Details', icon: <Package size={16} /> },
-  { id: 2, label: 'Pickup Location', icon: <MapPin size={16} /> },
-  { id: 3, label: 'Safety & Handling', icon: <Shield size={16} /> },
+  { id: 1, label: 'Payload Manifest', icon: <Package size={16} /> },
+  { id: 2, label: 'Origin Coordinates', icon: <MapPin size={16} /> },
+  { id: 3, label: 'Handling & Safety', icon: <Shield size={16} /> },
 ];
 
 const CATEGORY_OPTIONS = [
@@ -52,10 +52,10 @@ const CATEGORY_OPTIONS = [
 ];
 
 const TEMP_OPTIONS = [
-  { value: 'ROOM_TEMP', label: 'Room Temperature' },
-  { value: 'COLD', label: 'Cold (Refrigerated)' },
-  { value: 'HOT', label: 'Hot (Keep warm)' },
-  { value: 'FROZEN', label: 'Frozen' },
+  { value: 'ROOM_TEMP', label: 'Ambient (Room Temp)' },
+  { value: 'COLD', label: 'Cold Storage (Refrigerated)' },
+  { value: 'HOT', label: 'Thermal Retention (Keep Hot)' },
+  { value: 'FROZEN', label: 'Deep Freeze' },
 ];
 
 export function CreateDonation() {
@@ -109,36 +109,43 @@ export function CreateDonation() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="page-header">
+      <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="page-title">Create Donation</h1>
-          <p className="page-subtitle">List your surplus food for NGOs to receive</p>
+          <h1 className="page-title">Generate Dispatch Payload</h1>
+          <p className="page-subtitle">Submit surplus food specifications to the routing network.</p>
         </div>
-        <button className="btn-secondary" onClick={() => navigate('/donor')}>
-          <ArrowLeft size={16} /> Back
+        <button className="btn-secondary px-4 py-2" onClick={() => navigate('/donor')}>
+          <ArrowLeft size={16} /> Abort Entry
         </button>
       </div>
 
-      <div className="max-w-2xl">
-        {/* Step indicator */}
-        <div className="flex items-center gap-3 mb-8">
-          {STEPS.map((s, i) => {
+      <div className="max-w-3xl mx-auto w-full mt-6">
+        {/* Tracker */}
+        <div className="mb-10 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-md p-4 flex items-center justify-between relative shadow-sm">
+          {/* Connecting line */}
+          <div className="absolute top-1/2 left-8 right-8 h-px bg-[var(--border-strong)] -translate-y-1/2 z-0 hidden sm:block"></div>
+          
+          {STEPS.map((s) => {
             const isCompleted = step > s.id;
             const isCurrent = step === s.id;
-            const isActive = isCompleted || isCurrent;
+            
             return (
-              <div key={s.id} className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <div className={`w-6 h-6 rounded-sm flex items-center justify-center text-xs font-mono font-medium transition-colors ${isActive ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-500'}`}>
-                    {s.id}
-                  </div>
-                  <span className={`text-xs font-medium uppercase tracking-wide hidden sm:block ${isActive ? 'text-zinc-100' : 'text-zinc-600'}`}>
-                    {s.label}
-                  </span>
+              <div key={s.id} className="relative z-10 flex flex-col items-center gap-2 bg-[var(--bg-panel)] px-2">
+                <div 
+                  className={`w-8 h-8 rounded-sm flex items-center justify-center transition-colors border ${
+                    isCurrent ? 'bg-[var(--brand)] text-black border-[var(--brand)]' 
+                    : isCompleted ? 'bg-[var(--success)] text-white border-[var(--success)]' 
+                    : 'bg-[var(--bg-page)] text-[var(--text-muted)] border-[var(--border-strong)]'
+                  }`}
+                >
+                  {s.icon}
                 </div>
-                {i < STEPS.length - 1 && (
-                  <div className={`flex-1 h-px w-8 sm:w-12 transition-colors ${isCompleted ? 'bg-emerald-600' : 'bg-zinc-800'}`} />
-                )}
+                <div className="flex flex-col items-center">
+                   <span className="text-[10px] font-mono-data text-[var(--text-muted)]">STEP 0{s.id}</span>
+                   <span className={`text-xs font-semibold tracking-wide uppercase mt-0.5 ${isCurrent ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>
+                     {s.label}
+                   </span>
+                </div>
               </div>
             );
           })}
@@ -146,51 +153,51 @@ export function CreateDonation() {
 
         {/* Error banner */}
         {mutation.isError && (
-          <div className="mb-6 px-4 py-3 rounded-sm border border-red-900 bg-red-950 text-red-400 text-sm font-medium">
-            Failed to create donation. Please check your inputs.
+          <div className="mb-6 px-4 py-3 rounded-md border border-[var(--error)]/20 bg-[var(--error)]/10 text-[var(--error)] text-sm font-semibold tracking-wide flex items-center gap-2">
+             <Info size={16} /> Transaction failed. Review input constraints.
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="panel p-6">
+          <div className="panel p-6 border-[var(--border-strong)] bg-[var(--bg-page)] shadow-sm">
             {/* ── Step 1: Food Details ── */}
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <label className="form-label">Food name</label>
-                  <input {...register('food_name')} className="input-base" placeholder="e.g. Assorted Sandwiches" />
+                  <label className="form-label">Payload Designation</label>
+                  <input {...register('food_name')} className="input-base" placeholder="e.g. 50x Assorted Sandwiches" />
                   {errors.food_name && <p className="form-error">{errors.food_name.message}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="form-label">Category</label>
+                    <label className="form-label">Classification</label>
                     <select {...register('food_category')} className="select-base">
                       {CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="form-label">Quantity (kg)</label>
+                    <label className="form-label">Net Mass (kg)</label>
                     <input {...register('quantity_kg', { valueAsNumber: true })} type="number" step="0.1" min="0.1"
-                      className="input-base tabular-nums" placeholder="e.g. 15.5" />
+                      className="input-base font-mono-data" placeholder="e.g. 15.5" />
                     {errors.quantity_kg && <p className="form-error">{errors.quantity_kg.message}</p>}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-[var(--border-subtle)] pt-6 mt-2">
                   <div>
-                    <label className="form-label">Prepared at</label>
-                    <input {...register('prepared_at')} type="datetime-local" className="input-base tabular-nums" />
+                    <label className="form-label">Preparation Time</label>
+                    <input {...register('prepared_at')} type="datetime-local" className="input-base font-mono-data text-sm" />
                     {errors.prepared_at && <p className="form-error">{errors.prepared_at.message}</p>}
                   </div>
                   <div>
-                    <label className="form-label">Available from</label>
-                    <input {...register('available_from')} type="datetime-local" className="input-base tabular-nums" />
+                    <label className="form-label">Ready for Transit</label>
+                    <input {...register('available_from')} type="datetime-local" className="input-base font-mono-data text-sm" />
                     {errors.available_from && <p className="form-error">{errors.available_from.message}</p>}
                   </div>
                   <div>
-                    <label className="form-label">Expires at</label>
-                    <input {...register('expiry_time')} type="datetime-local" className="input-base tabular-nums" />
+                    <label className="form-label">Critical Expiration</label>
+                    <input {...register('expiry_time')} type="datetime-local" className="input-base font-mono-data text-sm text-[var(--warning)]" />
                     {errors.expiry_time && <p className="form-error">{errors.expiry_time.message}</p>}
                   </div>
                 </div>
@@ -201,27 +208,27 @@ export function CreateDonation() {
             {step === 2 && (
               <div className="space-y-6">
                 <div>
-                  <label className="form-label">Full pickup address</label>
+                  <label className="form-label">Facility Address</label>
                   <input {...register('pickup_location.address')} className="input-base"
-                    placeholder="e.g. 42, MG Road, Bengaluru 560001" />
+                    placeholder="e.g. Loading Bay 3, 42 MG Road, Bengaluru" />
                   {errors.pickup_location?.address && <p className="form-error">{errors.pickup_location.address.message}</p>}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-[var(--border-subtle)] pt-6 mt-2">
                   <div>
                     <label className="form-label">Latitude</label>
                     <input {...register('pickup_location.latitude', { valueAsNumber: true })} type="number" step="0.0001"
-                      className="input-base tabular-nums" placeholder="e.g. 28.7041" />
+                      className="input-base font-mono-data" placeholder="e.g. 28.7041" />
                   </div>
                   <div>
                     <label className="form-label">Longitude</label>
                     <input {...register('pickup_location.longitude', { valueAsNumber: true })} type="number" step="0.0001"
-                      className="input-base tabular-nums" placeholder="e.g. 77.1025" />
+                      className="input-base font-mono-data" placeholder="e.g. 77.1025" />
                   </div>
                 </div>
-                <div className="p-4 rounded-sm border border-zinc-800 bg-zinc-950 flex items-start gap-3">
-                  <MapPin size={16} className="text-zinc-500 mt-0.5" />
-                  <p className="text-sm text-zinc-400 leading-relaxed">
-                    Ensure these coordinates are precise. Drivers rely on this for routing and ETAs.
+                <div className="p-4 rounded-sm border border-[var(--border-subtle)] bg-[var(--bg-panel)] flex items-start gap-3 mt-4">
+                  <MapPin size={16} className="text-[var(--brand)] mt-0.5" />
+                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                     Provide exact geographic coordinates. The algorithmic dispatch engine relies on this precision to minimize transit times.
                   </p>
                 </div>
               </div>
@@ -230,30 +237,30 @@ export function CreateDonation() {
             {/* ── Step 3: Safety & Handling ── */}
             {step === 3 && (
               <div className="space-y-6">
-                <div>
-                  <label className="form-label">Special handling instructions</label>
-                  <input {...register('special_handling')} className="input-base"
-                    placeholder="e.g. Keep upright, refrigerate on arrival" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="form-label">Storage temperature</label>
+                    <label className="form-label">Thermal Constraints</label>
                     <select {...register('food_safety_info.storage_temp_required')} className="select-base">
                       {TEMP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="form-label">Packaging type</label>
+                    <label className="form-label">Enclosure Specs</label>
                     <input {...register('food_safety_info.packaging_type')} className="input-base"
-                      placeholder="e.g. Sealed containers" />
+                      placeholder="e.g. Vacuum-sealed GN pans" />
                   </div>
                 </div>
 
+                <div className="border-t border-[var(--border-subtle)] pt-6 mt-2">
+                  <label className="form-label">Handling Directives (Optional)</label>
+                  <input {...register('special_handling')} className="input-base"
+                    placeholder="e.g. DO NOT STACK. Keep horizontal." />
+                </div>
+
                 {/* Allergen chips */}
-                <div>
-                  <label className="form-label">Allergen tags</label>
-                  <div className="flex flex-wrap gap-2 mt-2">
+                <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 rounded-sm mt-4">
+                  <label className="form-label mb-3 block">Identify Contaminants / Allergens</label>
+                  <div className="flex flex-wrap gap-2">
                     {ALLERGENS.map((a) => {
                       const selected = allergens.includes(a);
                       return (
@@ -261,8 +268,8 @@ export function CreateDonation() {
                           key={a}
                           type="button"
                           onClick={() => setAllergens((prev) => selected ? prev.filter((x) => x !== a) : [...prev, a])}
-                          className={`px-3 py-1.5 rounded-sm text-xs font-medium border transition-colors flex items-center gap-1.5
-                            ${selected ? 'bg-red-950 border-red-900 text-red-400' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800'}`}
+                          className={`px-3 py-1.5 rounded-sm text-xs font-semibold tracking-wide border transition-all flex items-center gap-1.5
+                            ${selected ? 'bg-[var(--error)] text-black border-[var(--error)] shadow-sm' : 'bg-[var(--bg-page)] border-[var(--border-strong)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]'}`}
                         >
                           {selected && <X size={12} />}
                           {a}
@@ -271,9 +278,11 @@ export function CreateDonation() {
                     })}
                   </div>
                   {allergens.length > 0 && (
-                    <p className="text-xs font-medium text-amber-500 mt-3 flex items-center gap-2">
-                      <Shield size={14} /> Contains: {allergens.join(', ')}
-                    </p>
+                    <div className="mt-4 p-2 bg-[var(--error)]/10 border border-[var(--error)]/20 rounded-sm">
+                       <p className="text-xs font-semibold tracking-wide text-[var(--error)] flex items-center gap-2">
+                         <Shield size={14} /> IDENTIFIED: {allergens.join(', ')}
+                       </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -281,22 +290,22 @@ export function CreateDonation() {
           </div>
 
           {/* Navigation buttons */}
-          <div className="flex justify-between mt-6">
+          <div className="flex justify-between items-center mt-6">
             <button
               type="button"
-              className="btn-secondary"
+              className="px-6 py-2.5 rounded-sm text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-2"
               onClick={() => step === 1 ? navigate('/donor') : setStep((s) => s - 1)}
             >
-              <ArrowLeft size={16} /> {step === 1 ? 'Cancel' : 'Back'}
+              <ArrowLeft size={16} /> {step === 1 ? 'Cancel Entry' : 'Previous Step'}
             </button>
 
             {step < 3 ? (
-              <button type="button" className="btn-primary" onClick={nextStep}>
-                Next <ArrowRight size={16} />
+              <button type="button" className="btn-primary px-8 py-2.5 flex items-center gap-2" onClick={nextStep}>
+                Next Phase <ArrowRight size={16} />
               </button>
             ) : (
-              <button type="submit" className="btn-primary" disabled={mutation.isPending}>
-                {mutation.isPending ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : <>Submit Payload <ArrowRight size={16} /></>}
+              <button type="submit" className="btn-primary px-8 py-2.5 flex items-center gap-2 bg-[var(--brand)] text-black shadow-sm" disabled={mutation.isPending}>
+                {mutation.isPending ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : <>Transmit Payload <Package size={16} /></>}
               </button>
             )}
           </div>
@@ -305,3 +314,4 @@ export function CreateDonation() {
     </AppLayout>
   );
 }
+

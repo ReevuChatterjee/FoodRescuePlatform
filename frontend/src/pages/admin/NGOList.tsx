@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Building2, CheckCircle, XCircle, Clock, Search, Weight } from 'lucide-react';
+import { Building2, CheckCircle, XCircle, Clock, Search, Weight, ChevronRight } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { AppLayout } from '../../components/layout/AppLayout';
 import type { NGO, SuccessEnvelope } from '../../types/api';
@@ -15,9 +15,9 @@ type FilterStatus = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED';
 const FILTERS: FilterStatus[] = ['ALL', 'PENDING', 'APPROVED', 'REJECTED'];
 
 const STATUS_BADGE: Record<string, JSX.Element> = {
-  APPROVED: <span className="badge-green"><CheckCircle size={10} /> Approved</span>,
-  PENDING: <span className="badge-yellow"><Clock size={10} /> Pending</span>,
-  REJECTED: <span className="badge-red"><XCircle size={10} /> Rejected</span>,
+  APPROVED: <span className="badge-green"><CheckCircle size={12} /> Approved</span>,
+  PENDING: <span className="badge-orange"><Clock size={12} /> Pending</span>,
+  REJECTED: <span className="badge-red"><XCircle size={12} /> Rejected</span>,
 };
 
 export function NGOList() {
@@ -41,13 +41,13 @@ export function NGOList() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="page-header flex justify-between items-start">
+      <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="page-title">NGO Registry</h1>
-          <p className="page-subtitle">All registered NGOs and their verification status</p>
+          <p className="page-subtitle">Directory of all registered nodes and operational status.</p>
         </div>
-        <span className="badge-gray">
-          {filtered.length} NGO{filtered.length !== 1 ? 's' : ''}
+        <span className="badge-gray px-3 py-1 text-sm font-mono-data">
+          TOTAL: {filtered.length} NODE{filtered.length !== 1 ? 'S' : ''}
         </span>
       </div>
 
@@ -55,25 +55,25 @@ export function NGOList() {
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         {/* Search */}
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input
             className="input-base pl-10"
-            placeholder="Search by name or address…"
+            placeholder="Search by facility name or location..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         {/* Status filter tabs */}
-        <div className="flex gap-1 p-1 bg-zinc-950 border border-zinc-800 rounded-sm">
+        <div className="flex gap-1 p-1 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-md shadow-sm">
           {FILTERS.map((f) => {
             const isActive = filter === f;
             return (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-4 py-1.5 rounded-sm text-xs font-semibold transition-colors ${
-                  isActive ? 'bg-emerald-600 text-white' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900'
+                className={`px-4 py-1.5 rounded-sm text-xs font-semibold tracking-wide transition-colors ${
+                  isActive ? 'bg-[var(--bg-panel-hover)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-page)]'
                 }`}
               >
                 {f}
@@ -86,55 +86,56 @@ export function NGOList() {
       {/* Table */}
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="skeleton h-16 w-full" />)}
+          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="skeleton h-16 w-full rounded-md" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="panel p-16 text-center flex flex-col items-center">
-          <Building2 size={32} className="mb-4 text-zinc-600" />
-          <h3 className="font-semibold text-zinc-100 mb-1">No NGOs found</h3>
-          <p className="text-sm text-zinc-400">
-            {search ? 'Try a different search term.' : `No NGOs with status ${filter}.`}
+        <div className="panel p-16 text-center flex flex-col items-center border-[var(--border-subtle)]">
+          <Building2 size={32} className="mb-4 text-[var(--text-muted)]" />
+          <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">No active nodes found</h3>
+          <p className="text-sm text-[var(--text-secondary)]">
+            {search ? 'Try adjusting your search parameters.' : `No NGOs found matching status: ${filter}.`}
           </p>
         </div>
       ) : (
-        <div className="bg-zinc-950 border border-zinc-800 rounded-sm overflow-hidden">
+        <div className="bg-[var(--bg-page)] border border-[var(--border-strong)] rounded-md overflow-hidden">
           {/* Table header */}
-          <div className="grid grid-cols-12 gap-4 px-6 py-3 text-xs font-medium uppercase tracking-wide border-b border-zinc-800 text-zinc-500 bg-zinc-900/50">
-            <div className="col-span-4">Organisation</div>
-            <div className="col-span-3">Address</div>
-            <div className="col-span-2">Capacity</div>
-            <div className="col-span-1">Status</div>
-            <div className="col-span-2">Registered</div>
+          <div className="grid grid-cols-12 gap-4 px-6 py-3 text-xs font-semibold uppercase tracking-wide border-b border-[var(--border-strong)] text-[var(--text-secondary)] bg-[var(--bg-panel)]">
+            <div className="col-span-3">Organization</div>
+            <div className="col-span-3">Location</div>
+            <div className="col-span-2">Capacity Utilization</div>
+            <div className="col-span-2">Verification Status</div>
+            <div className="col-span-1">Registered</div>
+            <div className="col-span-1 text-right">Action</div>
           </div>
 
-          <div className="divide-y divide-zinc-800">
+          <div className="divide-y divide-[var(--border-subtle)]">
             {filtered.map((ngo) => {
               const usedPct = ngo.storage_capacity_kg > 0
                 ? ((ngo.storage_capacity_kg - ngo.available_capacity_kg) / ngo.storage_capacity_kg) * 100
                 : 0;
               return (
-                <div key={ngo.id} className="grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-zinc-900 items-center">
+                <div key={ngo.id} className="grid grid-cols-12 gap-4 px-6 py-4 transition-colors hover:bg-[var(--bg-panel-hover)] items-center group">
                   {/* Name */}
-                  <div className="col-span-4 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-sm bg-zinc-800 text-zinc-400 flex items-center justify-center flex-shrink-0">
+                  <div className="col-span-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-sm bg-[var(--bg-panel)] border border-[var(--border-strong)] text-[var(--text-muted)] flex items-center justify-center flex-shrink-0">
                       <Building2 size={16} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-zinc-100 truncate">{ngo.organisation_name}</p>
-                      <p className="text-xs text-zinc-500 font-mono truncate">{ngo.id}</p>
+                      <p className="text-sm font-semibold tracking-tight text-[var(--text-primary)] truncate">{ngo.organisation_name}</p>
+                      <p className="text-xs text-[var(--text-muted)] font-mono-data truncate">ID: {ngo.id.substring(0,8)}</p>
                     </div>
                   </div>
 
                   {/* Address */}
-                  <div className="col-span-3 text-sm text-zinc-400">
-                    <p className="truncate">{ngo.address}</p>
+                  <div className="col-span-3 text-sm text-[var(--text-secondary)]">
+                    <p className="truncate" title={ngo.address}>{ngo.address}</p>
                   </div>
 
                   {/* Capacity */}
-                  <div className="col-span-2">
-                    <div className="flex items-center gap-1.5 text-xs mb-1.5 text-zinc-500 font-medium">
-                      <Weight size={12} />
-                      <span className="tabular-nums">{ngo.available_capacity_kg}/{ngo.storage_capacity_kg} kg</span>
+                  <div className="col-span-2 pr-4">
+                    <div className="flex justify-between items-center text-xs mb-1.5 text-[var(--text-secondary)] font-medium">
+                      <span className="font-mono-data tabular-nums">{ngo.available_capacity_kg} <span className="text-[var(--text-muted)]">/ {ngo.storage_capacity_kg} kg</span></span>
+                      <Weight size={12} className="text-[var(--text-muted)]" />
                     </div>
                     <div className="capacity-bar h-1">
                       <div
@@ -145,13 +146,20 @@ export function NGOList() {
                   </div>
 
                   {/* Status */}
-                  <div className="col-span-1">
+                  <div className="col-span-2 flex items-center">
                     {STATUS_BADGE[ngo.verification_status] ?? <span className="badge-gray">{ngo.verification_status}</span>}
                   </div>
 
                   {/* Date */}
-                  <div className="col-span-2 text-xs text-zinc-500 tabular-nums">
+                  <div className="col-span-1 text-xs text-[var(--text-secondary)] font-mono-data">
                     {new Date(ngo.created_at).toLocaleDateString()}
+                  </div>
+                  
+                  {/* Action */}
+                  <div className="col-span-1 flex justify-end">
+                     <button className="btn-ghost p-2 opacity-0 group-hover:opacity-100 transition-opacity" title="View details">
+                       <ChevronRight size={16} />
+                     </button>
                   </div>
                 </div>
               );
@@ -162,3 +170,4 @@ export function NGOList() {
     </AppLayout>
   );
 }
+
