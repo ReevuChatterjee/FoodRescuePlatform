@@ -81,6 +81,18 @@ Person 6 is responsible for:
 - [x] Recharts for data visualization
 - [x] Test infrastructure (vitest, jsdom, testing-library)
 
+### Person 3 - NGO Module
+- [x] NGO registration and profile management
+- [x] NGO role protection for NGO routes and UI
+- [x] Storage and available capacity management with validation
+- [x] Accepted food-category management using generic category values
+- [x] NGO demand CRUD (category, required quantity, priority, valid until)
+- [x] Incoming `MATCHED` donation display for the authenticated NGO
+- [x] NGO Accept/Reject integration with the existing Person 4 matching endpoint paths
+- [x] Focused NGO API and frontend hook tests added
+- [ ] Focused NGO tests executed locally — blocked because `pytest` and `vitest` are not installed locally
+- [x] Python syntax compilation and `git diff --check` completed for the NGO work
+
 ---
 
 ## 🚧 In Progress
@@ -109,7 +121,7 @@ Person 6 is responsible for:
 ### Dependent on Other Persons
 - [ ] Person 1 (Auth): Complete auth endpoints for admin login tests
 - [ ] Person 2 (Donor): Donor registration/management endpoints
-- [ ] Person 3 (NGO): NGO registration endpoints 
+- [x] Person 3 (NGO): NGO registration/profile, capacity, categories, demand, incoming offers, and Accept/Reject integration
 - [ ] Person 4 (Matching): Complete matching algorithm implementation
 - [ ] Person 5 (Logistics): Driver assignment and route endpoints
 

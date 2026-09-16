@@ -89,6 +89,35 @@ export interface NGO {
   created_at: string;
 }
 
+export type DemandPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export interface NGOProfile extends NGO {
+  location: string;
+  operating_start: string;
+  operating_end: string;
+}
+
+export interface NGODemand {
+  id: number;
+  food_category: string;
+  required_quantity_kg: number;
+  priority: DemandPriority;
+  valid_until: string;
+  updated_at: string;
+}
+
+export interface IncomingDonation {
+  id: string;
+  food_name: string;
+  food_category: string;
+  quantity_kg: number;
+  available_from: string;
+  expiry_time: string;
+  pickup_location: string;
+  special_requirements: string | null;
+  status: 'MATCHED';
+}
+
 export interface NGOVerificationDocument {
   document_type: string;
   file_url: string;

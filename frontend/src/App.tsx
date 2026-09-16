@@ -17,6 +17,7 @@ import { AppShell } from './components/common/AppShell';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { NGOVerificationQueue } from './pages/admin/NGOVerificationQueue';
 import { useAuthStore } from './hooks/useAuthStore';
+import { NGODashboard } from './pages/ngo/NGODashboard';
 import { DonorDashboard } from './pages/donor/DonorDashboard';
 import { CreateDonation } from './pages/donor/CreateDonation';
 import { DonationDetails } from './pages/donor/DonationDetails';
@@ -51,15 +52,15 @@ function App() {
             <Route path="/admin" element={<ProtectedRoute requiredRole="ADMIN"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/ngos/verify" element={<ProtectedRoute requiredRole="ADMIN"><NGOVerificationQueue /></ProtectedRoute>} />
 
-            {/* Donor Routes */}
+             {/* Donor Routes */}
             <Route path="/donor" element={<ProtectedRoute requiredRole="DONOR"><DonorDashboard /></ProtectedRoute>} />
             <Route path="/donor/donate" element={<ProtectedRoute requiredRole="DONOR"><CreateDonation /></ProtectedRoute>} />
             <Route path="/donor/donation/:id" element={<ProtectedRoute requiredRole="DONOR"><DonationDetails /></ProtectedRoute>} />
 
-            {/* Other Roles */}
-            <Route path="/ngo" element={<ProtectedRoute requiredRole="NGO"><div>NGO Dashboard (Person 3)</div></ProtectedRoute>} />
-            <Route path="/driver" element={<ProtectedRoute requiredRole="DRIVER"><div>Driver Dashboard (Person 5)</div></ProtectedRoute>} />
-          </Route>
+             {/* Other Roles */}
+             <Route path="/ngo" element={<ProtectedRoute requiredRole="NGO"><NGODashboard /></ProtectedRoute>} />
+             <Route path="/driver" element={<ProtectedRoute requiredRole="DRIVER"><div>Driver Dashboard (Person 5)</div></ProtectedRoute>} />
+           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
