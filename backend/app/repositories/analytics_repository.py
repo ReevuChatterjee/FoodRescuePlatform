@@ -91,6 +91,11 @@ class AnalyticsRepository:
         result = await self.db.execute(select(func.count(Donor.id)))
         return result.scalar_one()
 
+    async def get_registered_drivers(self) -> int:
+        """Count all registered drivers/vehicles."""
+        result = await self.db.execute(select(func.count(Vehicle.id)))
+        return result.scalar_one()
+
     async def get_available_drivers(self) -> int:
         """Count vehicles with availability_status = AVAILABLE."""
         result = await self.db.execute(select(func.count(Vehicle.id)).where(Vehicle.availability_status == "AVAILABLE"))
@@ -134,12 +139,8 @@ class AnalyticsRepository:
         """
         AVG(actual_delivery_time - actual_pickup_time) in minutes, over deliveries with both timestamps non-null.
         """
-        # SQLAlchemy: EXTRACT(EPOCH FROM (actual_delivery_time - actual_pickup_time)) / 60.0
-        query = select(
-            func.avg(
-                func.extract("EPOCH", Delivery.actual_delivery_time - Delivery.actual_pickup_time) / 60.0
-            )
-        ).where(
+        # Fetch rows and compute in Python to avoid dialect-specific interval math (SQLite vs Postgres)
+        query = select(Delivery.actual_delivery_time, Delivery.actual_pickup_time).where(
             and_(
                 Delivery.actual_pickup_time.isnot(None),
                 Delivery.actual_delivery_time.isnot(None),
@@ -151,8 +152,13 @@ class AnalyticsRepository:
             query = query.where(Delivery.actual_delivery_time <= to_date)
 
         result = await self.db.execute(query)
-        avg = result.scalar_one_or_none()
-        return round(avg, 1) if avg else 0.0
+        rows = result.all()
+        if not rows:
+            return 0.0
+            
+        total_seconds = sum((row.actual_delivery_time - row.actual_pickup_time).total_seconds() for row in rows)
+        avg_minutes = (total_seconds / 60.0) / len(rows)
+        return round(avg_minutes, 1)
 
     async def get_organisations_served(self, from_date: datetime | None = None, to_date: datetime | None = None) -> int:
         """

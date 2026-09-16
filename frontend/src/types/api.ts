@@ -38,6 +38,7 @@ export interface AnalyticsOverview {
   active_deliveries: number;
   registered_ngos: number;
   registered_donors: number;
+  registered_drivers: number;
   available_drivers: number;
 }
 

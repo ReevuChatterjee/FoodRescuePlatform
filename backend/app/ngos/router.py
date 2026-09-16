@@ -66,6 +66,7 @@ async def _to_dict(ngo: NGO, db: AsyncSession) -> dict:
             pass
 
     return {
+        "id": ngo.id,
         "ngo_id": ngo.id,
         "organisation_name": ngo.organisation_name,
         "address": ngo.address,
@@ -87,6 +88,34 @@ async def _to_dict(ngo: NGO, db: AsyncSession) -> dict:
         ],
         "created_at": iso_z(ngo.created_at),
     }
+
+
+@router.get("")
+async def list_ngos(
+    _user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    verification_status: str | None = None,
+):
+    from app.models import NGOVerificationStatus
+    query = select(NGO)
+    
+    if verification_status:
+        try:
+            status_enum = NGOVerificationStatus[verification_status]
+            query = query.where(NGO.verification_status == status_enum)
+        except KeyError:
+            raise api_error(400, "INVALID_STATUS", f"Invalid verification_status: {verification_status}")
+
+    query = query.order_by(NGO.created_at.desc())
+    result = await db.execute(query)
+    ngos = result.scalars().all()
+    
+    # N+1 query but acceptable for MVP
+    data = []
+    for ngo in ngos:
+        data.append(await _to_dict(ngo, db))
+        
+    return envelope(data)
 
 
 @router.get("/{ngo_id}")

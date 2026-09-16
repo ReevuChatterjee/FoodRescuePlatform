@@ -25,6 +25,7 @@ class AnalyticsService:
             "active_deliveries": await self.repo.get_active_deliveries(),
             "registered_ngos": await self.repo.get_registered_ngos(),
             "registered_donors": await self.repo.get_registered_donors(),
+            "registered_drivers": await self.repo.get_registered_drivers(),
             "available_drivers": await self.repo.get_available_drivers(),
         }
 
