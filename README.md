@@ -24,6 +24,22 @@ This is a complete, greenfield implementation of Person 6's responsibilities as 
 
 ---
 
+## Current Project Status
+
+Based on the API Contract, the project currently stands as follows:
+
+### 🟢 Completed Modules
+- **Person 1 (Backend, Database & Authentication):** **DONE.** The PostgreSQL schemas, JWT auth, WebSocket broker, and CRUD endpoints for donations, NGOs, deliveries, and drivers are fully implemented in `backend/app/`.
+- **Person 2 (Donor Application):** **DONE.** The Donor UI (dashboard, donation creation, and details) is fully built and styled in `frontend/src/pages/donor/`.
+- **Person 6 (Admin, Analytics & Integration):** **DONE.** Admin command center, KPI dashboards, and NGO verification queues are fully functional in `frontend/src/pages/admin/` and `backend/app/analytics/`.
+
+### 🔴 Missing Modules
+- **Person 3 (NGO / Recipient Module):** **MISSING.** No frontend UI exists for NGOs (`frontend/src/pages/ngo/` does not exist).
+- **Person 4 (Matching & Optimisation Engine):** **MISSING.** No scoring algorithm (`optimizer.py`) or matching endpoints (`/matching/{id}/candidates`) exist in the backend.
+- **Person 5 (Routing & Driver Application):** **MISSING.** No Driver frontend UI, and no backend routing dispatch endpoints (`/routes/calculate`, `/drivers/location`).
+
+---
+
 ## Files Created
 
 ### Backend (`/backend`)

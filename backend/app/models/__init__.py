@@ -209,3 +209,42 @@ class AuditLog(Base):
     record_hash: Mapped[str] = mapped_column(String(64))
     previous_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class MatchingWeightsHistory(Base):
+    """Versioned scoring weights for the matching engine (Person 4).
+
+    Keyed by city + food_category so the algorithm can be tuned per region
+    and per food type without touching source code. The matching service
+    looks up the active row for the donation's city + food_category and
+    falls back to the 'default' city row when no specific row exists.
+    """
+    __tablename__ = "matching_weights_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    weights_version_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    city: Mapped[str] = mapped_column(String(100), index=True)
+    food_category: Mapped[str] = mapped_column(String(50), index=True)
+    w_capacity: Mapped[float] = mapped_column(Float)
+    w_shelf_life: Mapped[float] = mapped_column(Float)
+    w_transit: Mapped[float] = mapped_column(Float)
+    w_demand: Mapped[float] = mapped_column(Float)
+    w_route: Mapped[float] = mapped_column(Float)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class DonationRejection(Base):
+    """Records each NGO rejection of a donation offer.
+
+    Person 1's matching service accumulates these rows per donation_id and
+    passes the resulting excluded_ngo_ids set to matching_engine.rematch()
+    on every subsequent POST /matching/{donation_id}/reject call.
+    """
+    __tablename__ = "donation_rejections"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    donation_id: Mapped[str] = mapped_column(ForeignKey("donations.id"), index=True)
+    ngo_id: Mapped[str] = mapped_column(ForeignKey("ngos.id"), index=True)
+    reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    rejected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

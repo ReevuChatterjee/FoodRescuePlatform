@@ -111,3 +111,8 @@ def require_role(*roles: str):
         return user
 
     return dependency
+
+
+def require_ngo(user: Annotated[User, Depends(get_current_user)]) -> User:
+    """Compatibility dependency for Person 3 NGO-only routes."""
+    return require_role("NGO")(user)
