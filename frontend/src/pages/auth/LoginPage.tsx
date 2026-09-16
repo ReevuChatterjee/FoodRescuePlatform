@@ -142,19 +142,7 @@ export function LoginPage() {
               with the NGOs that need it most — in real time.
             </p>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-6">
-              {[
-                { value: '50+', label: 'NGO Partners' },
-                { value: '12K+', label: 'Meals Rescued' },
-                { value: '98%', label: 'Delivery Rate' },
-              ].map((s) => (
-                <div key={s.label} className="bg-zinc-900 border border-zinc-800 p-4 text-center rounded-sm">
-                  <p className="text-2xl font-bold mb-1 text-emerald-500">{s.value}</p>
-                  <p className="text-xs uppercase tracking-wide font-semibold text-zinc-500">{s.label}</p>
-                </div>
-              ))}
-            </div>
+
           </div>
 
           {/* Footer */}
@@ -237,6 +225,7 @@ export function LoginPage() {
                   loginForm.setValue('password', 'admin123');
                 }} className="text-emerald-500 hover:text-emerald-400 font-medium">admin@cpi.com / admin123</button>
               </p>
+
             </form>
           )}
 
