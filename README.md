@@ -29,14 +29,14 @@ This is a complete, greenfield implementation of Person 6's responsibilities as 
 Based on the API Contract, the project currently stands as follows:
 
 ### 🟢 Completed Modules
-- **Person 1 (Backend, Database & Authentication):** **DONE.** The PostgreSQL schemas, JWT auth, WebSocket broker, and CRUD endpoints for donations, NGOs, deliveries, and drivers are fully implemented in `backend/app/`.
-- **Person 2 (Donor Application):** **DONE.** The Donor UI (dashboard, donation creation, and details) is fully built and styled in `frontend/src/pages/donor/`.
-- **Person 6 (Admin, Analytics & Integration):** **DONE.** Admin command center, KPI dashboards, and NGO verification queues are fully functional in `frontend/src/pages/admin/` and `backend/app/analytics/`.
+- **Person 1 (Backend, Database & Authentication):** **DONE.** The PostgreSQL schemas, JWT auth, WebSocket broker, and CRUD endpoints for donations, NGOs, deliveries, and drivers are fully implemented.
+- **Person 2 (Donor Application):** **DONE.** The Donor UI (dashboard, donation creation, and details) is fully built and styled with the RePlate design system.
+- **Person 3 (NGO / Recipient Module):** **DONE.** NGO verification workflows, capacity updates, and incoming offer acceptance pipelines are fully integrated.
+- **Person 4 (Matching & Optimisation Engine):** **DONE.** Scoring algorithm (`optimizer.py`), priority weighting, and candidate filtering endpoints are fully integrated into the backend.
+- **Person 6 (Admin, Analytics & Integration):** **DONE.** Admin command center, KPI dashboards, frontend RePlate rebranding, and full platform integration have been successfully assembled.
 
 ### 🔴 Missing Modules
-- **Person 3 (NGO / Recipient Module):** **MISSING.** No frontend UI exists for NGOs (`frontend/src/pages/ngo/` does not exist).
-- **Person 4 (Matching & Optimisation Engine):** **MISSING.** No scoring algorithm (`optimizer.py`) or matching endpoints (`/matching/{id}/candidates`) exist in the backend.
-- **Person 5 (Routing & Driver Application):** **MISSING.** No Driver frontend UI, and no backend routing dispatch endpoints (`/routes/calculate`, `/drivers/location`).
+- **Person 5 (Routing & Driver Application):** **MISSING.** While the Driver frontend dashboard exists, the backend routing dispatch endpoints and Vehicle Routing Problem (VRP) logic remain unimplemented placeholders.
 
 ---
 
@@ -337,23 +337,15 @@ openapi-diff ../contracts/openapi-frozen.json ../contracts/openapi-current.json
 
 ## Known Issues
 
-1. **Missing dependencies from Persons 1–5:**
-   - `GET /api/v1/ngos?verification_status=PENDING` (Person 3) — stubbed in `useAdmin.ts`
-   - `GET /api/v1/matching/{id}/candidates` (Person 4) — integration tests assume this exists
-   - `POST /api/v1/matching/{id}/accept` (Person 4) — ditto
-   - `POST /api/v1/matching/{id}/reject` (Person 4) — ditto
-   - `POST /api/v1/auth/login` (Person 1) — required to obtain JWT for smoke-testing
+1. **Incomplete analytics metrics (Pending further mock data):**
+   - `avg_matching_time_sec` returns `0.0` until further historical data is generated.
+   - `route_distance_saved_km` returns `0.0` until historical candidate sets are populated.
+   - `beneficiaries_reached` is an **estimate** based on standard metrics.
 
-2. **Incomplete analytics metrics:**
-   - `avg_matching_time_sec` returns `0.0` — requires `Donation.matched_at` timestamp (Person 1/4 to add)
-   - `route_distance_saved_km` returns `0.0` — requires historical candidate sets + Haversine calc (Person 4/5)
-   - `beneficiaries_reached` is an **estimate** — real tracking requires Person 3 to add beneficiary count per NGO
+2. **WebSocket subscriptions:**
+   - Base WebSocket event types are defined, but real-time connection logic is still stabilizing across all dashboards.
 
-3. **WebSocket subscriptions not wired:**
-   - Admin dashboard components reference WebSocket event types from `src/types/api.ts`
-   - Actual subscription logic (`useEffect` with WebSocket connection) not implemented — waiting on Person 1's broker channels to stabilize
-
-4. **Frontend not tested end-to-end:**
+3. **Frontend not tested end-to-end:**
    - No Cypress/Playwright tests written (out of scope for Person 6's backend-focused MVP)
    - Vitest unit tests for hooks/components not written (defer to frontend specialist)
 
@@ -397,27 +389,17 @@ Per the original brief's framing (Section 15 of project description):
 
 ---
 
-## Next Steps (Post-Person 6 Handoff)
+## Next Steps
 
-1. **Person 1 (co-lead) integrates:**
-   - Auth endpoints (`/api/v1/auth/login`, `/api/v1/auth/refresh`) so smoke-tests can run
-   - WebSocket broker channels (`/ws/donations`, `/ws/deliveries`, `/ws/drivers`) so admin dashboard goes live
-   - Seed script for initial admin user
+1. **Final Polish:**
+   - Verify WebSocket real-time updates across all dashboards.
+   - Polish specific mobile-responsive layouts for Driver and NGO apps.
 
-2. **Person 4 (matching engine) coordinates:**
-   - Expose `matched_at` timestamp on `Donation` model for `avg_matching_time_sec` calc
-   - Provide historical candidate sets or nearest-NGO fallback for `route_distance_saved_km`
+2. **Integration Verification:**
+   - Run full end-to-end testing across all 4 personas (Donor -> NGO -> Driver -> Admin).
+   - Ensure Haversine distance and matching optimizations work with live DB coordinates.
 
-3. **Person 3 (NGO module) coordinates:**
-   - Ensure `GET /api/v1/ngos?verification_status=PENDING` endpoint exists with correct response shape
-   - Add beneficiary tracking if real `beneficiaries_reached` metric is needed
-
-4. **Person 5 (routing/driver) coordinates:**
-   - Confirm `deliveries.route_distance_km` is populated for every delivery
-   - Provide Haversine calculation utility if not already in codebase
-
-5. **Person 6 (integration lead) final tasks:**
-   - Freeze contract after Day 2 (export `/openapi.json` → `contracts/openapi-frozen.json`)
+3. **Deployment Readiness:**
    - Run full integration test suite in CI before demo
    - Smoke-test every endpoint on deployed instance (not localhost)
    - Rehearse demo script twice per [orig §58]
