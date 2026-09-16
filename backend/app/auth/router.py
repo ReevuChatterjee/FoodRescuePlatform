@@ -59,16 +59,23 @@ async def register(body: RegisterRequest, db: Annotated[AsyncSession, Depends(ge
     await db.flush()
 
     verification_status = "N/A"
+    donor_id = None
+    ngo_id = None
 
-    if body.role == "DONOR":
+    if body.role == "ADMIN":
+        # Admin needs no extra profile row for now
+        verification_status = "APPROVED"
+
+    elif body.role == "DONOR":
         if not body.organisation_name or not body.address:
             raise api_error(
                 400, "MISSING_FIELD",
                 "organisation_name and address are required to register a donor.",
                 "organisation_name",
             )
+        donor_id = new_id("don_org")
         db.add(Donor(
-            id=new_id("don_org"),
+            id=donor_id,
             user_id=user_id,
             organisation_name=body.organisation_name,
             address=body.address,
@@ -113,7 +120,13 @@ async def register(body: RegisterRequest, db: Annotated[AsyncSession, Depends(ge
 
     await db.commit()
 
-    return envelope({"user_id": user_id, "role": body.role, "verification_status": verification_status})
+    resp_data = {"user_id": user_id, "role": body.role, "verification_status": verification_status}
+    if donor_id:
+        resp_data["donor_id"] = donor_id
+    if ngo_id:
+        resp_data["ngo_id"] = ngo_id
+
+    return envelope(resp_data)
 
 
 @router.post("/login")

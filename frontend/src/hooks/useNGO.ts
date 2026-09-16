@@ -1,115 +1,113 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../api/client';
-import type { DemandPriority, IncomingDonation, NGODemand, NGOProfile, SuccessEnvelope } from '../types/api';
+/**
+ * NGO hooks — profile, incoming offers, capacity/demand updates.
+ * All calls use the authenticated apiClient.
+ */
 
-type ProfileInput = Omit<NGOProfile, 'id' | 'verification_status' | 'created_at'>;
-type DemandInput = Omit<NGODemand, 'id' | 'updated_at'>;
-type ConsolidatedNGOProfile = {
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../api/client';
+import type { SuccessEnvelope } from '../types/api';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface NGOProfile {
   ngo_id: string;
   organisation_name: string;
   address: string;
-  location_text: string;
+  location: { latitude: number | null; longitude: number | null };
   storage_capacity_kg: number;
   available_capacity_kg: number;
   operating_hours: { start: string; end: string };
-  verification_status: NGOProfile['verification_status'];
+  accepted_categories: string[];
+  is_verified: boolean;
+  verification_status: string;
+  demand: {
+    food_category: string;
+    required_quantity_kg: number;
+    priority: number;
+    valid_until: string;
+  }[];
   created_at: string;
-};
+}
 
-const unwrap = <T>(response: { data: SuccessEnvelope<T> }) => response.data.data;
-const normalizeProfile = (profile: ConsolidatedNGOProfile | null): NGOProfile | null => {
-  if (profile === null) return null;
+export interface IncomingOffer {
+  donation_id: string;
+  food_category: string;
+  food_name: string;
+  quantity_kg: number;
+  match_score: number | null;
+  eta_minutes: number | null;
+  distance_km: number | null;
+  remaining_shelf_life_min: number;
+}
 
-  return {
-    id: profile.ngo_id,
-    organisation_name: profile.organisation_name,
-    address: profile.address,
-    location: profile.location_text,
-    storage_capacity_kg: profile.storage_capacity_kg,
-    available_capacity_kg: profile.available_capacity_kg,
-    operating_start: profile.operating_hours.start,
-    operating_end: profile.operating_hours.end,
-    verification_status: profile.verification_status,
-    created_at: profile.created_at,
-  };
-};
+// ─── Hooks ───────────────────────────────────────────────────────────────────
 
-export function useMyNGO() {
+export function useMyNGOProfile() {
   return useQuery({
     queryKey: ['ngo', 'profile'],
-    queryFn: async () => normalizeProfile(unwrap(await apiClient.get<SuccessEnvelope<ConsolidatedNGOProfile | null>>('/api/v1/ngos/me'))),
-  });
-}
-
-export function useSaveNGO() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, profile }: { id?: string; profile: ProfileInput }) =>
-      normalizeProfile(unwrap(id
-        ? await apiClient.patch<SuccessEnvelope<ConsolidatedNGOProfile>>(`/api/v1/ngos/${id}`, profile)
-        : await apiClient.post<SuccessEnvelope<ConsolidatedNGOProfile>>('/api/v1/ngos', profile))),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['ngo'] }),
-  });
-}
-
-export function useNGOCategories(ngoId?: string) {
-  return useQuery({
-    queryKey: ['ngo', ngoId, 'categories'],
-    enabled: Boolean(ngoId),
-    queryFn: async () => unwrap(await apiClient.get<SuccessEnvelope<string[]>>(`/api/v1/ngos/${ngoId}/categories`)),
-  });
-}
-
-export function useSaveCategories(ngoId?: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (categories: string[]) => unwrap(await apiClient.put<SuccessEnvelope<string[]>>(`/api/v1/ngos/${ngoId}/categories`, { categories })),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['ngo', ngoId, 'categories'] }),
-  });
-}
-
-export function useNGODemands(ngoId?: string) {
-  return useQuery({
-    queryKey: ['ngo', ngoId, 'demands'], enabled: Boolean(ngoId),
-    queryFn: async () => unwrap(await apiClient.get<SuccessEnvelope<NGODemand[]>>(`/api/v1/ngos/${ngoId}/demand`)),
-  });
-}
-
-export function useSaveDemand(ngoId?: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, demand }: { id?: number; demand: DemandInput }) => unwrap(id
-      ? await apiClient.patch<SuccessEnvelope<NGODemand>>(`/api/v1/ngos/${ngoId}/demand/${id}`, demand)
-      : await apiClient.post<SuccessEnvelope<NGODemand>>(`/api/v1/ngos/${ngoId}/demand`, demand)),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['ngo', ngoId, 'demands'] }),
-  });
-}
-
-export function useDeleteDemand(ngoId?: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async (demandId: number) => apiClient.delete(`/api/v1/ngos/${ngoId}/demand/${demandId}`),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['ngo', ngoId, 'demands'] }),
-  });
-}
-
-export function useIncomingDonations(ngoId?: string) {
-  return useQuery({
-    queryKey: ['ngo', ngoId, 'incoming'], enabled: Boolean(ngoId),
-    queryFn: async () => unwrap(await apiClient.get<SuccessEnvelope<IncomingDonation[]>>(`/api/v1/ngos/${ngoId}/incoming`)),
-  });
-}
-
-export function useOfferDecision(ngoId?: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ donationId, decision, reason }: { donationId: string; decision: 'accept' | 'reject'; reason?: string }) => {
-      const headers = { 'Idempotency-Key': crypto.randomUUID() };
-      const body = decision === 'accept' ? { ngo_id: ngoId } : { ngo_id: ngoId, reason: reason || 'Unable to accept this donation' };
-      return apiClient.post(`/api/v1/matching/${donationId}/${decision}`, body, { headers });
+    queryFn: async () => {
+      // First, get current user to find ngo_id
+      const meRes = await apiClient.get('/api/v1/auth/me');
+      const ngoId = meRes.data.data.ngo_id || meRes.data.data.user_id;
+      const res = await apiClient.get<SuccessEnvelope<NGOProfile>>(`/api/v1/ngos/${ngoId}`);
+      return res.data.data;
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: ['ngo', ngoId, 'incoming'] }),
+    refetchInterval: 60000,
   });
 }
 
-export const DEMAND_PRIORITIES: DemandPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+export function useIncomingOffers(ngoId: string | undefined) {
+  return useQuery({
+    queryKey: ['ngo', 'incoming', ngoId],
+    queryFn: async () => {
+      const res = await apiClient.get<SuccessEnvelope<IncomingOffer[]>>(`/api/v1/ngos/${ngoId}/incoming`);
+      return res.data.data;
+    },
+    enabled: !!ngoId,
+    refetchInterval: 15000,
+  });
+}
+
+export function useUpdateNGOCapacity(ngoId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (available_capacity_kg: number) => {
+      const res = await apiClient.patch(`/api/v1/ngos/${ngoId}/capacity`, { available_capacity_kg });
+      return res.data.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ngo', 'profile'] }),
+  });
+}
+
+export function useUpdateNGODemand(ngoId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      food_category: string;
+      required_quantity_kg: number;
+      priority: number;
+      valid_until: string;
+    }) => {
+      const res = await apiClient.patch(`/api/v1/ngos/${ngoId}/demand`, payload);
+      return res.data.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ngo', 'profile'] }),
+  });
+}
+
+export function useUpdateNGOProfile(ngoId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Partial<{
+      organisation_name: string;
+      address: string;
+      operating_start: string;
+      operating_end: string;
+      accepted_categories: string[];
+    }>) => {
+      const res = await apiClient.patch(`/api/v1/ngos/${ngoId}`, payload);
+      return res.data.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ngo', 'profile'] }),
+  });
+}

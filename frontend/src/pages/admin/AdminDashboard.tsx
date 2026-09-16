@@ -1,188 +1,140 @@
 /**
- * Admin Dashboard — main overview page with real-time analytics.
- *
+ * Admin Dashboard — real-time analytics with charts.
  * Consumes Person 6's analytics endpoints via TanStack Query.
- * Renders four metric cards: overview, food, logistics, social.
- * Auto-refreshes every 30s via query hooks.
+ * Auto-refreshes every 30s.
  */
 
-import { Activity, TrendingUp, Truck, Users, BarChart3 } from 'lucide-react';
+import { Activity, Truck, Users, Package, CheckCircle, Clock, BarChart2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+
 import {
   useAnalyticsOverview,
   useFoodMetrics,
   useLogisticsMetrics,
   useSocialMetrics,
 } from '../../hooks/useAnalytics';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AppLayout } from '../../components/layout/AppLayout';
 
-// Mock trend data for the chart to make it look rich and data-heavy
-const trendData = [
-  { day: 'Mon', kg: 120 },
-  { day: 'Tue', kg: 145 },
-  { day: 'Wed', kg: 110 },
-  { day: 'Thu', kg: 180 },
-  { day: 'Fri', kg: 210 },
-  { day: 'Sat', kg: 250 },
-  { day: 'Sun', kg: 190 },
-];
-
-export function AdminDashboard() {
-  const { data: overview, isLoading: overviewLoading } = useAnalyticsOverview();
-  const { data: food, isLoading: foodLoading } = useFoodMetrics();
-  const { data: logistics, isLoading: logisticsLoading } = useLogisticsMetrics();
-  const { data: social, isLoading: socialLoading } = useSocialMetrics();
-
-  if (overviewLoading || foodLoading || logisticsLoading || socialLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <span className="text-sm text-zinc-500 font-mono tracking-wider uppercase animate-pulse">Loading telemetry...</span>
-      </div>
-    );
-  }
-
+function SkeletonCard() {
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="border-b border-zinc-200 pb-4">
-        <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Command Center</h1>
-        <p className="text-sm text-zinc-500 mt-1">Real-time logistics and food rescue metrics</p>
-      </div>
-
-      {/* System Overview */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-900 flex items-center gap-2 uppercase tracking-wider">
-          <Activity size={16} className="text-emerald-600" />
-          System Overview
-        </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-          <MetricCard label="Total Donations" value={overview?.total_donations ?? 0} />
-          <MetricCard label="Active Donations" value={overview?.active_donations ?? 0} />
-          <MetricCard label="Active Deliveries" value={overview?.active_deliveries ?? 0} />
-          <MetricCard label="Available Drivers" value={overview?.available_drivers ?? 0} />
-          <MetricCard label="Registered NGOs" value={overview?.registered_ngos ?? 0} />
-          <MetricCard label="Registered Donors" value={overview?.registered_donors ?? 0} />
-        </div>
-      </section>
-
-      {/* Analytics Chart & Food Rescued */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <section className="space-y-3 xl:col-span-2">
-          <h2 className="text-sm font-semibold text-zinc-900 flex items-center gap-2 uppercase tracking-wider">
-            <BarChart3 size={16} className="text-emerald-600" />
-            7-Day Rescue Trend (kg)
-          </h2>
-          <div className="bg-white border border-zinc-200 rounded-md p-4 h-64 shadow-sm">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorKg" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#059669" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#059669" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
-                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#18181b', color: '#fff', borderRadius: '6px', border: 'none', fontSize: '12px' }}
-                  itemStyle={{ color: '#10b981' }}
-                />
-                <Area type="monotone" dataKey="kg" stroke="#059669" strokeWidth={2} fillOpacity={1} fill="url(#colorKg)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
-
-        <section className="space-y-3 xl:col-span-1">
-          <h2 className="text-sm font-semibold text-zinc-900 flex items-center gap-2 uppercase tracking-wider">
-            <TrendingUp size={16} className="text-emerald-600" />
-            Food Rescued
-          </h2>
-          <div className="flex flex-col gap-3">
-            <MetricCard
-              label="Total Rescued (All Time)"
-              value={food?.total_rescued_kg?.toFixed(1) ?? '0.0'}
-              suffix=" kg"
-            />
-            <MetricCard
-              label="Rescued (Last 7 Days)"
-              value={food?.rescued_last_7_days_kg?.toFixed(1) ?? '0.0'}
-              suffix=" kg"
-            />
-            <MetricCard
-              label="Avg Donation Size"
-              value={food?.average_donation_size_kg?.toFixed(1) ?? '0.0'}
-              suffix=" kg"
-            />
-          </div>
-        </section>
-      </div>
-
-      {/* Logistics & Efficiency */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-900 flex items-center gap-2 uppercase tracking-wider">
-          <Truck size={16} className="text-emerald-600" />
-          Logistics Efficiency
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <MetricCard
-            label="Avg Route Time"
-            value={logistics?.avg_delivery_time_mins?.toFixed(1) ?? '0.0'}
-            suffix=" m"
-          />
-          <MetricCard
-            label="Avg Pickup Delay"
-            value={logistics?.avg_pickup_delay_mins?.toFixed(1) ?? '0.0'}
-            suffix=" m"
-          />
-          <MetricCard
-            label="Avg Distance"
-            value={logistics?.avg_route_distance_km?.toFixed(2) ?? '0.00'}
-            suffix=" km"
-          />
-          <MetricCard
-            label="Algorithmic Savings"
-            value={logistics?.route_distance_saved_km?.toFixed(1) ?? '0.0'}
-            suffix=" km"
-            description="vs. nearest-NGO baseline"
-          />
-        </div>
-      </section>
-
-      {/* Social Impact */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-900 flex items-center gap-2 uppercase tracking-wider">
-          <Users size={16} className="text-emerald-600" />
-          Social Impact
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <MetricCard label="Organisations Served" value={social?.organisations_served ?? 0} />
-          <MetricCard
-            label="Beneficiaries Reached"
-            value={social?.beneficiaries_reached ?? 0}
-            description="Estimate based on food volume"
-          />
-        </div>
-      </section>
+    <div className="panel">
+      <div className="skeleton h-4 w-24 mb-4" />
+      <div className="skeleton h-8 w-16" />
     </div>
   );
 }
 
-interface MetricCardProps {
-  label: string;
-  value: number | string;
-  suffix?: string;
-  description?: string;
-}
+export function AdminDashboard() {
+  const { data: overview, isLoading: ovLoading } = useAnalyticsOverview();
+  const { isLoading: foodLoading } = useFoodMetrics();
+  const { data: logistics, isLoading: logLoading } = useLogisticsMetrics();
+  const { data: social, isLoading: socLoading } = useSocialMetrics();
 
-function MetricCard({ label, value, suffix = '', description }: MetricCardProps) {
+  const isLoading = ovLoading || foodLoading || logLoading || socLoading;
+
   return (
-    <div className="bg-white p-4 rounded-md border border-zinc-200 hover:border-emerald-500/50 transition-colors shadow-sm group">
-      <div className="text-xs text-zinc-500 uppercase tracking-tight mb-2 font-medium group-hover:text-emerald-700 transition-colors">{label}</div>
-      <div className="text-2xl font-mono text-zinc-900 font-semibold tracking-tight">
-        {value}
-        <span className="text-sm text-zinc-400 font-sans ml-1">{suffix}</span>
+    <AppLayout>
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Admin Dashboard</h1>
+          <p className="page-subtitle">Platform overview — auto-refreshes every 30s</p>
+        </div>
+        <div>
+          <span className="badge-green text-[10px] uppercase tracking-wider">Live Connection</span>
+        </div>
       </div>
-      {description && <div className="text-xs text-zinc-400 mt-2">{description}</div>}
-    </div>
+
+      {/* ── System Overview KPIs ── */}
+      <section className="mb-8">
+        <h2 className="section-title"><Activity size={16} className="text-zinc-400" /> System Overview</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+          {isLoading ? Array(7).fill(0).map((_, i) => <SkeletonCard key={i} />) : [
+            { label: 'Total Donations', value: overview?.total_donations ?? 0, icon: <Package size={14} />, color: 'text-zinc-100' },
+            { label: 'Active Donations', value: overview?.active_donations ?? 0, icon: <Clock size={14} />, color: 'text-blue-400' },
+            { label: 'Active Deliveries', value: overview?.active_deliveries ?? 0, icon: <Truck size={14} />, color: 'text-amber-400' },
+            { label: 'Available Drivers', value: overview?.available_drivers ?? 0, icon: <Truck size={14} />, color: 'text-emerald-400' },
+            { label: 'Registered NGOs', value: overview?.registered_ngos ?? 0, icon: <CheckCircle size={14} />, color: 'text-zinc-100' },
+            { label: 'Registered Donors', value: overview?.registered_donors ?? 0, icon: <Users size={14} />, color: 'text-zinc-100' },
+            { label: 'Registered Drivers', value: overview?.registered_drivers ?? 0, icon: <Users size={14} />, color: 'text-zinc-100' },
+          ].map((kpi) => (
+            <div key={kpi.label} className="panel flex flex-col justify-between">
+              <div className="flex items-center gap-1.5 text-zinc-500 mb-3">
+                {kpi.icon}
+                <span className="text-xs font-medium uppercase tracking-wide">{kpi.label}</span>
+              </div>
+              <p className={`text-2xl font-semibold tabular-nums ${kpi.color}`}>{kpi.value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Logistics & Social ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Logistics */}
+        <div className="panel">
+          <h2 className="section-title"><Truck size={16} className="text-zinc-400" /> Logistics Efficiency</h2>
+          <div className="space-y-5">
+            {[
+              { label: 'Delivery Success Rate', value: `${((logistics?.delivery_success_rate ?? 0) * 100).toFixed(0)}%`, bar: (logistics?.delivery_success_rate ?? 0) * 100, fillClass: 'bg-emerald-500' },
+              { label: 'Avg Matching Time', value: `${logistics?.avg_matching_time_sec?.toFixed(1) ?? '0.0'} sec`, bar: null, fillClass: '' },
+              { label: 'Avg Delivery Time', value: `${logistics?.avg_delivery_time_min?.toFixed(1) ?? '0.0'} min`, bar: null, fillClass: '' },
+              { label: 'Route Distance Saved', value: `${logistics?.route_distance_saved_km?.toFixed(1) ?? '0.0'} km`, bar: null, fillClass: '' },
+            ].map((m) => (
+              <div key={m.label}>
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-zinc-400">{m.label}</span>
+                  <span className="font-semibold text-zinc-100 tabular-nums">{m.value}</span>
+                </div>
+                {m.bar !== null && (
+                  <div className="capacity-bar">
+                    <div className={`capacity-fill ${m.fillClass}`} style={{ width: `${Math.min(m.bar, 100)}%` }} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Social Impact */}
+        <div className="panel">
+          <h2 className="section-title"><Users size={16} className="text-zinc-400" /> Social Impact</h2>
+          <div className="space-y-6">
+            <div className="border-b border-zinc-800 pb-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 mb-1">Organisations Served</p>
+              <p className="text-4xl font-semibold tabular-nums text-zinc-100">{social?.organisations_served ?? 0}</p>
+            </div>
+            <div className="border-b border-zinc-800 pb-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 mb-1">Beneficiaries Reached</p>
+              <p className="text-4xl font-semibold tabular-nums text-zinc-100">{social?.beneficiaries_reached ?? 0}</p>
+              <p className="text-xs mt-1 text-zinc-500">Estimate — real tracking pending full delivery data</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 mb-1">Total Food Rescued</p>
+              <p className="text-3xl font-semibold tabular-nums text-zinc-100">
+                {overview?.total_food_rescued_kg?.toFixed(1) ?? '0.0'} <span className="text-sm font-normal text-zinc-500">kg</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Quick Links ── */}
+      <div className="mt-6 panel">
+        <h2 className="section-title"><BarChart2 size={16} className="text-zinc-400" /> Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            { label: 'Review NGO Verifications', href: '/admin/ngos/verify', badge: 'Pending' },
+            { label: 'Browse All NGOs', href: '/admin/ngos', badge: `${overview?.registered_ngos ?? 0} total` },
+          ].map((q) => (
+            <Link key={q.label} to={q.href}
+              className="flex items-center justify-between p-4 bg-zinc-950 border border-zinc-800 rounded-sm hover:bg-zinc-800 transition-colors">
+              <span className="text-sm font-medium text-zinc-100">{q.label}</span>
+              <span className="badge-gray">{q.badge}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </AppLayout>
   );
 }

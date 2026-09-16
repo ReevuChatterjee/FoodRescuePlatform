@@ -1,27 +1,37 @@
-import { DonationStatus } from '../../types/api';
+/**
+ * Enhanced StatusBadge — maps donation/delivery status to premium colored badges.
+ */
 
-export function StatusBadge({ status }: { status: DonationStatus }) {
-  const colors: Record<DonationStatus, string> = {
-    AVAILABLE: 'bg-zinc-100 text-zinc-700 border-zinc-200',
-    MATCHING: 'bg-blue-50 text-blue-700 border-blue-200',
-    MATCHED: 'bg-blue-100 text-blue-800 border-blue-200',
-    ACCEPTED: 'bg-blue-100 text-blue-800 border-blue-200',
-    DRIVER_ASSIGNED: 'bg-blue-100 text-blue-800 border-blue-200',
-    PICKUP_STARTED: 'bg-amber-100 text-amber-800 border-amber-200',
-    PICKED_UP: 'bg-amber-100 text-amber-800 border-amber-200',
-    IN_TRANSIT: 'bg-amber-100 text-amber-800 border-amber-200',
-    DELIVERED: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    PARTIALLY_DELIVERED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    NO_MATCH_FOUND: 'bg-red-50 text-red-700 border-red-200',
-    REJECTED: 'bg-red-50 text-red-700 border-red-200',
-    EXPIRED: 'bg-zinc-100 text-zinc-600 border-zinc-200',
-    CANCELLED: 'bg-zinc-100 text-zinc-600 border-zinc-200',
-    DRIVER_ISSUE: 'bg-red-50 text-red-700 border-red-200',
-  };
+import type { DonationStatus, DeliveryStatus } from '../../types/api';
 
+const STATUS_CONFIG: Record<string, { cls: string; dotClass: string; label: string }> = {
+  AVAILABLE:         { cls: 'badge-green',  dotClass: 'bg-emerald-500', label: 'Available' },
+  MATCHING:          { cls: 'badge-blue',   dotClass: 'bg-blue-500',    label: 'Matching…' },
+  MATCHED:           { cls: 'badge-blue',   dotClass: 'bg-blue-400',    label: 'Matched' },
+  ACCEPTED:          { cls: 'badge-blue',   dotClass: 'bg-blue-400',    label: 'Accepted' },
+  DRIVER_ASSIGNED:   { cls: 'badge-orange', dotClass: 'bg-amber-500',   label: 'Driver Assigned' },
+  PICKUP_STARTED:    { cls: 'badge-orange', dotClass: 'bg-amber-500',   label: 'Pickup Started' },
+  PICKED_UP:         { cls: 'badge-orange', dotClass: 'bg-orange-500',  label: 'Picked Up' },
+  IN_TRANSIT:        { cls: 'badge-orange', dotClass: 'bg-amber-500',   label: 'In Transit' },
+  DELIVERED:         { cls: 'badge-green',  dotClass: 'bg-emerald-500', label: 'Delivered' },
+  PARTIALLY_DELIVERED:{ cls: 'badge-yellow', dotClass: 'bg-amber-400',  label: 'Partial Delivery' },
+  NO_MATCH_FOUND:    { cls: 'badge-red',    dotClass: 'bg-red-500',     label: 'No Match Found' },
+  REJECTED:          { cls: 'badge-red',    dotClass: 'bg-red-400',     label: 'Rejected' },
+  EXPIRED:           { cls: 'badge-gray',   dotClass: 'bg-zinc-500',    label: 'Expired' },
+  CANCELLED:         { cls: 'badge-gray',   dotClass: 'bg-zinc-500',    label: 'Cancelled' },
+  DRIVER_ISSUE:      { cls: 'badge-red',    dotClass: 'bg-red-500',     label: 'Driver Issue' },
+};
+
+interface Props {
+  status: DonationStatus | DeliveryStatus | string;
+}
+
+export function StatusBadge({ status }: Props) {
+  const cfg = STATUS_CONFIG[status] ?? { cls: 'badge-gray', dotClass: 'bg-zinc-500', label: status };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-mono font-medium tracking-tight border ${colors[status] || 'bg-zinc-100 text-zinc-700 border-zinc-200'}`}>
-      {status.replace(/_/g, ' ')}
+    <span className={cfg.cls}>
+      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dotClass}`} />
+      {cfg.label}
     </span>
   );
 }
