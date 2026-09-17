@@ -637,12 +637,16 @@ async def confirm_delivery(db: AsyncSession, delivery: Delivery, quantity_handed
         await _set_donation_status(db, delivery.donation_id, DonationStatus(delivery.status.value)),
     ]
     vehicle = await vehicle_for_driver(db, delivery.driver_id)
+    ngo = await db.get(NGO, delivery.ngo_id)
+    if ngo is not None:
+        ngo.available_capacity_kg = max(0.0, ngo.available_capacity_kg - quantity_handed_over)
+
     if vehicle is not None:
         vehicle.availability_status = AVAILABLE
-        ngo = await db.get(NGO, delivery.ngo_id)
-        dropoff = parse_latlng(ngo.location) if ngo is not None else None
-        if dropoff is not None:  # the driver is standing at the NGO
-            vehicle.current_location = format_latlng(dropoff)
+        if ngo is not None:
+            dropoff = parse_latlng(ngo.location)
+            if dropoff is not None:  # the driver is standing at the NGO
+                vehicle.current_location = format_latlng(dropoff)
         events.append(_event("drivers", "driver.status_changed", driver_id=vehicle.driver_id,
                              vehicle_id=vehicle.id, availability_status=AVAILABLE))
     return events
