@@ -27,7 +27,7 @@ from app.deliveries.schemas import DeliverRequest, HandoverRequest, PickupReques
 from app.dispatch.service import (  # Person 5: delivery lifecycle service
     confirm_delivery,
     confirm_pickup,
-    load_delivery_for_update,
+    lock_driver_delivery,
     publish,
     run_dispatch_pending,
 )
@@ -77,15 +77,6 @@ async def get_delivery(
 # vehicle capacity check and driver release live in one place. Flow: lock the
 # delivery row -> ownership (403) -> idempotent replay -> service -> commit ->
 # cache the response (scoped per delivery) -> broadcast.
-async def _lock_own_delivery(delivery_id: str, driver_user: User, db: AsyncSession) -> Delivery:
-    delivery = await load_delivery_for_update(db, delivery_id)
-    if delivery is None:
-        raise api_error(404, "DELIVERY_NOT_FOUND", f"Delivery {delivery_id} not found.")
-    if delivery.driver_id != driver_user.id:
-        raise api_error(403, "FORBIDDEN", "This delivery is not assigned to you.")
-    return delivery
-
-
 @deliveries_router.post("/{delivery_id}/pickup")
 async def pickup(
     delivery_id: str,
@@ -95,7 +86,7 @@ async def pickup(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     scope = f"deliveries.pickup:{delivery_id}"
-    delivery = await _lock_own_delivery(delivery_id, driver_user, db)
+    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
     cached = await get_cached_response(scope, idem_key)
     if cached is not None:
         return cached
@@ -125,7 +116,7 @@ async def deliver(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     scope = f"deliveries.deliver:{delivery_id}"
-    delivery = await _lock_own_delivery(delivery_id, driver_user, db)
+    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
     cached = await get_cached_response(scope, idem_key)
     if cached is not None:
         return cached

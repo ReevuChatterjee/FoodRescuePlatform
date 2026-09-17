@@ -19,7 +19,7 @@ from app.drivers.router import router as drivers_router
 from app.deliveries.router import deliveries_router, handover_router
 from app.matching.router import router as matching_router
 from app.routing.router import router as routing_router
-from app.dispatch.router import delivery_issue_router, dispatch_router, drivers_me_router
+from app.dispatch.router import delivery_actions_router, dispatch_router, drivers_me_router
 from app.ws.router import router as ws_router
 
 app = FastAPI(
@@ -54,10 +54,10 @@ app.include_router(handover_router)
 app.include_router(matching_router)
 
 # Routing + dispatch (Person 5) — /routes/calculate, driver availability and
-# current job, delivery issue reporting, admin dispatch trigger
+# current job, start trip / issue reporting, admin dispatch trigger
 app.include_router(routing_router)
 app.include_router(drivers_me_router)
-app.include_router(delivery_issue_router)
+app.include_router(delivery_actions_router)
 app.include_router(dispatch_router)
 
 # WebSocket broker (Person 1) — /ws/donations, /ws/deliveries, /ws/drivers

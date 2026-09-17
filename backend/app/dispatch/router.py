@@ -2,6 +2,7 @@
 
 PATCH /api/v1/drivers/me/availability       go online (AVAILABLE) / offline
 GET   /api/v1/drivers/me/current-job        everything the driver screen needs
+POST  /api/v1/deliveries/{id}/start         driver heads to pickup (Idempotency-Key)
 POST  /api/v1/deliveries/{id}/report-issue  driver can't complete; reassign, same NGO
 POST  /api/v1/dispatch/{donation_id}        ADMIN: run dispatch now (retry / demo)
 
@@ -18,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import require_admin, require_role
 from app.core.database import get_db
-from app.core.envelope import api_error, envelope
+from app.core.envelope import envelope
 from app.core.idempotency import cache_response, get_cached_response, require_idempotency_key
 from app.dispatch.schemas import AvailabilityRequest, ReportIssueRequest
 from app.dispatch.service import (
@@ -27,18 +28,19 @@ from app.dispatch.service import (
     delivery_view,
     dispatch_donation,
     driver_profile_view,
-    load_delivery_for_update,
+    lock_driver_delivery,
     publish,
     report_driver_issue,
     run_dispatch,
     run_dispatch_pending,
     set_availability,
+    start_pickup,
 )
 from app.models import User
 
 drivers_me_router = APIRouter(prefix="/api/v1/drivers/me", tags=["drivers"])
 dispatch_router = APIRouter(prefix="/api/v1/dispatch", tags=["dispatch"])
-delivery_issue_router = APIRouter(prefix="/api/v1/deliveries", tags=["deliveries"])
+delivery_actions_router = APIRouter(prefix="/api/v1/deliveries", tags=["deliveries"])
 
 
 @drivers_me_router.patch("/availability")
@@ -66,7 +68,31 @@ async def current_job(
     return envelope(await build_current_job(db, driver_user.id))
 
 
-@delivery_issue_router.post("/{delivery_id}/report-issue")
+@delivery_actions_router.post("/{delivery_id}/start")
+async def start_trip(
+    delivery_id: str,
+    driver_user: Annotated[User, Depends(require_role("DRIVER"))],
+    idem_key: Annotated[str, Depends(require_idempotency_key)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """DRIVER_ASSIGNED -> PICKUP_STARTED. Explicit, not inferred from location,
+    because available drivers stream location too."""
+    scope = f"deliveries.start:{delivery_id}"
+    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
+    cached = await get_cached_response(scope, idem_key)
+    if cached is not None:
+        return cached
+
+    events = await start_pickup(db, delivery, driver_user.id)
+    await db.commit()
+
+    response = envelope(delivery_view(delivery))
+    await cache_response(scope, idem_key, response)
+    await publish(events)
+    return response
+
+
+@delivery_actions_router.post("/{delivery_id}/report-issue")
 async def report_issue(
     delivery_id: str,
     body: ReportIssueRequest,
@@ -76,22 +102,17 @@ async def report_issue(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     scope = f"deliveries.report_issue:{delivery_id}"
+    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
     cached = await get_cached_response(scope, idem_key)
     if cached is not None:
         return cached
 
-    delivery = await load_delivery_for_update(db, delivery_id)
-    if delivery is None:
-        raise api_error(404, "DELIVERY_NOT_FOUND", f"Delivery {delivery_id} not found.")
-    if delivery.driver_id != driver_user.id:
-        raise api_error(403, "FORBIDDEN", "This delivery is not assigned to you.")
-
     events = await report_driver_issue(db, delivery, driver_user.id, body.reason)
     await db.commit()
-    await publish(events)
 
     response = envelope(delivery_view(delivery))
     await cache_response(scope, idem_key, response)
+    await publish(events)
     background_tasks.add_task(run_dispatch, delivery.donation_id)  # same NGO, next best driver
     return response
 

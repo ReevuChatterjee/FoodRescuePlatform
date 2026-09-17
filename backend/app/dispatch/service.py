@@ -167,6 +167,18 @@ async def load_delivery_for_update(db: AsyncSession, delivery_id: str) -> Delive
     return result.scalar_one_or_none()
 
 
+async def lock_driver_delivery(db: AsyncSession, delivery_id: str, driver_id: str) -> Delivery:
+    """Lock a delivery the calling driver owns: 404 if missing, 403 if someone else's.
+    Driver endpoints call this before any idempotent replay, so another driver can
+    never read a cached response."""
+    delivery = await load_delivery_for_update(db, delivery_id)
+    if delivery is None:
+        raise api_error(404, "DELIVERY_NOT_FOUND", f"Delivery {delivery_id} not found.")
+    if delivery.driver_id != driver_id:
+        raise api_error(403, "FORBIDDEN", "This delivery is not assigned to you.")
+    return delivery
+
+
 async def _set_donation_status(db: AsyncSession, donation_id: str, status: DonationStatus) -> Event:
     donation = await db.get(Donation, donation_id)
     if donation is not None:
@@ -471,6 +483,20 @@ async def on_driver_location(db: AsyncSession, driver_id: str) -> tuple[Delivery
         await _set_donation_status(db, delivery.donation_id, DonationStatus(next_status.value)),
     ]
     return delivery, events
+
+
+async def start_pickup(db: AsyncSession, delivery: Delivery, driver_id: str) -> list[Event]:
+    """Driver tapped "start": heading to the pickup. Only from DRIVER_ASSIGNED; the
+    driver may also skip this and confirm pickup directly. Caller commits."""
+    if delivery.status != DeliveryStatus.DRIVER_ASSIGNED:
+        raise api_error(409, "INVALID_DELIVERY_STATUS",
+                        f"A trip can't be started while the delivery is {delivery.status.value}.")
+    delivery.status = DeliveryStatus.PICKUP_STARTED
+    _audit(db, "delivery", delivery.id, "pickup_started", {"driver_id": driver_id})
+    return [
+        _delivery_status_event(delivery),
+        await _set_donation_status(db, delivery.donation_id, DonationStatus.PICKUP_STARTED),
+    ]
 
 
 async def confirm_pickup(
