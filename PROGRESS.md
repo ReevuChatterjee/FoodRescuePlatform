@@ -123,7 +123,7 @@ Person 6 is responsible for:
 - [ ] Person 2 (Donor): Donor registration/management endpoints
 - [x] Person 3 (NGO): NGO registration/profile, capacity, categories, demand, incoming offers, and Accept/Reject integration
 - [ ] Person 4 (Matching): Complete matching algorithm implementation
-- [ ] Person 5 (Logistics): Driver assignment and route endpoints
+- [x] Person 5 (Logistics): Driver assignment and route endpoints (see "Person 5 Module" below)
 
 ### Analytics Frontend
 - [ ] Analytics dashboard UI
@@ -372,3 +372,31 @@ Tested end-to-end against real Postgres 16 + Redis 7 (docker-compose, not SQLite
 - Seed an initial admin: `python -m app.scripts.seed_admin --email admin@cpi.local --password <yours>`
 - `NGO.verification_status` (read via `GET /ngos/{id}`, written via your `PATCH /admin/ngos/{id}/verify`) is the same field Person 4's matching engine should filter on
 - WebSocket broker is live — if your admin dashboard wants real-time NGO verification updates, emit them via `manager.broadcast("donations", {...})` (or add a new channel) from your verify endpoint the same way donations/router.py does
+
+## Person 5 Module — Routing, Dispatch & Driver App
+
+**Module owner:** Person 5 (Routing + Driver)
+**Branch:** `arjun`
+**Status:** Backend, driver app and docs complete; verified against real Postgres 16 + Redis 7
+**Details:** [docs/person5.md](docs/person5.md) · contract proposal: [docs/person5-contract-additions.md](docs/person5-contract-additions.md)
+
+### What's implemented
+- [x] `POST /api/v1/routes/calculate`: heuristic (default, offline) / OSRM / TomTom providers with fallback and cache; contract fields kept, additive `traffic_source`, `free_flow_duration_minutes`, `provider`, `departure_time`
+- [x] Bengaluru congestion model: free-flow and city-average times SOURCED (TomTom Traffic Index 2025); hourly shape ASSUMED and scaled to the sourced average
+- [x] Dispatch: NGO accept → rank drivers (availability, capacity, location, expiry feasibility) → claim → delivery with route/ETA → WebSocket; PENDING retried when a driver frees up
+- [x] Delivery lifecycle: start → pickup → IN_TRANSIT (location >150 m from pickup) → DELIVERED / PARTIALLY_DELIVERED; report-issue reassigns to the same NGO; donor cancel before pickup frees the driver
+- [x] `POST /api/v1/drivers/location` (1 per 5 s, 0.5 s grace) with enriched `delivery.location_update` during active deliveries
+- [x] New: `PATCH /drivers/me/availability`, `GET /drivers/me/current-job`, `POST /deliveries/{id}/start`, `POST /deliveries/{id}/report-issue`, `POST /dispatch/{donation_id}` (ADMIN)
+- [x] Idempotency scoped per delivery and driver; lock order donation → delivery → vehicle (no double assignment, no deadlocks)
+- [x] NGO `/incoming` offers now include `eta_minutes` and `distance_km`
+- [x] Driver app (`/driver`): current job, map with route (dashed for straight-line estimates), live location streaming, WebSocket refresh, start/pickup/deliver/report-issue with idempotency keys, online/offline toggle
+- [x] Day-1 fixture `backend/app/routing/fixtures/sample_coordinates.json`
+
+### Verified
+- Backend unit tests: `backend/tests/test_routing.py`, `test_dispatch_selection.py` (92 passing)
+- API tests: `tests/dispatch/` (50 passing: lifecycle, idempotency, 403/409/429, reassignment, cancel, concurrency, lock order)
+- Frontend: 25 Vitest tests for the driver hooks, map helpers and dashboard; `vite build` succeeds
+- Migration 003 fixed for Postgres (it used SQLite-only SQL)
+
+### Needs owners' review
+- Hooks in other modules (accept, cancel, incoming, pickup/deliver/location bodies) and issues found elsewhere are listed in Part B and Part C of `docs/person5-contract-additions.md`
