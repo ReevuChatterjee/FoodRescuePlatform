@@ -74,9 +74,9 @@ async def get_delivery(
 
 # Person 5: pickup and deliver are Person 5's contract outputs (§6). The bodies
 # below delegate state changes to app.dispatch.service so the status guards,
-# vehicle capacity check and driver release live in one place. Flow: lock the
-# delivery row -> ownership (403) -> idempotent replay -> service -> commit ->
-# cache the response (scoped per delivery) -> broadcast.
+# vehicle capacity check and driver release live in one place. Flow: idempotent
+# replay (cache scoped per delivery and driver) -> lock the delivery row ->
+# ownership (403) -> service -> commit -> cache the response -> broadcast.
 @deliveries_router.post("/{delivery_id}/pickup")
 async def pickup(
     delivery_id: str,
@@ -85,11 +85,12 @@ async def pickup(
     idem_key: Annotated[str, Depends(require_idempotency_key)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    scope = f"deliveries.pickup:{delivery_id}"
-    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
+    # Scoped per delivery and driver: a retry replays only this driver's own response.
+    scope = f"deliveries.pickup:{delivery_id}:{driver_user.id}"
     cached = await get_cached_response(scope, idem_key)
     if cached is not None:
         return cached
+    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
 
     events = await confirm_pickup(db, delivery, driver_user.id, body.confirmed_quantity_kg)
     db.add(AuditLog(
@@ -115,11 +116,12 @@ async def deliver(
     idem_key: Annotated[str, Depends(require_idempotency_key)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    scope = f"deliveries.deliver:{delivery_id}"
-    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
+    # Scoped per delivery and driver: a retry replays only this driver's own response.
+    scope = f"deliveries.deliver:{delivery_id}:{driver_user.id}"
     cached = await get_cached_response(scope, idem_key)
     if cached is not None:
         return cached
+    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
 
     # Sets DELIVERED or PARTIALLY_DELIVERED (same rule as /handover) and frees the vehicle.
     events = await confirm_delivery(db, delivery, body.quantity_handed_over)

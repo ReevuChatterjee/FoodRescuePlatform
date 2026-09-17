@@ -167,8 +167,9 @@ async def load_delivery_for_update(db: AsyncSession, delivery_id: str) -> Delive
 
 async def lock_driver_delivery(db: AsyncSession, delivery_id: str, driver_id: str) -> Delivery:
     """Lock a delivery the calling driver owns: 404 if missing, 403 if someone else's.
-    Driver endpoints call this before any idempotent replay, so another driver can
-    never read a cached response."""
+    Driver endpoints scope their idempotency cache by delivery and driver, so a
+    replay never serves one driver another driver's response, and a genuine retry
+    still replays after the delivery was reassigned."""
     delivery = await load_delivery_for_update(db, delivery_id)
     if delivery is None:
         raise api_error(404, "DELIVERY_NOT_FOUND", f"Delivery {delivery_id} not found.")

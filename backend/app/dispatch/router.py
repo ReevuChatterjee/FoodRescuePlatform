@@ -77,11 +77,12 @@ async def start_trip(
 ):
     """DRIVER_ASSIGNED -> PICKUP_STARTED. Explicit, not inferred from location,
     because available drivers stream location too."""
-    scope = f"deliveries.start:{delivery_id}"
-    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
+    # Scoped per delivery and driver: a retry replays only this driver's own response.
+    scope = f"deliveries.start:{delivery_id}:{driver_user.id}"
     cached = await get_cached_response(scope, idem_key)
     if cached is not None:
         return cached
+    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
 
     events = await start_pickup(db, delivery, driver_user.id)
     await db.commit()
@@ -101,11 +102,12 @@ async def report_issue(
     idem_key: Annotated[str, Depends(require_idempotency_key)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    scope = f"deliveries.report_issue:{delivery_id}"
-    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
+    # Scoped per delivery and driver: a retry replays only this driver's own response.
+    scope = f"deliveries.report_issue:{delivery_id}:{driver_user.id}"
     cached = await get_cached_response(scope, idem_key)
     if cached is not None:
         return cached
+    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
 
     events = await report_driver_issue(db, delivery, driver_user.id, body.reason)
     await db.commit()
