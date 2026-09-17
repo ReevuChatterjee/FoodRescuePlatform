@@ -27,12 +27,13 @@ from datetime import datetime, timezone
 from typing import Annotated
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
 from app.core.database import get_db
+from app.dispatch.service import run_dispatch  # Person 5: dispatch hook
 from app.core.envelope import api_error, envelope, iso_z
 from app.matching.schemas import AcceptMatchRequest, RejectMatchRequest
 from app.matching_engine import match, rematch, serialize_matching_result
@@ -171,6 +172,7 @@ async def get_candidates(
 async def accept_match(
     donation_id: str,
     body: AcceptMatchRequest,
+    background_tasks: BackgroundTasks,  # Person 5: dispatch hook
     user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
@@ -249,6 +251,9 @@ async def accept_match(
 
     await db.commit()
     await db.refresh(donation)
+    # Person 5: dispatch hook. Runs after the response in its own session:
+    # find a driver, assign, route (or leave PENDING until one frees up).
+    background_tasks.add_task(run_dispatch, donation.id)
 
     await manager.broadcast("donations", {
         "event": "donation.accepted",
