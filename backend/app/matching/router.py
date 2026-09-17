@@ -162,6 +162,16 @@ async def get_candidates(
             "event": "donation.no_match_found",
             "donation_id": donation_id,
         })
+    elif result.matches and orm_donation:
+        orm_donation.status = DonationStatus.MATCHED
+        orm_donation.matched_ngo_id = result.matches[0].ngo_id
+        orm_donation.updated_at = datetime.utcnow()
+        await db.commit()
+        await manager.broadcast("donations", {
+            "event": "donation.matched",
+            "donation_id": donation_id,
+            "ngo_id": result.matches[0].ngo_id,
+        })
 
     return serialize_matching_result(result)
 
@@ -360,7 +370,11 @@ async def reject_match(
             "donation_id": donation_id,
         })
     else:
-        # Keep MATCHING status; broadcast next candidate
+        # Transition to MATCHED for the next candidate
+        donation.status = DonationStatus.MATCHED
+        donation.matched_ngo_id = rematch_result.matches[0].ngo_id
+        donation.updated_at = datetime.utcnow()
+        await db.commit()
         await manager.broadcast("donations", {
             "event": "donation.rematched",
             "donation_id": donation_id,

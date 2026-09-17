@@ -81,6 +81,7 @@ async def _to_dict(donation: Donation, db: AsyncSession) -> dict:
 @router.post("", status_code=201)
 async def create_donation(
     body: CreateDonationRequest,
+    background_tasks: BackgroundTasks,
     donor_user: Annotated[User, Depends(require_role("DONOR"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -112,6 +113,11 @@ async def create_donation(
         "donation_id": donation.id,
         "status": donation.status.value,
     })
+
+    # Trigger matching algorithm in the background
+    from app.matching.service import run_matching
+    background_tasks.add_task(run_matching, donation.id)
+
 
     # Response is deliberately the compact dashboard shape from §3, not the full object.
     return envelope({

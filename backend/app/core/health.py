@@ -55,3 +55,57 @@ async def readiness():
         raise HTTPException(status_code=503, detail={"status": "not_ready", "checks": checks})
 
     return {"status": "ready", "checks": checks}
+
+@router.get("/debug")
+async def debug_donation():
+    from app.core.database import AsyncSessionLocal
+    from sqlalchemy import select
+    from app.models import Donation
+    from app.core.envelope import iso_z
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Donation).order_by(Donation.created_at.desc()).limit(1))
+        donation = result.scalar_one_or_none()
+        if not donation:
+            return {"status": "no donations"}
+        return {
+            "id": donation.id,
+            "status": donation.status.value if donation.status else None,
+            "matched_ngo_id": donation.matched_ngo_id,
+            "match_score": donation.match_score,
+            "created_at": iso_z(donation.created_at) if donation.created_at else None,
+        }
+
+@router.get("/debug_match")
+async def debug_match():
+    from app.core.database import AsyncSessionLocal
+    from sqlalchemy import select
+    from app.models import Donation
+    from app.services.matching_service import load_donation, load_active_ngos, load_routes, load_active_weights, get_excluded_ngo_ids
+    from app.matching_engine import match
+    import traceback
+    from datetime import datetime, timezone
+    
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Donation).order_by(Donation.created_at.desc()).limit(1))
+        donation = result.scalar_one_or_none()
+        if not donation:
+            return {"error": "no donation"}
+        
+        try:
+            engine_donation = await load_donation(donation.id, db)
+            ngos = await load_active_ngos(db)
+            routes = load_routes(engine_donation, ngos)
+            weights = await load_active_weights(engine_donation, db)
+            excluded = await get_excluded_ngo_ids(donation.id, db)
+            
+            res = match(
+                donation=engine_donation,
+                ngos=ngos,
+                routes=routes,
+                weights=weights,
+                reference_time=datetime.now(timezone.utc),
+                excluded_ngo_ids=excluded
+            )
+            return {"matches": len(res.matches), "ngos_loaded": len(ngos)}
+        except Exception as e:
+            return {"error": str(e), "traceback": traceback.format_exc()}

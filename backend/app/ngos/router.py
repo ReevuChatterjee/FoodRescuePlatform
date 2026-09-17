@@ -447,6 +447,7 @@ async def incoming_offers(
             "special_requirements": d.special_requirements,
             "status": d.status.value,
             "match_score": d.match_score,
+            "weights_version_id": d.weights_version_id,
             "eta_minutes": routes[d.id]["eta_minutes"],  # Person 5
             "distance_km": routes[d.id]["distance_km"],  # Person 5
             "remaining_shelf_life_min": max(0, int((d.expiry_time - now).total_seconds() // 60)),

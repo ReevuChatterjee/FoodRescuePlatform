@@ -74,12 +74,13 @@ async def register(body: RegisterRequest, db: Annotated[AsyncSession, Depends(ge
                 "organisation_name",
             )
         donor_id = new_id("don_org")
+        loc = _location_str(body.latitude, body.longitude)
         db.add(Donor(
             id=donor_id,
             user_id=user_id,
             organisation_name=body.organisation_name,
             address=body.address,
-            location=_location_str(body.latitude, body.longitude),
+            location=loc if loc else body.address,
             contact_person=body.contact_person or body.name,
             verification_status="PENDING",
             daily_waste_category=body.daily_waste_category or "MIXED",
@@ -94,12 +95,13 @@ async def register(body: RegisterRequest, db: Annotated[AsyncSession, Depends(ge
                 "organisation_name",
             )
         ngo_id = new_id("ngo")
+        loc = _location_str(body.latitude, body.longitude)
         db.add(NGO(
             id=ngo_id,
             user_id=user_id,
             organisation_name=body.organisation_name,
             address=body.address,
-            location=_location_str(body.latitude, body.longitude),
+            location=loc if loc else body.address,
             storage_capacity_kg=body.storage_capacity_kg,
             available_capacity_kg=body.storage_capacity_kg,
             operating_start=body.operating_start or "08:00",
@@ -179,10 +181,15 @@ async def me(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     donor_id = ngo_id = driver_id = None
+    donor_address = donor_location = None
 
     if user.role == UserRole.DONOR:
-        r = await db.execute(select(Donor.id).where(Donor.user_id == user.id))
-        donor_id = r.scalar_one_or_none()
+        r = await db.execute(select(Donor).where(Donor.user_id == user.id))
+        donor = r.scalar_one_or_none()
+        if donor:
+            donor_id = donor.id
+            donor_address = donor.address
+            donor_location = donor.location
     elif user.role == UserRole.NGO:
         r = await db.execute(select(NGO.id).where(NGO.user_id == user.id))
         ngo_id = r.scalar_one_or_none()
@@ -197,6 +204,8 @@ async def me(
         "phone": user.phone,
         "role": user.role.value,
         "donor_id": donor_id,
+        "donor_address": donor_address,
+        "donor_location": donor_location,
         "ngo_id": ngo_id,
         "driver_id": driver_id,
     })

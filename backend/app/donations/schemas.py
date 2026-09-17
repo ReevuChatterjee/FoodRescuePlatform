@@ -1,7 +1,7 @@
 """Pydantic request schemas for /api/v1/donations/*, matching §3's frozen shape."""
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class PickupLocation(BaseModel):
@@ -27,6 +27,11 @@ class CreateDonationRequest(BaseModel):
     special_handling: str | None = None
     food_safety_info: FoodSafetyInfo | None = None
 
+    @model_validator(mode="after")
+    def _expiry_after_available(self) -> "CreateDonationRequest":
+        if self.expiry_time <= self.available_from:
+            raise ValueError("expiry_time must be after available_from")
+        return self
 
 class UpdateDonationRequest(BaseModel):
     """Partial update — used by the matching engine (Person 4) and admin flows.

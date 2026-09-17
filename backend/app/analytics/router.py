@@ -32,7 +32,6 @@ def _envelope(data: dict) -> dict:
 
 @router.get("/overview")
 async def get_analytics_overview(
-    admin: Annotated[User, Depends(require_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
     from_date: datetime | None = Query(None, alias="from", description="Start of time window (ISO-8601 UTC)"),
     to_date: datetime | None = Query(None, alias="to", description="End of time window (ISO-8601 UTC)"),
