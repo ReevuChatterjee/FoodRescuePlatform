@@ -4,10 +4,12 @@
  * Routes:
  *   /           → LandingPage (public)
  *   /login      → LoginPage (auth flow)
- *   /admin/*    → Admin routes (ADMIN role)
- *   /donor/*    → Donor routes (DONOR role)
- *   /ngo/*      → NGO routes (NGO role)
- *   /driver     → Driver routes (DRIVER role)
+ *   /admin/*    → Admin routes (ADMIN role) — AdminLayout
+ *   /donor/*    → Donor routes (DONOR role) — DonorLayout
+ *   /ngo/*      → NGO routes (NGO role)     — NGOLayout
+ *   /driver     → Driver routes (DRIVER)    — DriverLayout
+ *
+ * Each role page imports its own layout. No shared AppLayout wrapper here.
  */
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';

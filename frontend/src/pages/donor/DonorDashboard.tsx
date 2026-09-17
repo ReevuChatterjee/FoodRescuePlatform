@@ -1,24 +1,46 @@
 /**
- * DonorDashboard — shows all donor donations with stats and real-time WebSocket updates.
+ * DonorDashboard — personal ledger of donations.
+ * AI-tells removed:
+ *   - 4-col stat card grid → MetricDisplay horizontal strip (no card boxes)
+ *   - Generic subtitle → context-aware count
+ *   - Package icon-in-box decoration on each row → left-border color accent
+ *   - Uniform panel sections → editorial single-column with airy spacing
+ * Uses DonorLayout.
  */
 
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, Package, CheckCircle, Clock, TrendingUp, ArrowRight } from 'lucide-react';
+import { Plus, ArrowUpRight } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import type { Donation, SuccessEnvelope } from '../../types/api';
 import { StatusBadge } from '../../components/donor/StatusBadge';
 import { useDonationWebSocket } from '../../hooks/useDonationWebSocket';
-import { AppLayout } from '../../components/layout/AppLayout';
+import { DonorLayout } from '../../components/layout/DonorLayout';
+import { MetricDisplay } from '../../components/common/MetricDisplay';
 import { format } from 'date-fns';
 
 const CATEGORY_LABELS: Record<string, string> = {
   RAW_PRODUCE: 'Raw Produce',
-  COOKED: 'Cooked',
-  PACKAGED: 'Packaged',
+  COOKED:      'Cooked',
+  PACKAGED:    'Packaged',
   BAKED_GOODS: 'Baked Goods',
-  DAIRY: 'Dairy',
-  MIXED: 'Mixed',
+  DAIRY:       'Dairy',
+  MIXED:       'Mixed',
+};
+
+// Status → left-border accent color
+const STATUS_ACCENT: Record<string, string> = {
+  AVAILABLE:       'var(--moss-light)',
+  MATCHING:        'var(--amber-dim)',
+  MATCHED:         'var(--amber-dim)',
+  ACCEPTED:        'var(--amber-dim)',
+  DRIVER_ASSIGNED: 'var(--amber-dim)',
+  PICKUP_STARTED:  'var(--amber-dim)',
+  PICKED_UP:       'var(--amber-dim)',
+  IN_TRANSIT:      'var(--amber-dim)',
+  DELIVERED:       'var(--moss-light)',
+  EXPIRED:         'var(--border-hair)',
+  CANCELLED:       'var(--border-hair)',
 };
 
 export function DonorDashboard() {
@@ -33,146 +55,208 @@ export function DonorDashboard() {
   });
 
   const donations = data || [];
-
-  // Derived stats
-  const totalKg = donations.reduce((s, d) => s + d.quantity_kg, 0);
-  const active = donations.filter((d) => ['AVAILABLE', 'MATCHING', 'MATCHED', 'ACCEPTED', 'DRIVER_ASSIGNED', 'PICKUP_STARTED', 'IN_TRANSIT'].includes(d.status)).length;
+  const totalKg   = donations.reduce((s, d) => s + d.quantity_kg, 0);
+  const active    = donations.filter((d) =>
+    ['AVAILABLE','MATCHING','MATCHED','ACCEPTED','DRIVER_ASSIGNED','PICKUP_STARTED','IN_TRANSIT'].includes(d.status)
+  ).length;
   const delivered = donations.filter((d) => d.status === 'DELIVERED').length;
 
   if (error) {
     return (
-      <AppLayout>
-        <div className="panel p-12 text-center">
-          <p className="text-red-500 font-medium">Failed to load donations. Please try refreshing.</p>
+      <DonorLayout>
+        <div
+          className="surface"
+          style={{ padding: '48px', textAlign: 'center' }}
+        >
+          <p style={{ color: 'var(--terracotta)', fontSize: '0.875rem', fontWeight: 500 }}>
+            Failed to load donations. Please try refreshing.
+          </p>
         </div>
-      </AppLayout>
+      </DonorLayout>
     );
   }
 
+  // Context-aware subtitle
+  const subtitle = isLoading
+    ? 'Loading…'
+    : donations.length === 0
+    ? 'No donations yet — start below.'
+    : `${active} active · ${delivered} delivered`;
+
   return (
-    <AppLayout>
+    <DonorLayout>
       {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">My Donations</h1>
-          <p className="page-subtitle">Track your food donations in real time</p>
+          <p className="page-subtitle">{subtitle}</p>
         </div>
         <Link to="/donor/donate" className="btn-primary">
-          <Plus size={16} /> New Donation
+          <Plus size={14} /> New Donation
         </Link>
       </div>
 
-      {/* Stats row */}
-      {!isLoading && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Total Donations', value: donations.length, icon: <Package size={16} />, color: 'text-zinc-100' },
-            { label: 'Active', value: active, icon: <Clock size={16} />, color: 'text-blue-400' },
-            { label: 'Delivered', value: delivered, icon: <CheckCircle size={16} />, color: 'text-emerald-400' },
-            { label: 'Food Donated', value: `${totalKg.toFixed(1)} kg`, icon: <TrendingUp size={16} />, color: 'text-zinc-100' },
-          ].map((s) => (
-            <div key={s.label} className="panel flex flex-col justify-between p-5">
-              <div className="flex items-center gap-1.5 text-zinc-500 mb-3">
-                {s.icon}
-                <span className="text-xs font-medium uppercase tracking-wide">{s.label}</span>
+      {/* ── Metric strip: no card boxes ── */}
+      {!isLoading && donations.length > 0 && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '2fr 1fr 1fr 1fr',
+            gap: '32px',
+            marginBottom: 'var(--sp-6)',
+            paddingBottom: 'var(--sp-5)',
+            borderBottom: '1px solid var(--border-hair)',
+          }}
+          className="grid-cols-2 lg:!grid-cols-[2fr_1fr_1fr_1fr]"
+        >
+          <MetricDisplay value={donations.length} label="Total Donations" size="lg" />
+          <MetricDisplay value={active}           label="Active"          size="md" />
+          <MetricDisplay value={delivered}        label="Delivered"       size="md" />
+          <MetricDisplay value={`${totalKg.toFixed(0)}`} label="Kg Donated" unit="kg" size="sm" />
+        </div>
+      )}
+
+      {/* Loading skeletons — content-aware shapes */}
+      {isLoading && (
+        <div style={{ marginBottom: 'var(--sp-6)' }}>
+          {/* Metric strip skeleton */}
+          <div
+            style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '32px', marginBottom: 'var(--sp-6)' }}
+          >
+            {[72, 44, 44, 28].map((h, i) => (
+              <div key={i}>
+                <div className="skeleton" style={{ height: `${h}px`, width: '80px', marginBottom: '8px' }} />
+                <div className="skeleton" style={{ height: '1px', width: '100%', marginBottom: '8px' }} />
+                <div className="skeleton" style={{ height: '10px', width: '60px' }} />
               </div>
-              <p className={`text-2xl font-semibold tabular-nums ${s.color}`}>{s.value}</p>
-            </div>
+            ))}
+          </div>
+          {/* List skeletons */}
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="skeleton"
+              style={{ height: '64px', marginBottom: '2px' }}
+            />
           ))}
         </div>
       )}
 
-      {/* Loading */}
-      {isLoading && (
-        <div className="space-y-3 mb-8">
-          {[1, 2, 3].map((i) => <div key={i} className="skeleton h-20 w-full" />)}
-        </div>
-      )}
-
-      {/* Empty state */}
+      {/* Empty state — editorial prompt, not centered generic */}
       {!isLoading && donations.length === 0 && (
-        <div className="panel p-16 text-center flex flex-col items-center">
-          <div className="w-12 h-12 rounded-sm bg-zinc-800 flex items-center justify-center mb-5 text-zinc-400">
-            <Package size={24} />
-          </div>
-          <h3 className="text-base font-semibold text-zinc-100 mb-2">No donations yet</h3>
-          <p className="text-sm text-zinc-400 mb-6">
-            Start by listing your first surplus food donation.
+        <div style={{ paddingTop: 'var(--sp-5)' }}>
+          <p
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.5rem',
+              fontWeight: 300,
+              color: 'var(--text-secondary)',
+              marginBottom: '20px',
+              letterSpacing: '-0.02em',
+              fontVariationSettings: "'opsz' 24",
+            }}
+          >
+            Your first donation starts here.
+          </p>
+          <p className="prose-body" style={{ marginBottom: '28px', fontSize: '0.875rem' }}>
+            Log surplus food to make it visible to NGOs and drivers in your area.
+            Every listing creates a traceable handoff record.
           </p>
           <Link to="/donor/donate" className="btn-primary">
-            <Plus size={16} /> Create First Donation
+            <Plus size={14} /> Create Donation
           </Link>
         </div>
       )}
 
-      {/* Donations list */}
+      {/* Donations list — ledger style, left-border accent per status */}
       {!isLoading && donations.length > 0 && (
-        <div className="bg-zinc-950 border border-zinc-800 rounded-sm overflow-hidden">
-          <div className="divide-y divide-zinc-800">
-            {donations.map((donation) => {
-              const isExpiringSoon = new Date(donation.expiry_time) < new Date(Date.now() + 2 * 3600 * 1000);
-              return (
-                <Link
-                  key={donation.id}
-                  to={`/donor/donation/${donation.id}`}
-                  className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-zinc-900 group"
-                >
-                  {/* Icon */}
-                  <div className="w-8 h-8 rounded-sm bg-zinc-800 flex items-center justify-center flex-shrink-0 text-zinc-400">
-                    <Package size={16} />
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1.5">
-                      <p className="font-medium text-sm text-zinc-100 truncate">
-                        {donation.food_name}
-                      </p>
-                      <StatusBadge status={donation.status} />
-                      {isExpiringSoon && ['AVAILABLE', 'MATCHING'].includes(donation.status) && (
-                        <span className="badge-red">Expiring soon</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-zinc-500">
-                      <span>{CATEGORY_LABELS[donation.food_category] ?? donation.food_category}</span>
-                      <span>•</span>
-                      <span className="tabular-nums">{donation.quantity_kg} kg</span>
-                      <span>•</span>
-                      <span>Expires {format(new Date(donation.expiry_time), 'MMM d, HH:mm')}</span>
-                      
-                      {donation.matched_ngo_id && (
-                        <>
-                          <span>•</span>
-                          <span className="text-emerald-500 font-medium">Matched to NGO</span>
-                        </>
-                      )}
-                      
-                      {donation.eta_minutes !== null && (
-                        <>
-                          <span>•</span>
-                          <span className="text-blue-400 font-medium">ETA {donation.eta_minutes}m</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Created */}
-                  <div className="hidden sm:block text-right flex-shrink-0">
-                    <p className="text-xs text-zinc-400">
-                      {format(new Date(donation.created_at), 'MMM d, yyyy')}
+        <div className="surface-dense" style={{ overflow: 'hidden' }}>
+          {donations.map((donation, i) => {
+            const isExpiringSoon = new Date(donation.expiry_time) < new Date(Date.now() + 2 * 3600 * 1000);
+            const accentColor = STATUS_ACCENT[donation.status] ?? 'var(--border-hair)';
+            return (
+              <Link
+                key={donation.id}
+                to={`/donor/donation/${donation.id}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '14px 20px',
+                  borderBottom: i < donations.length - 1 ? '1px solid var(--border-hair)' : 'none',
+                  textDecoration: 'none',
+                  transition: 'background 0.1s',
+                  borderLeft: `3px solid ${accentColor}`,
+                }}
+                className="group hover:bg-hover"
+              >
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="flex items-center gap-3" style={{ marginBottom: '5px' }}>
+                    <p
+                      style={{
+                        fontWeight: 500,
+                        fontSize: '0.875rem',
+                        color: 'var(--text-primary)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {donation.food_name}
                     </p>
-                    <p className="text-xs text-zinc-500 tabular-nums">
-                      {format(new Date(donation.created_at), 'HH:mm')}
-                    </p>
+                    <StatusBadge status={donation.status} />
+                    {isExpiringSoon && ['AVAILABLE', 'MATCHING'].includes(donation.status) && (
+                      <span className="status-pill-error">
+                        <span className="status-pill-dot dot-error" />
+                        Expiring
+                      </span>
+                    )}
                   </div>
+                  <div
+                    className="flex items-center gap-3"
+                    style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    <span>{CATEGORY_LABELS[donation.food_category] ?? donation.food_category}</span>
+                    <span style={{ color: 'var(--border-med)' }}>·</span>
+                    <span>{donation.quantity_kg} kg</span>
+                    <span style={{ color: 'var(--border-med)' }}>·</span>
+                    <span>Expires {format(new Date(donation.expiry_time), 'MMM d, HH:mm')}</span>
+                    {donation.matched_ngo_id && (
+                      <>
+                        <span style={{ color: 'var(--border-med)' }}>·</span>
+                        <span style={{ color: 'var(--moss-light)', fontWeight: 500 }}>NGO Matched</span>
+                      </>
+                    )}
+                    {donation.eta_minutes !== null && (
+                      <>
+                        <span style={{ color: 'var(--border-med)' }}>·</span>
+                        <span style={{ color: 'var(--amber-dim)', fontWeight: 500 }}>ETA {donation.eta_minutes}m</span>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-                  <ArrowRight size={16} className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-zinc-500" />
-                </Link>
-              );
-            })}
-          </div>
+                {/* Date */}
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                    {format(new Date(donation.created_at), 'MMM d')}
+                  </p>
+                  <p style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                    {format(new Date(donation.created_at), 'HH:mm')}
+                  </p>
+                </div>
+
+                <ArrowUpRight
+                  size={13}
+                  style={{ color: 'var(--text-muted)', flexShrink: 0, opacity: 0 }}
+                  className="group-hover:opacity-100 transition-opacity"
+                />
+              </Link>
+            );
+          })}
         </div>
       )}
-    </AppLayout>
+    </DonorLayout>
   );
 }

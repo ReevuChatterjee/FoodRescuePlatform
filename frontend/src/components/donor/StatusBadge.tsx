@@ -1,25 +1,33 @@
 /**
- * Enhanced StatusBadge — maps donation/delivery status to premium colored badges.
+ * StatusBadge — replaces filled colored badges with StatusPill.
+ * 5px colored dot + small-caps label + 1px hairline outline.
+ * Dot and border colors are muted — not traffic-light bright.
  */
 
 import type { DonationStatus, DeliveryStatus } from '../../types/api';
 
-const STATUS_CONFIG: Record<string, { cls: string; dotClass: string; label: string }> = {
-  AVAILABLE:         { cls: 'badge-green',  dotClass: 'bg-emerald-500', label: 'Available' },
-  MATCHING:          { cls: 'badge-blue',   dotClass: 'bg-blue-500',    label: 'Matching…' },
-  MATCHED:           { cls: 'badge-blue',   dotClass: 'bg-blue-400',    label: 'Matched' },
-  ACCEPTED:          { cls: 'badge-blue',   dotClass: 'bg-blue-400',    label: 'Accepted' },
-  DRIVER_ASSIGNED:   { cls: 'badge-orange', dotClass: 'bg-amber-500',   label: 'Driver Assigned' },
-  PICKUP_STARTED:    { cls: 'badge-orange', dotClass: 'bg-amber-500',   label: 'Pickup Started' },
-  PICKED_UP:         { cls: 'badge-orange', dotClass: 'bg-orange-500',  label: 'Picked Up' },
-  IN_TRANSIT:        { cls: 'badge-orange', dotClass: 'bg-amber-500',   label: 'In Transit' },
-  DELIVERED:         { cls: 'badge-green',  dotClass: 'bg-emerald-500', label: 'Delivered' },
-  PARTIALLY_DELIVERED:{ cls: 'badge-yellow', dotClass: 'bg-amber-400',  label: 'Partial Delivery' },
-  NO_MATCH_FOUND:    { cls: 'badge-red',    dotClass: 'bg-red-500',     label: 'No Match Found' },
-  REJECTED:          { cls: 'badge-red',    dotClass: 'bg-red-400',     label: 'Rejected' },
-  EXPIRED:           { cls: 'badge-gray',   dotClass: 'bg-zinc-500',    label: 'Expired' },
-  CANCELLED:         { cls: 'badge-gray',   dotClass: 'bg-zinc-500',    label: 'Cancelled' },
-  DRIVER_ISSUE:      { cls: 'badge-red',    dotClass: 'bg-red-500',     label: 'Driver Issue' },
+interface StatusConfig {
+  pillClass: string;
+  dotClass: string;
+  label: string;
+}
+
+const STATUS_CONFIG: Record<string, StatusConfig> = {
+  AVAILABLE:            { pillClass: 'status-pill-success', dotClass: 'dot-moss',    label: 'Available' },
+  MATCHING:             { pillClass: 'status-pill-amber',   dotClass: 'dot-amber',   label: 'Matching' },
+  MATCHED:              { pillClass: 'status-pill-amber',   dotClass: 'dot-amber',   label: 'Matched' },
+  ACCEPTED:             { pillClass: 'status-pill-amber',   dotClass: 'dot-amber',   label: 'Accepted' },
+  DRIVER_ASSIGNED:      { pillClass: 'status-pill-warning', dotClass: 'dot-warning', label: 'Driver Assigned' },
+  PICKUP_STARTED:       { pillClass: 'status-pill-warning', dotClass: 'dot-warning', label: 'Pickup Started' },
+  PICKED_UP:            { pillClass: 'status-pill-warning', dotClass: 'dot-warning', label: 'Picked Up' },
+  IN_TRANSIT:           { pillClass: 'status-pill-warning', dotClass: 'dot-warning', label: 'In Transit' },
+  DELIVERED:            { pillClass: 'status-pill-success', dotClass: 'dot-success', label: 'Delivered' },
+  PARTIALLY_DELIVERED:  { pillClass: 'status-pill-warning', dotClass: 'dot-amber',   label: 'Partial' },
+  NO_MATCH_FOUND:       { pillClass: 'status-pill-error',   dotClass: 'dot-error',   label: 'No Match' },
+  REJECTED:             { pillClass: 'status-pill-error',   dotClass: 'dot-error',   label: 'Rejected' },
+  EXPIRED:              { pillClass: 'status-pill-muted',   dotClass: 'dot-muted',   label: 'Expired' },
+  CANCELLED:            { pillClass: 'status-pill-muted',   dotClass: 'dot-muted',   label: 'Cancelled' },
+  DRIVER_ISSUE:         { pillClass: 'status-pill-error',   dotClass: 'dot-error',   label: 'Driver Issue' },
 };
 
 interface Props {
@@ -27,10 +35,14 @@ interface Props {
 }
 
 export function StatusBadge({ status }: Props) {
-  const cfg = STATUS_CONFIG[status] ?? { cls: 'badge-gray', dotClass: 'bg-zinc-500', label: status };
+  const cfg = STATUS_CONFIG[status] ?? {
+    pillClass: 'status-pill-muted',
+    dotClass: 'dot-muted',
+    label: status,
+  };
   return (
-    <span className={cfg.cls}>
-      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dotClass}`} />
+    <span className={cfg.pillClass}>
+      <span className={`status-pill-dot ${cfg.dotClass}`} />
       {cfg.label}
     </span>
   );

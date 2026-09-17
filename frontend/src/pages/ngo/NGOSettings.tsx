@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Settings, Weight, TrendingUp, Save, Loader2, Plus, Terminal } from 'lucide-react';
 import { useMyNGOProfile, useUpdateNGOCapacity, useUpdateNGODemand, useUpdateNGOProfile } from '../../hooks/useNGO';
-import { AppLayout } from '../../components/layout/AppLayout';
+import { NGOLayout } from '../../components/layout/NGOLayout';
 
 const FOOD_CATEGORIES = ['COOKED', 'RAW_PRODUCE', 'PACKAGED', 'BAKED_GOODS', 'DAIRY', 'MIXED'];
 const CATEGORY_LABELS: Record<string, string> = {
@@ -112,16 +112,16 @@ export function NGOSettings() {
 
   if (isLoading) {
     return (
-      <AppLayout>
+      <NGOLayout>
         <div className="space-y-6">
           {[1, 2, 3].map((i) => <div key={i} className="skeleton h-48 w-full max-w-2xl rounded-md" />)}
         </div>
-      </AppLayout>
+      </NGOLayout>
     );
   }
 
   return (
-    <AppLayout>
+    <NGOLayout>
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
       {/* Header */}
@@ -329,6 +329,6 @@ export function NGOSettings() {
           </form>
         </SectionCard>
       </div>
-    </AppLayout>
+    </NGOLayout>
   );
 }
