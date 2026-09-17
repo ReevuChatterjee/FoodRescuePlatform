@@ -166,12 +166,42 @@ async def load_delivery_for_update(db: AsyncSession, delivery_id: str) -> Delive
     return result.scalar_one_or_none()
 
 
+# Lock order, everywhere a delivery changes: donation row -> delivery row ->
+# vehicle row. Cancel, start, pickup, deliver, report-issue and the IN_TRANSIT
+# ping follow it exactly, so none of them can deadlock another. Dispatch claims
+# the vehicle before writing the delivery row, which is safe: it already holds
+# the donation lock, so no other path can hold that delivery row.
+
+async def lock_donation(db: AsyncSession, donation_id: str) -> Donation | None:
+    result = await db.execute(
+        select(Donation).where(Donation.id == donation_id).with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _lock_delivery(db: AsyncSession, delivery_id: str) -> Delivery | None:
+    result = await db.execute(
+        select(Delivery).where(Delivery.id == delivery_id).with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    return result.scalar_one_or_none()
+
+
 async def lock_driver_delivery(db: AsyncSession, delivery_id: str, driver_id: str) -> Delivery:
-    """Lock a delivery the calling driver owns: 404 if missing, 403 if someone else's.
-    Driver endpoints scope their idempotency cache by delivery and driver, so a
-    replay never serves one driver another driver's response, and a genuine retry
-    still replays after the delivery was reassigned."""
-    delivery = await load_delivery_for_update(db, delivery_id)
+    """Lock a delivery the calling driver owns (its donation row first, per the lock
+    order): 404 if missing, 403 if someone else's. Driver endpoints scope their
+    idempotency cache by delivery and driver, so a replay never serves one driver
+    another driver's response, and a genuine retry still replays after the
+    delivery was reassigned."""
+    # donation_id never changes on a delivery, so reading it unlocked is safe.
+    donation_id = (
+        await db.execute(select(Delivery.donation_id).where(Delivery.id == delivery_id))
+    ).scalar_one_or_none()
+    delivery = None
+    if donation_id is not None:
+        await lock_donation(db, donation_id)
+        delivery = await _lock_delivery(db, delivery_id)
     if delivery is None:
         raise api_error(404, "DELIVERY_NOT_FOUND", f"Delivery {delivery_id} not found.")
     if delivery.driver_id != driver_id:
@@ -493,7 +523,6 @@ async def record_driver_location(
     if vehicle is None:
         raise api_error(404, "DRIVER_PROFILE_NOT_FOUND", "No vehicle profile for this driver.")
     had_location = parse_latlng(vehicle.current_location) is not None
-    vehicle.current_location = format_latlng(location)
 
     events: list[Event] = []
     delivery = await active_delivery_for_driver(db, driver_id)
@@ -502,6 +531,18 @@ async def record_driver_location(
         pickup = parse_latlng(donation.pickup_location) if donation is not None else None
         if (
             delivery.status == DeliveryStatus.PICKED_UP
+            and pickup is not None
+            and haversine_km(location, pickup) > IN_TRANSIT_DISTANCE_KM
+        ):
+            # Take the locks (donation, then delivery) and re-check, so a ping can't
+            # overwrite a /deliver or reassignment that committed meanwhile.
+            await lock_donation(db, delivery.donation_id)
+            delivery = await _lock_delivery(db, delivery.id)
+            if delivery is None or delivery.driver_id != driver_id or delivery.status not in ACTIVE_DELIVERY_STATUSES:
+                delivery = None
+        if (
+            delivery is not None
+            and delivery.status == DeliveryStatus.PICKED_UP
             and pickup is not None
             and haversine_km(location, pickup) > IN_TRANSIT_DISTANCE_KM
         ):
@@ -514,6 +555,7 @@ async def record_driver_location(
                 await _set_donation_status(db, delivery.donation_id, DonationStatus.IN_TRANSIT),
             ]
 
+    if delivery is not None:
         heading_to_pickup = delivery.status in PICKUP_ALLOWED_FROM
         if heading_to_pickup:
             target = pickup
@@ -531,6 +573,8 @@ async def record_driver_location(
             eta_minutes=eta, latitude=location[0], longitude=location[1],
         ))
 
+    # Vehicle last, per the lock order (no query runs after this, so no autoflush).
+    vehicle.current_location = format_latlng(location)
     events.insert(0, _event("drivers", "driver.location_update",
                             driver_id=driver_id, latitude=location[0], longitude=location[1]))
     return LocationUpdate(
@@ -636,10 +680,7 @@ async def release_for_cancelled_donation(
     driver. Locks the donation row (serialising with dispatch), then the active
     delivery. 409 if the food was picked up in the meantime. Caller commits the
     donation's own CANCELLED status in the same transaction."""
-    await db.execute(
-        select(Donation).where(Donation.id == donation_id).with_for_update()
-        .execution_options(populate_existing=True)
-    )
+    await lock_donation(db, donation_id)
     result = await db.execute(
         select(Delivery)
         .where(
