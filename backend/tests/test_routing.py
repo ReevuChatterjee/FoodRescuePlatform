@@ -59,6 +59,7 @@ def estimate(provider: str = "heuristic", **overrides) -> RouteEstimate:
     fields = {
         "distance_km": 5.44, "duration_minutes": 11.26, "traffic_duration_minutes": 19.64,
         "geometry": "abc", "provider": provider, "departure_time": MORNING,
+        "traffic_source": "live" if provider == "tomtom" else "time_of_day_model",
     }
     fields.update(overrides)
     return RouteEstimate(**fields)
@@ -318,12 +319,40 @@ def test_to_dict_keeps_contract_fields_and_meaning():
 
 
 @pytest.mark.parametrize(
-    "provider, aware, source",
-    [("heuristic", False, "time_of_day_model"), ("osrm", False, "time_of_day_model"), ("tomtom", True, "live")],
+    "source, aware",
+    [("live", True), ("time_of_day_model", False), ("city_average_model", False), ("none", False)],
 )
-def test_traffic_aware_only_for_live_traffic(provider, aware, source):
-    data = estimate(provider).to_dict()
+def test_traffic_aware_only_for_live_traffic(source, aware):
+    data = estimate(traffic_source=source).to_dict()
     assert data["traffic_aware"] is aware and data["traffic_source"] == source
+
+
+@pytest.mark.parametrize(
+    "model, source",
+    [("time_of_day", "time_of_day_model"), ("city_average", "city_average_model"), ("free_flow", "none")],
+)
+def test_heuristic_traffic_source_follows_the_model_used(model, source):
+    est = HeuristicRouteProvider(traffic_model=model).estimate(A, B, MORNING)
+    assert est.traffic_source == source and not est.traffic_aware
+    if model == "free_flow":
+        assert est.traffic_duration_minutes == est.duration_minutes
+
+
+@pytest.mark.parametrize("model, source", [("city_average", "city_average_model"), ("free_flow", "none")])
+async def test_osrm_traffic_source_follows_the_model_used(model, source):
+    body = {"code": "Ok", "routes": [{"distance": 1000.0, "duration": 120.0, "geometry": "g"}]}
+    osrm = OSRMRouteProvider("http://osrm.test", traffic_model=model,
+                             transport=httpx.MockTransport(lambda r: httpx.Response(200, json=body)))
+    est = await osrm.route(A, B, MORNING)
+    assert est.to_dict()["traffic_source"] == source and est.to_dict()["traffic_aware"] is False
+
+
+async def test_fallback_reports_the_heuristic_model_not_live():
+    failing = TomTomRouteProvider("KEY", transport=httpx.MockTransport(lambda r: httpx.Response(500)))
+    est = await FallbackRouteProvider(failing, HeuristicRouteProvider(traffic_model="city_average")).route(
+        A, B, MORNING
+    )
+    assert est.provider == "heuristic" and est.traffic_source == "city_average_model"
 
 
 def test_to_dict_converts_offset_departure_to_utc_z():

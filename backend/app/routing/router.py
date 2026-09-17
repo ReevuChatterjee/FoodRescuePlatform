@@ -8,7 +8,7 @@ app. Response `data`:
       "duration_minutes": 19.6,               # ETA including congestion (contract)
       "geometry": "encoded_polyline",         # precision 5 (contract)
       "traffic_aware": false,                 # true only for live traffic (contract)
-      "traffic_source": "time_of_day_model",  # live | time_of_day_model
+      "traffic_source": "time_of_day_model",  # live | time_of_day_model | city_average_model | none
       "free_flow_duration_minutes": 11.2,     # without congestion
       "provider": "heuristic",                # heuristic | osrm | tomtom
       "departure_time": "2026-09-09T12:00:00Z"

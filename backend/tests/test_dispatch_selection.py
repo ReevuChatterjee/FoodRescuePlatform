@@ -41,7 +41,7 @@ def driver(driver_id: str, capacity: float = 50.0, status: str = "AVAILABLE",
 def route(eta_minutes: float) -> RouteEstimate:
     return RouteEstimate(
         distance_km=1.0, duration_minutes=eta_minutes, traffic_duration_minutes=eta_minutes,
-        geometry="", provider="fake", departure_time=NOW,
+        geometry="", provider="fake", departure_time=NOW, traffic_source="none",
     )
 
 
