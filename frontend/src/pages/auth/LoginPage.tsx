@@ -8,9 +8,10 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Leaf, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
-import { apiClient } from '../../api/client';
+import { ArrowRight, Leaf, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../hooks/useAuthStore';
+import { apiClient } from '../../api/client';
+import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -35,6 +36,8 @@ const registerSchema = z.object({
   role: z.enum(['DONOR', 'NGO', 'DRIVER']),
   organisation_name: z.string().optional(),
   address: z.string().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   storage_capacity_kg: capacitySchema,
   vehicle_capacity_kg: capacitySchema,
 });
@@ -64,7 +67,7 @@ export function LoginPage() {
   const loginForm = useForm<LoginForm>({ resolver: zodResolver(loginSchema) });
   // Register form
   const registerForm = useForm<RegisterForm>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(registerSchema) as any,
     defaultValues: { role: 'DONOR' },
   });
 
@@ -287,7 +290,16 @@ export function LoginPage() {
                   </div>
                   <div>
                     <label className="form-label">Pickup Coordinates / Address</label>
-                    <input {...registerForm.register('address')} className="input-base" placeholder="Full pickup address" />
+                    <LocationAutocomplete
+                      value={registerForm.watch('address') || ''}
+                      onChange={(val) => registerForm.setValue('address', val)}
+                      onSelect={(addr, lat, lng) => {
+                        registerForm.setValue('address', addr);
+                        registerForm.setValue('latitude', lat);
+                        registerForm.setValue('longitude', lng);
+                      }}
+                      placeholder="Full pickup address"
+                    />
                   </div>
                 </>
               )}
@@ -301,7 +313,16 @@ export function LoginPage() {
                   </div>
                   <div>
                     <label className="form-label">Delivery Location</label>
-                    <input {...registerForm.register('address')} className="input-base" placeholder="Full address" />
+                    <LocationAutocomplete
+                      value={registerForm.watch('address') || ''}
+                      onChange={(val) => registerForm.setValue('address', val)}
+                      onSelect={(addr, lat, lng) => {
+                        registerForm.setValue('address', addr);
+                        registerForm.setValue('latitude', lat);
+                        registerForm.setValue('longitude', lng);
+                      }}
+                      placeholder="Full address"
+                    />
                   </div>
                   <div>
                     <label className="form-label">Total Storage Capacity (kg)</label>

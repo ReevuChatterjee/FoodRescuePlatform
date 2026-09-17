@@ -2,15 +2,16 @@
  * CreateDonation — multi-step donation form with allergen chips and validation.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Package, MapPin, Shield, ArrowLeft, ArrowRight, Loader2, X, Info } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { DonorLayout } from '../../components/layout/DonorLayout';
+import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
 
 const ALLERGENS = ['Gluten', 'Dairy', 'Eggs', 'Nuts', 'Soy', 'Fish', 'Shellfish', 'Sesame'];
 
@@ -32,7 +33,13 @@ const schema = z.object({
     allergen_tags: z.array(z.string()),
     packaging_type: z.string(),
   }).nullable().optional(),
-});
+}).refine(
+  (data) => new Date(data.expiry_time) > new Date(data.available_from),
+  {
+    message: "Expiry time must be after ready time",
+    path: ["expiry_time"],
+  }
+);
 
 type FormValues = z.infer<typeof schema>;
 
@@ -64,15 +71,42 @@ export function CreateDonation() {
   const [step, setStep] = useState(1);
   const [allergens, setAllergens] = useState<string[]>([]);
 
-  const { register, handleSubmit, formState: { errors }, trigger } = useForm<FormValues>({
+  const { data: userProfile } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const res = await apiClient.get('/api/v1/auth/me');
+      return res.data.data;
+    },
+    staleTime: Infinity,
+  });
+
+  const { register, handleSubmit, formState: { errors }, trigger, watch, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       food_category: 'COOKED',
-      quantity_kg: 1,
-      pickup_location: { latitude: 28.7041, longitude: 77.1025, address: '' },
+      quantity_kg: 10,
+      prepared_at: new Date(Date.now() - 3600000).toISOString().slice(0, 16),
+      available_from: new Date().toISOString().slice(0, 16),
+      expiry_time: new Date(Date.now() + 10800000).toISOString().slice(0, 16),
+      pickup_location: { latitude: undefined as unknown as number, longitude: undefined as unknown as number, address: '' },
       food_safety_info: { storage_temp_required: 'ROOM_TEMP', allergen_tags: [], packaging_type: 'Box' },
     },
   });
+
+  useEffect(() => {
+    if (userProfile?.donor_address && userProfile?.donor_location) {
+      const parts = userProfile.donor_location.split(',');
+      if (parts.length === 2) {
+        const lat = parseFloat(parts[0]);
+        const lon = parseFloat(parts[1]);
+        if (!watch('pickup_location.address')) {
+          setValue('pickup_location.address', userProfile.donor_address);
+          setValue('pickup_location.latitude', lat);
+          setValue('pickup_location.longitude', lon);
+        }
+      }
+    }
+  }, [userProfile, setValue, watch]);
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
@@ -209,21 +243,18 @@ export function CreateDonation() {
               <div className="space-y-6">
                 <div>
                   <label className="form-label">Facility Address</label>
-                  <input {...register('pickup_location.address')} className="input-base"
-                    placeholder="e.g. Loading Bay 3, 42 MG Road, Bengaluru" />
+                  <LocationAutocomplete
+                    value={watch('pickup_location.address')}
+                    onChange={(val) => setValue('pickup_location.address', val)}
+                    onSelect={(addr, lat, lng) => {
+                      setValue('pickup_location.address', addr);
+                      setValue('pickup_location.latitude', lat);
+                      setValue('pickup_location.longitude', lng);
+                      trigger('pickup_location');
+                    }}
+                    placeholder="e.g. Loading Bay 3, 42 MG Road, Bengaluru"
+                  />
                   {errors.pickup_location?.address && <p className="form-error">{errors.pickup_location.address.message}</p>}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-[var(--border-subtle)] pt-6 mt-2">
-                  <div>
-                    <label className="form-label">Latitude</label>
-                    <input {...register('pickup_location.latitude', { valueAsNumber: true })} type="number" step="0.0001"
-                      className="input-base font-mono-data" placeholder="e.g. 28.7041" />
-                  </div>
-                  <div>
-                    <label className="form-label">Longitude</label>
-                    <input {...register('pickup_location.longitude', { valueAsNumber: true })} type="number" step="0.0001"
-                      className="input-base font-mono-data" placeholder="e.g. 77.1025" />
-                  </div>
                 </div>
                 <div className="p-4 rounded-sm border border-[var(--border-subtle)] bg-[var(--bg-panel)] flex items-start gap-3 mt-4">
                   <MapPin size={16} className="text-[var(--brand)] mt-0.5" />

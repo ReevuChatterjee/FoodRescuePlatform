@@ -33,10 +33,8 @@ Based on the API Contract, the project currently stands as follows:
 - **Person 2 (Donor Application):** **DONE.** The Donor UI (dashboard, donation creation, and details) is fully built and styled with the RePlate design system.
 - **Person 3 (NGO / Recipient Module):** **DONE.** NGO verification workflows, capacity updates, and incoming offer acceptance pipelines are fully integrated.
 - **Person 4 (Matching & Optimisation Engine):** **DONE.** Scoring algorithm (`optimizer.py`), priority weighting, and candidate filtering endpoints are fully integrated into the backend.
+- **Person 5 (Routing & Driver Application):** **DONE.** The driver frontend dashboard, live map telemetry, location autocomplete, dynamic OSRM road routing, Google Maps deep-links, and the backend dispatch engine (VRP heuristics, polling, delivery confirmation) are now fully implemented and integrated.
 - **Person 6 (Admin, Analytics & Integration):** **DONE.** Admin command center, KPI dashboards, frontend RePlate rebranding, and full platform integration have been successfully assembled.
-
-### 🔴 Missing Modules
-- **Person 5 (Routing & Driver Application):** **MISSING.** While the Driver frontend dashboard exists, the backend routing dispatch endpoints and Vehicle Routing Problem (VRP) logic remain unimplemented placeholders.
 
 ---
 

@@ -10,6 +10,7 @@ import * as z from 'zod';
 import { Settings, Weight, TrendingUp, Save, Loader2, Plus, Terminal } from 'lucide-react';
 import { useMyNGOProfile, useUpdateNGOCapacity, useUpdateNGODemand, useUpdateNGOProfile } from '../../hooks/useNGO';
 import { NGOLayout } from '../../components/layout/NGOLayout';
+import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
 
 const FOOD_CATEGORIES = ['COOKED', 'RAW_PRODUCE', 'PACKAGED', 'BAKED_GOODS', 'DAIRY', 'MIXED'];
 const CATEGORY_LABELS: Record<string, string> = {
@@ -24,12 +25,14 @@ const capacitySchema = z.object({
 const demandSchema = z.object({
   food_category: z.enum(['COOKED', 'RAW_PRODUCE', 'PACKAGED', 'BAKED_GOODS', 'DAIRY', 'MIXED']),
   required_quantity_kg: z.number().positive('Must be > 0'),
-  priority: z.number().int().min(1).max(10),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
   valid_until: z.string().min(1, 'Required'),
 });
 const profileSchema = z.object({
   organisation_name: z.string().min(1),
   address: z.string().min(1),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
   operating_start: z.string().min(1),
   operating_end: z.string().min(1),
   accepted_categories: z.array(z.string()),
@@ -87,7 +90,7 @@ export function NGOSettings() {
   // Demand form
   const demandForm = useForm<DemandForm>({
     resolver: zodResolver(demandSchema),
-    defaultValues: { food_category: 'COOKED', required_quantity_kg: 50, priority: 5 },
+    defaultValues: { food_category: 'COOKED', required_quantity_kg: 50, priority: 'MEDIUM' },
   });
   const demandMutation = useUpdateNGODemand(ngoId);
 
@@ -97,8 +100,10 @@ export function NGOSettings() {
     values: {
       organisation_name: profile?.organisation_name ?? '',
       address: profile?.address ?? '',
-      operating_start: profile?.operating_hours.start ?? '08:00',
-      operating_end: profile?.operating_hours.end ?? '20:00',
+      latitude: profile?.location?.latitude ?? undefined,
+      longitude: profile?.location?.longitude ?? undefined,
+      operating_start: profile?.operating_hours?.start ?? '08:00',
+      operating_end: profile?.operating_hours?.end ?? '20:00',
       accepted_categories: profile?.accepted_categories ?? [],
     },
   });
@@ -246,7 +251,7 @@ export function NGOSettings() {
                 valid_until: new Date(d.valid_until).toISOString(),
               });
               showToast('Demand broadcasted.', 'success');
-              demandForm.reset({ food_category: 'COOKED', required_quantity_kg: 50, priority: 5 });
+              demandForm.reset({ food_category: 'COOKED', required_quantity_kg: 50, priority: 'MEDIUM' });
             } catch (e: any) {
               showToast(e.response?.data?.error?.message || 'Failed to broadcast demand.', 'error');
             }
@@ -271,10 +276,13 @@ export function NGOSettings() {
               <div>
                 <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block flex items-center justify-between">
                    <span>Priority Level</span>
-                   <span className="font-mono-data">1=Low, 10=Critical</span>
                 </label>
-                <input {...demandForm.register('priority', { valueAsNumber: true })}
-                  type="number" min="1" max="10" className="input-base font-mono-data" />
+                <select {...demandForm.register('priority')} className="select-base">
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="CRITICAL">Critical</option>
+                </select>
               </div>
               <div>
                 <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Expiration Window</label>
@@ -297,6 +305,8 @@ export function NGOSettings() {
               await profileMutation.mutateAsync({
                 organisation_name: d.organisation_name,
                 address: d.address,
+                latitude: d.latitude,
+                longitude: d.longitude,
                 operating_start: d.operating_start,
                 operating_end: d.operating_end,
               });
@@ -311,7 +321,15 @@ export function NGOSettings() {
             </div>
             <div>
               <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Facility Coordinates</label>
-              <input {...profileForm.register('address')} className="input-base" />
+              <LocationAutocomplete
+                value={profileForm.watch('address') || ''}
+                onChange={(val) => profileForm.setValue('address', val)}
+                onSelect={(addr, lat, lng) => {
+                  profileForm.setValue('address', addr);
+                  profileForm.setValue('latitude', lat);
+                  profileForm.setValue('longitude', lng);
+                }}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4 border-t border-[var(--border-subtle)] pt-6">
               <div>

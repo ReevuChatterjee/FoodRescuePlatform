@@ -59,8 +59,13 @@ export function IncomingOffers() {
   };
 
   const acceptMutation = useMutation({
-    mutationFn: async (donationId: string) => {
-      const res = await apiClient.patch(`/api/v1/donations/${donationId}`, { status: 'ACCEPTED' });
+    mutationFn: async (offer: any) => {
+      const payload: any = { 
+        ngo_id: profile?.ngo_id,
+        match_score: offer.match_score || 0,
+        weights_version_id: offer.weights_version_id || "default"
+      };
+      const res = await apiClient.post(`/api/v1/matching/${offer.donation_id}/accept`, payload);
       return res.data;
     },
     onSuccess: () => {
@@ -76,9 +81,11 @@ export function IncomingOffers() {
 
   const rejectMutation = useMutation({
     mutationFn: async (donationId: string) => {
-      const res = await apiClient.patch(`/api/v1/donations/${donationId}/cancel`, {
-        reason: 'NGO rejected matched donation — insufficient capacity or category mismatch',
-      });
+      const payload = {
+        ngo_id: profile?.ngo_id,
+        reason: 'NGO rejected matched donation — insufficient capacity or category mismatch'
+      };
+      const res = await apiClient.post(`/api/v1/matching/${donationId}/reject`, payload);
       return res.data;
     },
     onSuccess: () => {
@@ -308,7 +315,7 @@ export function IncomingOffers() {
                     disabled={isPending}
                     onClick={() => {
                       setActionDonationId(offer.donation_id);
-                      acceptMutation.mutate(offer.donation_id);
+                      acceptMutation.mutate(offer);
                     }}
                   >
                     <CheckCircle size={15} /> Accept Offer

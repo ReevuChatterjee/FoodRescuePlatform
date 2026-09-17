@@ -7,33 +7,23 @@
  * POST  /api/v1/deliveries/{id}/start|pickup|deliver|report-issue  (Idempotency-Key)
  * WS    /ws/deliveries, /ws/drivers         refresh the job when it changes
  *
- * Mobile-first: one column, large controls, and nothing to operate while driving;
- * location and job updates happen on their own.
+ * DriverDashboard — full-bleed, map-dominant single-focus layout.
+ * Uses DriverLayout with GPS broadcast button in the fixed bottom action bar.
  */
 
-import { AlertTriangle, Loader2, MapPinOff, Power, Radio, Truck } from 'lucide-react';
-import { AppLayout } from '../../components/layout/AppLayout';
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { AlertTriangle, Loader2, MapPinOff, Power, Radio, Truck, Navigation, ChevronDown, ChevronUp, Info, CheckCircle } from 'lucide-react';
+import { apiClient } from '../../api/client';
+import { DriverLayout } from '../../components/layout/DriverLayout';
 import { DriverRouteMap } from '../../components/driver/DriverRouteMap';
 import { JobActions } from '../../components/driver/JobActions';
 import { JobCard } from '../../components/driver/JobCard';
 import { apiErrorMessage, useCurrentJob, useSetAvailability } from '../../hooks/useDriver';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { useDriverWebSocket } from '../../hooks/useDriverWebSocket';
- * DriverDashboard — full-bleed, map-dominant single-focus layout.
- * AI-tells removed:
- *   - animate-pulse on "Unit Active" badge → data-driven pulse only post-successful POST
- *   - Faded truck watermark → removed
- *   - Uniform panel cards → surface-inset form, no card wrapping on info section
- *   - SOPs as bullet list inside panel → collapsible, not prominent
- * Uses DriverLayout with GPS broadcast button in the fixed bottom action bar.
- */
-
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { Navigation, Loader2, Radio, ChevronDown, ChevronUp, Info, CheckCircle } from 'lucide-react';
-import { apiClient } from '../../api/client';
-import { DriverLayout } from '../../components/layout/DriverLayout';
 import { useAuthStore } from '../../hooks/useAuthStore';
+import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
 
 const SOPS = [
   'Transmit coordinates regularly while on duty to ensure optimal routing.',
@@ -51,14 +41,14 @@ export function DriverDashboard() {
   const streaming = !!job || driver?.availability_status === 'AVAILABLE';
   const location = useDriverLocation(streaming);
   useDriverWebSocket(job?.delivery_id);
+
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
+  const [address, setAddress] = useState('');
   const [gpsLoading, setGpsLoading] = useState(false);
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
   const [sopOpen, setSopOpen] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-
-  useDonationWebSocket();
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -89,7 +79,9 @@ export function DriverDashboard() {
       (pos) => {
         setLat(pos.coords.latitude.toFixed(6));
         setLng(pos.coords.longitude.toFixed(6));
+        setAddress('Current GPS Location');
         setGpsLoading(false);
+        showToast('GPS lock acquired', 'success');
       },
       () => {
         showToast('Could not acquire GPS fix. Enter manually.', 'error');
@@ -112,48 +104,21 @@ export function DriverDashboard() {
 
   // Bottom action bar content
   const actionBar = (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, padding: '0 20px', height: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 120px', minWidth: '120px' }}>
-          <span
-            className="font-mono-data"
-            style={{
-              position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)',
-              fontSize: '0.625rem', color: 'var(--text-muted)', pointerEvents: 'none',
-            }}
-          >
-            LAT
-          </span>
-          <input
-            className="input-base font-mono-data"
-            type="number"
-            step="0.000001"
-            value={lat}
-            onChange={(e) => setLat(e.target.value)}
-            placeholder="28.704060"
-            style={{ paddingLeft: '36px', fontSize: '0.8125rem' }}
-          />
-        </div>
-        <div style={{ position: 'relative', flex: '1 1 120px', minWidth: '120px' }}>
-          <span
-            className="font-mono-data"
-            style={{
-              position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)',
-              fontSize: '0.625rem', color: 'var(--text-muted)', pointerEvents: 'none',
-            }}
-          >
-            LNG
-          </span>
-          <input
-            className="input-base font-mono-data"
-            type="number"
-            step="0.000001"
-            value={lng}
-            onChange={(e) => setLng(e.target.value)}
-            placeholder="77.102493"
-            style={{ paddingLeft: '36px', fontSize: '0.8125rem' }}
-          />
-        </div>
+        <LocationAutocomplete
+          value={address}
+          onChange={setAddress}
+          onSelect={(addr, latVal, lngVal) => {
+            setAddress(addr);
+            setLat(latVal.toFixed(6));
+            setLng(lngVal.toFixed(6));
+            // Auto-submit when selected from autocomplete
+            locationMutation.mutate({ latitude: latVal, longitude: lngVal });
+          }}
+          placeholder="Search location or enter coordinates"
+          className="input-base"
+        />
       </div>
       <button
         type="button"
@@ -184,16 +149,49 @@ export function DriverDashboard() {
   );
 
   return (
-    <AppLayout>
-      <div className="page-header flex items-start justify-between gap-4">
-        <div>
-          <h1 className="page-title">{job ? 'Active delivery' : 'Driver'}</h1>
-          <p className="page-subtitle">{user?.name}</p>
+    <DriverLayout actionBar={actionBar}>
+      {/* Toast */}
+      {toast && (
+        <div className={toast.type === 'success' ? 'toast-success' : 'toast-error'}>
+          {toast.msg}
         </div>
-        {driver && <AvailabilityToggle status={driver.availability_status} hasJob={!!job} position={location.position} />}
-      </div>
+      )}
 
-      <div className="max-w-2xl space-y-4">
+      <div style={{ maxWidth: '680px', padding: 'var(--sp-5)' }}>
+        {/* Driver identity block — no card, no watermark */}
+        <div style={{ marginBottom: 'var(--sp-6)', paddingBottom: 'var(--sp-5)', borderBottom: '1px solid var(--border-hair)' }}>
+          <p className="section-label" style={{ marginBottom: '8px' }}>Unit Identity</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '2rem',
+                  fontWeight: 300,
+                  color: 'var(--text-primary)',
+                  letterSpacing: '-0.025em',
+                  marginBottom: '6px',
+                  fontVariationSettings: "'opsz' 32",
+                }}
+              >
+                {user?.name}
+              </h1>
+              <div className="flex items-center gap-4" style={{ flexWrap: 'wrap' }}>
+                <span className="font-mono-data" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  {user?.email}
+                </span>
+                <span
+                  className="font-mono-data section-label"
+                  style={{ color: 'var(--text-muted)', border: '1px solid var(--border-hair)', padding: '2px 8px' }}
+                >
+                  {user?.id?.substring(0, 8).toUpperCase()}
+                </span>
+              </div>
+            </div>
+            {driver && <AvailabilityToggle status={driver.availability_status} hasJob={!!job} position={location.position} />}
+          </div>
+        </div>
+
         {location.permission === 'denied' && (
           <Banner tone="error" icon={<MapPinOff size={18} />} title="Location is off">
             You can't be dispatched without location. Allow location access for this site in your browser settings.
@@ -208,42 +206,6 @@ export function DriverDashboard() {
         {isLoading && (
           <div className="panel p-8 flex items-center justify-center text-[var(--text-secondary)]">
             <Loader2 className="animate-spin mr-2" size={18} /> Loading your job…
-    <DriverLayout actionBar={actionBar}>
-      {/* Toast */}
-      {toast && (
-        <div className={toast.type === 'success' ? 'toast-success' : 'toast-error'}>
-          {toast.msg}
-        </div>
-      )}
-
-      <div style={{ maxWidth: '680px', padding: 'var(--sp-5)' }}>
-
-        {/* Driver identity block — no card, no watermark */}
-        <div style={{ marginBottom: 'var(--sp-6)', paddingBottom: 'var(--sp-5)', borderBottom: '1px solid var(--border-hair)' }}>
-          <p className="section-label" style={{ marginBottom: '8px' }}>Unit Identity</p>
-          <h1
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '2rem',
-              fontWeight: 300,
-              color: 'var(--text-primary)',
-              letterSpacing: '-0.025em',
-              marginBottom: '6px',
-              fontVariationSettings: "'opsz' 32",
-            }}
-          >
-            {user?.name}
-          </h1>
-          <div className="flex items-center gap-4" style={{ flexWrap: 'wrap' }}>
-            <span className="font-mono-data" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              {user?.email}
-            </span>
-            <span
-              className="font-mono-data section-label"
-              style={{ color: 'var(--text-muted)', border: '1px solid var(--border-hair)', padding: '2px 8px' }}
-            >
-              {user?.id?.substring(0, 8).toUpperCase()}
-            </span>
           </div>
         )}
 
@@ -255,17 +217,21 @@ export function DriverDashboard() {
         )}
 
         {driver && job && (
-          <>
+          <div className="space-y-4 mb-8">
             <JobCard job={job} />
             <DriverRouteMap job={job} driverPosition={location.position ?? driver.current_location} />
             <JobActions job={job} vehicleCapacityKg={driver.capacity_kg} />
-          </>
+          </div>
         )}
 
-        {driver && !job && <IdleState status={driver.availability_status} capacityKg={driver.capacity_kg} />}
+        {driver && !job && (
+          <div className="mb-8">
+            <IdleState status={driver.availability_status} capacityKg={driver.capacity_kg} />
+          </div>
+        )}
 
         {driver && streaming && (
-          <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5" aria-live="polite">
+          <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 mb-8" aria-live="polite">
             <Radio size={12} className={location.lastSentAt ? 'text-[var(--brand)]' : ''} />
             {location.lastError
               ?? (location.lastSentAt
@@ -273,71 +239,7 @@ export function DriverDashboard() {
                 : 'Waiting for your first location fix…')}
           </p>
         )}
-      </div>
-    </AppLayout>
-  );
-}
 
-function AvailabilityToggle({ status, hasJob, position }: {
-  status: string; hasJob: boolean; position: { latitude: number; longitude: number } | null;
-}) {
-  const setAvailability = useSetAvailability();
-  const online = status !== 'OFFLINE';
-  const label = hasJob ? 'On a job' : online ? 'Online' : 'Offline';
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={online}
-        disabled={hasJob || setAvailability.isPending}
-        title={hasJob ? 'Finish or report an issue with your delivery first' : undefined}
-        onClick={() => setAvailability.mutate({
-          availability_status: online ? 'OFFLINE' : 'AVAILABLE',
-          location: online ? null : position,
-        })}
-        className={`min-h-[48px] px-5 rounded-sm border text-sm font-bold uppercase tracking-widest flex items-center gap-2 ${online
-          ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
-          : 'border-[var(--border-strong)] text-[var(--text-secondary)]'}`}
-      >
-        {setAvailability.isPending ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} />} {label}
-      </button>
-      {setAvailability.isError && <p role="alert" className="form-error">{apiErrorMessage(setAvailability.error)}</p>}
-    </div>
-  );
-}
-
-function IdleState({ status, capacityKg }: { status: string; capacityKg: number }) {
-  const online = status === 'AVAILABLE';
-  return (
-    <div className="panel p-8 text-center space-y-3 bg-[var(--bg-page)] border-[var(--border-strong)]">
-      <Truck size={40} className={`mx-auto ${online ? 'text-[var(--brand)]' : 'text-[var(--text-muted)]'}`} />
-      <p className="text-lg font-semibold text-[var(--text-primary)]">
-        {online ? 'Waiting for a job' : 'You are offline'}
-      </p>
-      <p className="text-sm text-[var(--text-secondary)]">
-        {online
-          ? `When an NGO accepts a donation near you that fits your ${capacityKg.toFixed(1)} kg vehicle, it appears here automatically.`
-          : 'Go online to receive delivery jobs.'}
-      </p>
-    </div>
-  );
-}
-
-function Banner({ tone, icon, title, children }: {
-  tone: 'error' | 'warning'; icon: React.ReactNode; title: string; children: React.ReactNode;
-}) {
-  const color = tone === 'error' ? 'var(--error)' : 'var(--warning)';
-  return (
-    <div role="alert" className="p-4 rounded-sm border flex items-start gap-3"
-      style={{ borderColor: `color-mix(in srgb, ${color} 40%, transparent)`, background: `color-mix(in srgb, ${color} 8%, transparent)` }}>
-      <span style={{ color }} className="mt-0.5">{icon}</span>
-      <div>
-        <p className="text-sm font-bold" style={{ color }}>{title}</p>
-        <p className="text-sm text-[var(--text-secondary)] mt-0.5">{children}</p>
-      </div>
-    </div>
         {/* Coordinate entry info */}
         <div style={{ marginBottom: 'var(--sp-5)' }}>
           <p className="section-label" style={{ marginBottom: '10px' }}>Positional Telemetry</p>
@@ -437,5 +339,68 @@ function Banner({ tone, icon, title, children }: {
         </div>
       </div>
     </DriverLayout>
+  );
+}
+
+function AvailabilityToggle({ status, hasJob, position }: {
+  status: string; hasJob: boolean; position: { latitude: number; longitude: number } | null;
+}) {
+  const setAvailability = useSetAvailability();
+  const online = status !== 'OFFLINE';
+  const label = hasJob ? 'On a job' : online ? 'Online' : 'Offline';
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={online}
+        disabled={hasJob || setAvailability.isPending}
+        title={hasJob ? 'Finish or report an issue with your delivery first' : undefined}
+        onClick={() => setAvailability.mutate({
+          availability_status: online ? 'OFFLINE' : 'AVAILABLE',
+          location: online ? null : position,
+        })}
+        className={`min-h-[48px] px-5 rounded-sm border text-sm font-bold uppercase tracking-widest flex items-center gap-2 ${online
+          ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
+          : 'border-[var(--border-strong)] text-[var(--text-secondary)]'}`}
+      >
+        {setAvailability.isPending ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} />} {label}
+      </button>
+      {setAvailability.isError && <p role="alert" className="form-error">{apiErrorMessage(setAvailability.error)}</p>}
+    </div>
+  );
+}
+
+function IdleState({ status, capacityKg }: { status: string; capacityKg: number }) {
+  const online = status === 'AVAILABLE';
+  return (
+    <div className="panel p-8 text-center space-y-3 bg-[var(--bg-page)] border-[var(--border-strong)]">
+      <Truck size={40} className={`mx-auto ${online ? 'text-[var(--brand)]' : 'text-[var(--text-muted)]'}`} />
+      <p className="text-lg font-semibold text-[var(--text-primary)]">
+        {online ? 'Waiting for a job' : 'You are offline'}
+      </p>
+      <p className="text-sm text-[var(--text-secondary)]">
+        {online
+          ? `When an NGO accepts a donation near you that fits your ${capacityKg.toFixed(1)} kg vehicle, it appears here automatically.`
+          : 'Go online to receive delivery jobs.'}
+      </p>
+    </div>
+  );
+}
+
+function Banner({ tone, icon, title, children }: {
+  tone: 'error' | 'warning'; icon: React.ReactNode; title: string; children: React.ReactNode;
+}) {
+  const color = tone === 'error' ? 'var(--error)' : 'var(--warning)';
+  return (
+    <div role="alert" className="p-4 rounded-sm border flex items-start gap-3 mb-4"
+      style={{ borderColor: `color-mix(in srgb, ${color} 40%, transparent)`, background: `color-mix(in srgb, ${color} 8%, transparent)` }}>
+      <span style={{ color }} className="mt-0.5">{icon}</span>
+      <div>
+        <p className="text-sm font-bold" style={{ color }}>{title}</p>
+        <p className="text-sm text-[var(--text-secondary)] mt-0.5">{children}</p>
+      </div>
+    </div>
   );
 }

@@ -4,7 +4,8 @@
  * it is drawn dashed and labelled; OSRM/TomTom routes are drawn solid.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { ExternalLink } from 'lucide-react';
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -51,11 +52,48 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
   const dropoff = toTuple(job.dropoff);
   const driver = toTuple(driverPosition);
   const route = job.route_to_next_stop;
-  const line = useMemo(() => safeDecodePolyline(route?.geometry), [route?.geometry]);
-  const dashed = isStraightLineEstimate(route?.provider);
+  const [osrmPolyline, setOsrmPolyline] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchRoute() {
+      if (!driver || !dropoff) return;
+      try {
+        let coords = '';
+        if (job.next_stop === 'PICKUP' && pickup) {
+          coords = `${driver[1]},${driver[0]};${pickup[1]},${pickup[0]};${dropoff[1]},${dropoff[0]}`;
+        } else {
+          coords = `${driver[1]},${driver[0]};${dropoff[1]},${dropoff[0]}`;
+        }
+        
+        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.routes && data.routes.length > 0) {
+            setOsrmPolyline(data.routes[0].geometry);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch OSRM route:', error);
+      }
+    }
+    fetchRoute();
+  }, [driver?.join(','), pickup?.join(','), dropoff?.join(','), job.next_stop]);
+
+  // Use the new OSRM polyline, or fallback to the backend's route line
+  const line = useMemo(() => safeDecodePolyline(osrmPolyline || route?.geometry), [osrmPolyline, route?.geometry]);
+  const dashed = !osrmPolyline && isStraightLineEstimate(route?.provider);
 
   const fitPoints = [driver, job.next_stop === 'PICKUP' ? pickup : dropoff].filter(Boolean) as LatLngTuple[];
   const center = fitPoints[0] ?? pickup ?? dropoff ?? ([12.9716, 77.5946] as LatLngTuple); // Bengaluru
+
+  const googleMapsUrl = useMemo(() => {
+    if (!driver || !dropoff) return '';
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${driver[0]},${driver[1]}&destination=${dropoff[0]},${dropoff[1]}&travelmode=driving`;
+    if (job.next_stop === 'PICKUP' && pickup) {
+      url += `&waypoints=${pickup[0]},${pickup[1]}`;
+    }
+    return url;
+  }, [driver, pickup, dropoff, job.next_stop]);
 
   return (
     <div className="relative h-72 sm:h-96 w-full rounded-sm overflow-hidden border border-[var(--border-strong)]">
@@ -95,8 +133,22 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
           />
         )}
       </MapContainer>
+      
+      {/* Floating Action Button for Google Maps */}
+      {googleMapsUrl && (
+        <a 
+          href={googleMapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] px-4 py-2.5 rounded-full shadow-lg text-sm font-semibold flex items-center gap-2 bg-[#4285F4] text-white hover:bg-[#3367D6] transition-colors border border-white/20"
+        >
+          <ExternalLink size={16} />
+          Navigate in Google Maps
+        </a>
+      )}
+
       {route && dashed && (
-        <div className="absolute bottom-2 left-2 z-[1000] px-2 py-1 rounded-sm text-[11px] bg-[var(--bg-page)]/90 border border-[var(--border-subtle)] text-[var(--text-secondary)]">
+        <div className="absolute top-2 left-2 z-[1000] px-2 py-1 rounded-sm text-[11px] bg-[var(--bg-page)]/90 border border-[var(--border-subtle)] text-[var(--text-secondary)]">
           Straight-line estimate, not a road route
         </div>
       )}

@@ -6,6 +6,7 @@
  */
 
 import axios from 'axios';
+import { useAuthStore } from '../hooks/useAuthStore';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -58,8 +59,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed — logout
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
+        useAuthStore.getState().clearAuth();
         window.location.href = '/login';
         return Promise.reject(refreshError);
       }

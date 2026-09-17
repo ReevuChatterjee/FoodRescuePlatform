@@ -35,6 +35,7 @@ export interface IncomingOffer {
   food_name: string;
   quantity_kg: number;
   match_score: number | null;
+  weights_version_id: string | null;
   eta_minutes: number | null;
   distance_km: number | null;
   remaining_shelf_life_min: number;
@@ -64,7 +65,7 @@ export function useIncomingOffers(ngoId: string | undefined) {
       return res.data.data;
     },
     enabled: !!ngoId,
-    refetchInterval: 15000,
+    refetchInterval: 15000, // Person 3: auto-poll for new matches
   });
 }
 
@@ -85,7 +86,7 @@ export function useUpdateNGODemand(ngoId: string | undefined) {
     mutationFn: async (payload: {
       food_category: string;
       required_quantity_kg: number;
-      priority: number;
+      priority: string;
       valid_until: string;
     }) => {
       const res = await apiClient.patch(`/api/v1/ngos/${ngoId}/demand`, payload);
@@ -101,6 +102,9 @@ export function useUpdateNGOProfile(ngoId: string | undefined) {
     mutationFn: async (payload: Partial<{
       organisation_name: string;
       address: string;
+      location: string;
+      latitude: number;
+      longitude: number;
       operating_start: string;
       operating_end: string;
       accepted_categories: string[];
@@ -109,5 +113,23 @@ export function useUpdateNGOProfile(ngoId: string | undefined) {
       return res.data.data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ngo', 'profile'] }),
+  });
+}
+
+export function useOfferDecision(ngoId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ donationId, decision, reason, match_score, weights_version_id }: { donationId: string, decision: 'accept' | 'reject', reason?: string, match_score?: number, weights_version_id?: string }) => {
+      const idempotencyKey = crypto.randomUUID();
+      const payload: any = { ngo_id: ngoId };
+      if (reason) payload.reason = reason;
+      if (match_score !== undefined) payload.match_score = match_score;
+      if (weights_version_id) payload.weights_version_id = weights_version_id;
+      const res = await apiClient.post(`/api/v1/matching/${donationId}/${decision}`, payload, {
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
+      return res.data.data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ngo', 'incoming'] }),
   });
 }
