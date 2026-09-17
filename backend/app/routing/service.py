@@ -14,10 +14,11 @@ With the default ROUTING_PROVIDER=heuristic both paths return identical numbers.
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Mapping
 from datetime import datetime, timezone
 
-from app.routing.geo import LatLng
+from app.routing.geo import LatLng, parse_latlng
 from app.routing.providers import (
     FallbackRouteProvider,
     HeuristicRouteProvider,
@@ -89,6 +90,20 @@ def estimate_routes_from(
 ) -> dict[str, RouteEstimate]:
     departure = departure or _now()
     return {key: _heuristic.estimate(origin, point, departure) for key, point in destinations.items()}
+
+
+def offer_route_summary(
+    pickup_location: object, ngo_location: object, departure: datetime | None = None
+) -> dict[str, float | int | None]:
+    """eta_minutes (int, with congestion) and distance_km (1 dp) from a donation's
+    pickup to an NGO, for offer lists such as GET /ngos/{id}/incoming. Accepts any
+    stored location shape; both fields are None when a location is unusable rather
+    than inventing a number."""
+    pickup, dropoff = parse_latlng(pickup_location), parse_latlng(ngo_location)
+    if pickup is None or dropoff is None:
+        return {"eta_minutes": None, "distance_km": None}
+    route = estimate_route(pickup, dropoff, departure)
+    return {"eta_minutes": math.ceil(route.eta_minutes), "distance_km": round(route.distance_km, 1)}
 
 
 async def calculate_route(

@@ -6,6 +6,7 @@ No database or network needed.
 from __future__ import annotations
 
 import json
+import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -406,6 +407,17 @@ def test_estimate_routes_from_matches_single_estimates():
     routes = routing_service.estimate_routes_from(KORAMANGALA, {"ngo_017": NGO_017, "b": B}, MORNING)
     assert set(routes) == {"ngo_017", "b"}
     assert routes["ngo_017"] == routing_service.estimate_route(KORAMANGALA, NGO_017, MORNING)
+
+
+def test_offer_route_summary_for_incoming_offers():
+    expected = routing_service.estimate_route(KORAMANGALA, NGO_017, MORNING)
+    summary = routing_service.offer_route_summary(
+        {"latitude": KORAMANGALA[0], "longitude": KORAMANGALA[1], "address": "x"}, "12.9345,77.6104", MORNING
+    )
+    assert summary == {"eta_minutes": math.ceil(expected.eta_minutes), "distance_km": round(expected.distance_km, 1)}
+    assert isinstance(summary["eta_minutes"], int)
+    assert routing_service.offer_route_summary("bad", "12.9345,77.6104") == {"eta_minutes": None, "distance_km": None}
+    assert routing_service.offer_route_summary(KORAMANGALA, None) == {"eta_minutes": None, "distance_km": None}
 
 
 def test_build_provider_tomtom_without_key_falls_back_to_heuristic():
