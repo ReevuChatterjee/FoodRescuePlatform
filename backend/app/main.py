@@ -18,6 +18,8 @@ from app.ngos.router import router as ngos_router
 from app.drivers.router import router as drivers_router
 from app.deliveries.router import deliveries_router, handover_router
 from app.matching.router import router as matching_router
+from app.routing.router import router as routing_router
+from app.dispatch.router import delivery_issue_router, dispatch_router, drivers_me_router
 from app.ws.router import router as ws_router
 
 app = FastAPI(
@@ -51,6 +53,13 @@ app.include_router(handover_router)
 # Matching engine (Person 4) — candidates, accept, reject
 app.include_router(matching_router)
 
+# Routing + dispatch (Person 5) — /routes/calculate, driver availability and
+# current job, delivery issue reporting, admin dispatch trigger
+app.include_router(routing_router)
+app.include_router(drivers_me_router)
+app.include_router(delivery_issue_router)
+app.include_router(dispatch_router)
+
 # WebSocket broker (Person 1) — /ws/donations, /ws/deliveries, /ws/drivers
 app.include_router(ws_router)
 
@@ -66,5 +75,5 @@ async def root():
     return {
         "service": "CPI Food Rescue Platform",
         "version": "0.1.0",
-        "modules": ["auth", "donations", "ngos", "drivers", "deliveries", "matching", "websocket", "analytics", "admin"],
+        "modules": ["auth", "donations", "ngos", "drivers", "deliveries", "matching", "routing", "dispatch", "websocket", "analytics", "admin"],
     }
