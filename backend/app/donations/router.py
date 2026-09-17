@@ -13,7 +13,7 @@ POST   /api/v1/donations/{id}/photos    — multipart photo upload (audit trail)
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,11 @@ from app.auth.dependencies import get_current_user, require_role
 from app.core.database import get_db
 from app.core.envelope import api_error, envelope, iso_z, list_envelope
 from app.core.ids import new_id
+from app.dispatch.service import (  # Person 5: release the driver on cancel
+    publish,
+    release_for_cancelled_donation,
+    run_dispatch_pending,
+)
 from app.donations.schemas import CancelDonationRequest, CreateDonationRequest, UpdateDonationRequest
 from app.models import AuditLog, Delivery, Donation, DonationStatus, Donor, User, UserRole
 from app.ws.manager import manager
@@ -216,6 +221,7 @@ async def update_donation(
 async def cancel_donation(
     donation_id: str,
     body: CancelDonationRequest,
+    background_tasks: BackgroundTasks,  # Person 5: release the driver on cancel
     donor_user: Annotated[User, Depends(require_role("DONOR"))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -229,6 +235,10 @@ async def cancel_donation(
         raise api_error(403, "FORBIDDEN", "This donation does not belong to you.")
     if donation.status in (DonationStatus.PICKED_UP, DonationStatus.IN_TRANSIT, DonationStatus.DELIVERED):
         raise api_error(409, "ALREADY_IN_TRANSIT", "Cannot cancel a donation once it has been picked up.")
+
+    # Person 5: cancel any pre-pickup delivery and free its driver (locks the
+    # donation row; 409 if the driver picked up in the meantime).
+    release = await release_for_cancelled_donation(db, donation.id, body.reason, donor_user.id)
 
     donation.status = DonationStatus.CANCELLED
     donation.updated_at = datetime.utcnow()
@@ -251,6 +261,10 @@ async def cancel_donation(
         "donation_id": donation.id,
         "reason": body.reason,
     })
+    # Person 5: delivery/driver events after commit; a freed driver can take waiting work.
+    await publish(release.events)
+    if release.driver_released:
+        background_tasks.add_task(run_dispatch_pending)
 
     return envelope(await _to_dict(donation, db))
 

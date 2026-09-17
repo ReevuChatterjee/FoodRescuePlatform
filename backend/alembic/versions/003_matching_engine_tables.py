@@ -49,7 +49,7 @@ def upgrade() -> None:
     op.execute(
         "INSERT INTO matching_weights_history "
         "(weights_version_id, city, food_category, w_capacity, w_shelf_life, w_transit, w_demand, w_route, is_active, created_at) "
-        "VALUES ('wv_default_v1', 'default', 'ALL', 0.2, 0.2, 0.2, 0.2, 0.2, 1, datetime('now'))"
+        "VALUES ('wv_default_v1', 'default', 'ALL', 0.2, 0.2, 0.2, 0.2, 0.2, TRUE, CURRENT_TIMESTAMP)"
     )
 
     # donation_rejections

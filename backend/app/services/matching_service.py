@@ -9,17 +9,16 @@ The algorithm (matching_engine.*) never imports SQLAlchemy or touches the DB.
 The router (app.matching.router) calls these helpers rather than writing its
 own ORM queries.
 
-Route data (Person 5 dependency)
----------------------------------
-Person 5's /routes/calculate API is not yet available. `load_routes` uses a
-Haversine-based mock that approximates distance_km and duration_minutes from
-straight-line distance. When Person 5 delivers, replace the body of
-`load_routes` — the signature and return type are fixed by the engine contract
-and must not change.
+Route data (Person 5)
+---------------------
+`load_routes` now delegates to Person 5's routing engine (app.routing.service):
+road-distance estimate, free-flow duration and a traffic-adjusted duration for
+the time of day. It uses the deterministic estimator (no network I/O) so ranking
+many candidates stays fast; dispatch re-checks the chosen route with the
+configured provider. Signature and return type are unchanged.
 """
 from __future__ import annotations
 
-import math
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -36,37 +35,12 @@ from app.models import (
     NGOFoodCategory as OrmNGOFoodCategory,
     NGOVerificationStatus,
 )
+from app.routing.service import estimate_routes_from
 
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
-
-def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Great-circle distance in km between two WGS-84 coordinates."""
-    R = 6371.0
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    dphi = math.radians(lat2 - lat1)
-    dlambda = math.radians(lon2 - lon1)
-    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
-    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-
-
-def _mock_route(ngo_id: str, distance_km: float) -> me.RouteMetrics:
-    """Estimate route metrics from straight-line distance.
-
-    Assumes an average urban speed of ~20 km/h with a 1.3 detour factor.
-    Replace this function body with a real HTTP call to Person 5 when ready.
-    """
-    effective_km = distance_km * 1.3  # road-network correction factor
-    duration_minutes = (effective_km / 20.0) * 60.0  # 20 km/h average speed
-    return me.RouteMetrics(
-        ngo_id=ngo_id,
-        distance_km=round(effective_km, 2),
-        duration_minutes=round(duration_minutes, 1),
-        traffic_duration_minutes=None,  # unknown until Person 5 delivers
-    )
-
 
 def _parse_location(location_str: Optional[str]) -> Optional[tuple[float, float]]:
     """Parse the NGO 'lat,lng' string stored in the DB."""
@@ -214,24 +188,26 @@ def load_routes(
     donation: me.Donation,
     ngos: list[me.NGOCandidate],
 ) -> dict[str, me.RouteMetrics]:
-    """Build route metrics for each candidate NGO.
+    """Build route metrics for each candidate NGO via Person 5's routing engine.
 
-    PLACEHOLDER: uses Haversine straight-line distance with urban corrections.
-    Replace this function body with real HTTP calls to Person 5's
-    /routes/calculate endpoint. The signature is fixed by the engine contract.
+    duration_minutes is the free-flow time; traffic_duration_minutes is the
+    time-of-day estimate the engine prefers when present (see
+    candidate_filter.py check 6 and scoring.route_score).
     """
-    routes: dict[str, me.RouteMetrics] = {}
-    pickup_lat = donation.pickup_location.latitude
-    pickup_lng = donation.pickup_location.longitude
-
-    for ngo in ngos:
-        dist = _haversine_km(
-            pickup_lat, pickup_lng,
-            ngo.location.latitude, ngo.location.longitude,
+    estimates = estimate_routes_from(
+        (donation.pickup_location.latitude, donation.pickup_location.longitude),
+        {ngo.ngo_id: (ngo.location.latitude, ngo.location.longitude) for ngo in ngos},
+        departure=datetime.now(timezone.utc),
+    )
+    return {
+        ngo_id: me.RouteMetrics(
+            ngo_id=ngo_id,
+            distance_km=round(estimate.distance_km, 2),
+            duration_minutes=round(estimate.duration_minutes, 1),
+            traffic_duration_minutes=round(estimate.traffic_duration_minutes, 1),
         )
-        routes[ngo.ngo_id] = _mock_route(ngo.ngo_id, dist)
-
-    return routes
+        for ngo_id, estimate in estimates.items()
+    }
 
 
 async def load_active_weights(

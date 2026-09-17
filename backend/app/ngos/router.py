@@ -32,6 +32,7 @@ from app.models import (
     UserRole,
 )
 from app.ngos.schemas import CreateNGOProfileRequest, ReplaceCategoriesRequest, UpdateCapacityRequest, UpdateDemandRequest, UpdateNGOProfileRequest
+from app.routing.service import offer_route_summary  # Person 5: incoming ETA/distance
 
 router = APIRouter(prefix="/api/v1/ngos", tags=["ngos"])
 
@@ -414,10 +415,9 @@ async def incoming_offers(
 ):
     """Donations currently matched to this NGO awaiting accept/reject.
 
-    eta_minutes / distance_km / remaining_shelf_life_min are only meaningful
-    once Person 4's matching engine has populated match_score, and Person 5's
-    routing has produced a route — until then this returns the matched set
-    with those fields null rather than fabricating numbers.
+    eta_minutes / distance_km come from Person 5's heuristic route (pickup ->
+    this NGO) and are null only when a location can't be parsed, rather than
+    fabricating numbers.
     """
     ngo = await _get_ngo_or_404(ngo_id, db)
     _require_self_or_admin(ngo_user, ngo)
@@ -431,6 +431,9 @@ async def incoming_offers(
     donations = result.scalars().all()
 
     now = datetime.utcnow()
+    # Person 5: pickup -> NGO heuristic route (no network), departing when the food is available.
+    routes = {d.id: offer_route_summary(d.pickup_location, ngo.location, max(now, d.available_from))
+              for d in donations}
     data = [
         {
             "id": d.id,
@@ -444,8 +447,8 @@ async def incoming_offers(
             "special_requirements": d.special_requirements,
             "status": d.status.value,
             "match_score": d.match_score,
-            "eta_minutes": None,  # populated once Person 5's route exists
-            "distance_km": None,
+            "eta_minutes": routes[d.id]["eta_minutes"],  # Person 5
+            "distance_km": routes[d.id]["distance_km"],  # Person 5
             "remaining_shelf_life_min": max(0, int((d.expiry_time - now).total_seconds() // 60)),
         }
         for d in donations

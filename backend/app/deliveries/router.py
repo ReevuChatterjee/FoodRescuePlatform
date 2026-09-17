@@ -14,7 +14,7 @@ POST /api/v1/handover/{delivery_id}       — NGO's half of digital sign-off (id
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,13 @@ from app.core.envelope import api_error, envelope, iso_z
 from app.core.idempotency import cache_response, get_cached_response, require_idempotency_key
 from app.core.ids import new_id
 from app.deliveries.schemas import DeliverRequest, HandoverRequest, PickupRequest
+from app.dispatch.service import (  # Person 5: delivery lifecycle service
+    confirm_delivery,
+    confirm_pickup,
+    lock_driver_delivery,
+    publish,
+    run_dispatch_pending,
+)
 from app.models import AuditLog, Delivery, DeliveryStatus, Donation, DonationStatus, HandoverRecord, User
 from app.ws.manager import manager
 
@@ -65,6 +72,11 @@ async def get_delivery(
     return envelope(_delivery_to_dict(delivery))
 
 
+# Person 5: pickup and deliver are Person 5's contract outputs (§6). The bodies
+# below delegate state changes to app.dispatch.service so the status guards,
+# vehicle capacity check and driver release live in one place. Flow: idempotent
+# replay (cache scoped per delivery and driver) -> lock the delivery row ->
+# ownership (403) -> service -> commit -> cache the response -> broadcast.
 @deliveries_router.post("/{delivery_id}/pickup")
 async def pickup(
     delivery_id: str,
@@ -73,24 +85,14 @@ async def pickup(
     idem_key: Annotated[str, Depends(require_idempotency_key)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    cached = await get_cached_response("deliveries.pickup", idem_key)
+    # Scoped per delivery and driver: a retry replays only this driver's own response.
+    scope = f"deliveries.pickup:{delivery_id}:{driver_user.id}"
+    cached = await get_cached_response(scope, idem_key)
     if cached is not None:
         return cached
+    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
 
-    delivery = await _get_delivery_or_404(delivery_id, db)
-    if delivery.driver_id != driver_user.id:
-        raise api_error(403, "FORBIDDEN", "This delivery is not assigned to you.")
-
-    now = datetime.utcnow()
-    delivery.actual_pickup_time = now
-    delivery.status = DeliveryStatus.PICKED_UP
-
-    donation_result = await db.execute(select(Donation).where(Donation.id == delivery.donation_id))
-    donation = donation_result.scalar_one_or_none()
-    if donation is not None:
-        donation.status = DonationStatus.PICKED_UP
-        donation.updated_at = now
-
+    events = await confirm_pickup(db, delivery, driver_user.id, body.confirmed_quantity_kg)
     db.add(AuditLog(
         entity_type="delivery", entity_id=delivery.id, event_type="pickup_confirmed",
         payload={"confirmed_quantity_kg": body.confirmed_quantity_kg, "driver_id": driver_user.id},
@@ -99,12 +101,9 @@ async def pickup(
     await db.commit()
     await db.refresh(delivery)
 
-    await manager.broadcast("deliveries", {
-        "event": "delivery.status_changed", "delivery_id": delivery.id, "status": delivery.status.value,
-    })
-
     response = envelope(_delivery_to_dict(delivery))
-    await cache_response("deliveries.pickup", idem_key, response)
+    await cache_response(scope, idem_key, response)
+    await publish(events)
     return response
 
 
@@ -112,28 +111,26 @@ async def pickup(
 async def deliver(
     delivery_id: str,
     body: DeliverRequest,
+    background_tasks: BackgroundTasks,
     driver_user: Annotated[User, Depends(require_role("DRIVER"))],
     idem_key: Annotated[str, Depends(require_idempotency_key)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    cached = await get_cached_response("deliveries.deliver", idem_key)
+    # Scoped per delivery and driver: a retry replays only this driver's own response.
+    scope = f"deliveries.deliver:{delivery_id}:{driver_user.id}"
+    cached = await get_cached_response(scope, idem_key)
     if cached is not None:
         return cached
+    delivery = await lock_driver_delivery(db, delivery_id, driver_user.id)
 
-    delivery = await _get_delivery_or_404(delivery_id, db)
-    if delivery.driver_id != driver_user.id:
-        raise api_error(403, "FORBIDDEN", "This delivery is not assigned to you.")
-
+    # Sets DELIVERED or PARTIALLY_DELIVERED (same rule as /handover) and frees the vehicle.
+    events = await confirm_delivery(db, delivery, body.quantity_handed_over)
     now = datetime.utcnow()
-    delivery.actual_delivery_time = now
-    delivery.status = DeliveryStatus.DELIVERED
-
-    donation_result = await db.execute(select(Donation).where(Donation.id == delivery.donation_id))
-    donation = donation_result.scalar_one_or_none()
-    if donation is not None:
-        donation.status = DonationStatus.DELIVERED
-        donation.updated_at = now
-
+    db.add(AuditLog(
+        entity_type="delivery", entity_id=delivery.id, event_type="delivery_confirmed",
+        payload={**body.model_dump(), "driver_id": driver_user.id, "status": delivery.status.value},
+        record_hash="", previous_hash=None,
+    ))
     db.add(HandoverRecord(
         id=new_id("hdv"),
         donation_id=delivery.donation_id,
@@ -150,12 +147,10 @@ async def deliver(
     await db.commit()
     await db.refresh(delivery)
 
-    await manager.broadcast("deliveries", {
-        "event": "delivery.status_changed", "delivery_id": delivery.id, "status": delivery.status.value,
-    })
-
     response = envelope(_delivery_to_dict(delivery))
-    await cache_response("deliveries.deliver", idem_key, response)
+    await cache_response(scope, idem_key, response)
+    await publish(events)
+    background_tasks.add_task(run_dispatch_pending)  # the freed driver can take a waiting donation
     return response
 
 

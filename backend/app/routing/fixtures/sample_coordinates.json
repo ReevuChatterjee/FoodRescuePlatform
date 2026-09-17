@@ -1,0 +1,43 @@
+{
+  "description": "Day-1 routing fixture (contract section 6): origin/destination pairs across Bengaluru for the routing proof-of-concept, driver UI and tests. Coordinates are approximate neighbourhood reference points, good enough for ETA demos, not survey-grade addresses.",
+  "places": {
+    "koramangala": { "label": "Koramangala (contract donation pickup)", "latitude": 12.9352, "longitude": 77.6245 },
+    "ngo_017": { "label": "ngo_017 (contract example NGO)", "latitude": 12.9345, "longitude": 77.6104 },
+    "indiranagar": { "label": "Indiranagar", "latitude": 12.9719, "longitude": 77.6412 },
+    "mg_road": { "label": "MG Road", "latitude": 12.9756, "longitude": 77.6066 },
+    "shivajinagar": { "label": "Shivajinagar", "latitude": 12.9857, "longitude": 77.6057 },
+    "majestic": { "label": "Majestic (Kempegowda bus station)", "latitude": 12.9767, "longitude": 77.5713 },
+    "basavanagudi": { "label": "Basavanagudi", "latitude": 12.9406, "longitude": 77.5738 },
+    "jayanagar": { "label": "Jayanagar", "latitude": 12.9299, "longitude": 77.5826 },
+    "btm_layout": { "label": "BTM Layout", "latitude": 12.9166, "longitude": 77.6101 },
+    "hsr_layout": { "label": "HSR Layout", "latitude": 12.9116, "longitude": 77.6412 },
+    "bellandur": { "label": "Bellandur", "latitude": 12.926, "longitude": 77.6762 },
+    "marathahalli": { "label": "Marathahalli", "latitude": 12.9569, "longitude": 77.7011 },
+    "whitefield": { "label": "Whitefield", "latitude": 12.9698, "longitude": 77.75 },
+    "electronic_city": { "label": "Electronic City", "latitude": 12.8452, "longitude": 77.6602 },
+    "banashankari": { "label": "Banashankari", "latitude": 12.9255, "longitude": 77.5468 },
+    "rajajinagar": { "label": "Rajajinagar", "latitude": 12.9901, "longitude": 77.5525 },
+    "malleshwaram": { "label": "Malleshwaram", "latitude": 13.0035, "longitude": 77.5647 },
+    "hebbal": { "label": "Hebbal", "latitude": 13.0358, "longitude": 77.597 },
+    "yelahanka": { "label": "Yelahanka", "latitude": 13.1007, "longitude": 77.5963 }
+  },
+  "pairs": [
+    { "id": "contract_example", "origin": "koramangala", "destination": "ngo_017", "note": "Short hop from the contract's JSON examples" },
+    { "id": "kora_to_indiranagar", "origin": "koramangala", "destination": "indiranagar" },
+    { "id": "mg_road_to_jayanagar", "origin": "mg_road", "destination": "jayanagar" },
+    { "id": "hsr_to_btm", "origin": "hsr_layout", "destination": "btm_layout", "note": "Neighbouring layouts" },
+    { "id": "whitefield_to_marathahalli", "origin": "whitefield", "destination": "marathahalli" },
+    { "id": "electronic_city_to_koramangala", "origin": "electronic_city", "destination": "koramangala", "note": "Long southern corridor" },
+    { "id": "majestic_to_malleshwaram", "origin": "majestic", "destination": "malleshwaram" },
+    { "id": "hebbal_to_shivajinagar", "origin": "hebbal", "destination": "shivajinagar" },
+    { "id": "yelahanka_to_mg_road", "origin": "yelahanka", "destination": "mg_road", "note": "Longest pair, north to centre" },
+    { "id": "banashankari_to_basavanagudi", "origin": "banashankari", "destination": "basavanagudi" },
+    { "id": "rajajinagar_to_majestic", "origin": "rajajinagar", "destination": "majestic" },
+    { "id": "bellandur_to_hsr", "origin": "bellandur", "destination": "hsr_layout" }
+  ],
+  "driver_starts": [
+    { "id": "driver_near_pickup", "place": "btm_layout", "vehicle_capacity_kg": 60.0 },
+    { "id": "driver_far_away", "place": "hebbal", "vehicle_capacity_kg": 120.0 },
+    { "id": "driver_small_vehicle", "place": "koramangala", "vehicle_capacity_kg": 15.0 }
+  ]
+}
