@@ -5,12 +5,16 @@ app. Response `data`:
 
     {
       "distance_km": 5.4,
-      "duration_minutes": 11.2,          # without traffic
-      "traffic_duration_minutes": 19.6,  # expected with traffic; use this as the ETA
-      "geometry": "encoded_polyline",    # precision 5
-      "provider": "heuristic",           # heuristic | osrm | tomtom
+      "duration_minutes": 19.6,               # ETA including congestion (contract)
+      "geometry": "encoded_polyline",         # precision 5 (contract)
+      "traffic_aware": false,                 # true only for live traffic (contract)
+      "traffic_source": "time_of_day_model",  # live | time_of_day_model
+      "free_flow_duration_minutes": 11.2,     # without congestion
+      "provider": "heuristic",                # heuristic | osrm | tomtom
       "departure_time": "2026-09-09T12:00:00Z"
     }
+
+Everything after traffic_aware is an additive field (docs/person5-contract-additions.md).
 """
 from __future__ import annotations
 

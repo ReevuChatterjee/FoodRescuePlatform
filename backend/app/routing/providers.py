@@ -52,12 +52,24 @@ class RouteEstimate:
     def eta_minutes(self) -> float:
         return self.traffic_duration_minutes
 
+    @property
+    def traffic_aware(self) -> bool:
+        """True only when live traffic data produced the ETA (TomTom)."""
+        return self.provider == TomTomRouteProvider.name
+
     def to_dict(self) -> dict[str, Any]:
+        """HTTP shape (contract §6 plus additive fields). `duration_minutes` is the
+        ETA including congestion, as in the contract; when `traffic_aware` is
+        false the congestion is modelled (`traffic_source`), so consumers must not
+        apply their own on top."""
         return {
             "distance_km": round(self.distance_km, 1),
-            "duration_minutes": round(self.duration_minutes, 1),
-            "traffic_duration_minutes": round(self.traffic_duration_minutes, 1),
+            "duration_minutes": round(self.traffic_duration_minutes, 1),
             "geometry": self.geometry,
+            "traffic_aware": self.traffic_aware,
+            # Additive (see docs/person5-contract-additions.md)
+            "traffic_source": "live" if self.traffic_aware else "time_of_day_model",
+            "free_flow_duration_minutes": round(self.duration_minutes, 1),
             "provider": self.provider,
             "departure_time": _iso_z(self.departure_time),
         }
