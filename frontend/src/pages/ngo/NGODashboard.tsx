@@ -1,159 +1,230 @@
 /**
- * NGO Dashboard — main portal for NGO users.
- * Shows own profile, capacity status, verification badge, and quick actions.
+ * NGODashboard — feed + persistent sidebar capacity gauge.
+ * AI-tells removed:
+ *   - 4-col stat card grid → capacity gauge lives in sidebar (NGOLayout),
+ *     main area shows demand feed + categories inline
+ *   - panel cards for every section → surface-dense feed items
+ *   - badge-gray chip tags for categories → comma-separated inline olive-grey text
+ *   - identical Quick Actions card → compact hairline list
+ * Uses NGOLayout.
  */
 
 import { Link } from 'react-router-dom';
-import { Weight, Clock, CheckCircle, XCircle, Package, Settings, ArrowRight, ShieldAlert } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, Package, Settings, ArrowUpRight, ShieldAlert } from 'lucide-react';
 import { useMyNGOProfile } from '../../hooks/useNGO';
-import { AppLayout } from '../../components/layout/AppLayout';
+import { NGOLayout } from '../../components/layout/NGOLayout';
+import { MetricDisplay } from '../../components/common/MetricDisplay';
+
+const CATEGORY_DISPLAY: Record<string, string> = {
+  RAW_PRODUCE: 'Raw Produce',
+  COOKED:      'Cooked',
+  PACKAGED:    'Packaged',
+  BAKED_GOODS: 'Baked Goods',
+  DAIRY:       'Dairy',
+  MIXED:       'Mixed',
+};
 
 export function NGODashboard() {
   const { data: profile, isLoading, error } = useMyNGOProfile();
 
   if (isLoading) {
     return (
-      <AppLayout>
-        <div className="space-y-4">
-          <div className="skeleton h-8 w-56" />
-          <div className="skeleton h-48 w-full" />
-          <div className="skeleton h-32 w-full" />
+      <NGOLayout>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="skeleton" style={{ height: '40px', width: '200px' }} />
+          <div className="skeleton" style={{ height: '200px', width: '100%' }} />
+          <div className="skeleton" style={{ height: '140px', width: '100%' }} />
         </div>
-      </AppLayout>
+      </NGOLayout>
     );
   }
 
   if (error || !profile) {
     return (
-      <AppLayout>
-        <div className="panel p-12 text-center">
-          <p className="text-red-500 font-medium">Failed to load NGO profile. Please refresh.</p>
+      <NGOLayout>
+        <div className="surface" style={{ padding: '48px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--terracotta)', fontSize: '0.875rem', fontWeight: 500 }}>
+            Failed to load NGO profile. Please refresh.
+          </p>
         </div>
-      </AppLayout>
+      </NGOLayout>
     );
   }
 
-  const capacityUsedPct = profile.storage_capacity_kg > 0
-    ? ((profile.storage_capacity_kg - profile.available_capacity_kg) / profile.storage_capacity_kg) * 100
-    : 0;
-
   const isVerified = profile.verification_status === 'APPROVED';
-  const isPending = profile.verification_status === 'PENDING';
+  const isPending  = profile.verification_status === 'PENDING';
 
   return (
-    <AppLayout>
-      {/* Header */}
+    <NGOLayout>
+      {/* Page header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">{profile.organisation_name}</h1>
-          <p className="page-subtitle">{profile.address}</p>
+          <p className="page-subtitle" style={{ maxWidth: '60ch' }}>{profile.address}</p>
         </div>
-        <div className="flex items-center gap-3">
-          {isVerified && <span className="badge-green"><CheckCircle size={12} /> Verified</span>}
-          {isPending && <span className="badge-yellow"><Clock size={12} /> Verification Pending</span>}
-          {!isVerified && !isPending && <span className="badge-red"><XCircle size={12} /> Not Verified</span>}
+        <div className="flex items-center gap-2">
+          {isVerified && (
+            <span className="status-pill-success">
+              <span className="status-pill-dot dot-success" />
+              <CheckCircle size={9} style={{ marginRight: '2px' }} /> Verified
+            </span>
+          )}
+          {isPending && (
+            <span className="status-pill-warning">
+              <span className="status-pill-dot dot-amber" />
+              <Clock size={9} style={{ marginRight: '2px' }} /> Verification Pending
+            </span>
+          )}
+          {!isVerified && !isPending && (
+            <span className="status-pill-error">
+              <span className="status-pill-dot dot-error" />
+              <XCircle size={9} style={{ marginRight: '2px' }} /> Not Verified
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Pending verification notice */}
+      {/* Pending notice */}
       {isPending && (
-        <div className="mb-6 p-4 rounded-sm border border-amber-500/30 bg-amber-500/10 flex items-start gap-3">
-          <ShieldAlert size={20} className="text-amber-500 mt-0.5" />
+        <div
+          style={{
+            marginBottom: 'var(--sp-5)',
+            padding: '12px 16px',
+            borderLeft: '3px solid var(--amber-dim)',
+            background: 'var(--amber-dim-bg)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+          }}
+        >
+          <ShieldAlert size={16} style={{ color: 'var(--amber-dim)', marginTop: '1px', flexShrink: 0 }} />
           <div>
-            <p className="text-sm font-semibold text-amber-500">Verification Pending</p>
-            <p className="text-xs text-amber-500/80 mt-1">
+            <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--amber-dim)', marginBottom: '4px' }}>
+              Verification Pending
+            </p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
               Your NGO is awaiting admin review. You can still view your profile and incoming offers.
             </p>
           </div>
         </div>
       )}
 
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Storage Capacity', value: `${profile.storage_capacity_kg} kg`, icon: <Weight size={16} />, color: 'text-emerald-400' },
-          { label: 'Available Now', value: `${profile.available_capacity_kg} kg`, icon: <Package size={16} />, color: 'text-blue-400' },
-          { label: 'Categories Accepted', value: profile.accepted_categories.length, icon: <CheckCircle size={16} />, color: 'text-amber-400' },
-          { label: 'Demand Entries', value: profile.demand.length, icon: <ArrowRight size={16} />, color: 'text-zinc-100' },
-        ].map((s) => (
-          <div key={s.label} className="panel flex flex-col justify-between p-5">
-            <div className="flex items-center gap-1.5 text-zinc-500 mb-3">
-              {s.icon}
-              <span className="text-xs font-medium uppercase tracking-wide">{s.label}</span>
-            </div>
-            <p className={`text-2xl font-semibold tabular-nums ${s.color}`}>{s.value}</p>
-          </div>
-        ))}
-      </div>
+      {/* Two-column layout: feed (left 2/3) + actions rail (right 1/3) */}
+      <div
+        style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}
+        className="grid-cols-1 lg:!grid-cols-[2fr_1fr]"
+      >
+        {/* ── Left feed column ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left — Capacity & categories */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Capacity bar */}
-          <div className="panel">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="section-title mb-0"><Weight size={16} className="text-zinc-400" /> Storage Capacity</h3>
-              <Link to="/ngo/settings" className="text-xs text-emerald-500 font-medium hover:underline">Update</Link>
+          {/* Capacity section — inline MetricDisplay, not a card */}
+          <div>
+            <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
+              <p className="section-label">Storage Capacity</p>
+              <Link
+                to="/ngo/settings"
+                className="section-label hover:text-[var(--moss-light)] transition-colors"
+                style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
+              >
+                Update →
+              </Link>
             </div>
-            <div className="flex justify-between text-sm mb-2 font-medium">
-              <span className="text-zinc-100 tabular-nums">
-                {profile.available_capacity_kg} kg available
-              </span>
-              <span className="text-zinc-500 tabular-nums">
-                {profile.storage_capacity_kg} kg total
-              </span>
-            </div>
-            <div className="capacity-bar">
-              <div
-                className={`capacity-fill ${capacityUsedPct > 90 ? 'critical' : capacityUsedPct > 70 ? 'warning' : ''}`}
-                style={{ width: `${Math.min(capacityUsedPct, 100)}%` }}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', marginBottom: '20px' }}>
+              <MetricDisplay
+                value={profile.available_capacity_kg}
+                label="Available Now"
+                unit="kg"
+                size="md"
+              />
+              <MetricDisplay
+                value={profile.storage_capacity_kg}
+                label="Total Capacity"
+                unit="kg"
+                size="sm"
               />
             </div>
-            <p className="text-xs mt-2 text-zinc-500 tabular-nums">
-              {capacityUsedPct.toFixed(0)}% occupied
-            </p>
           </div>
 
-          {/* Accepted food categories */}
-          <div className="panel">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="section-title mb-0"><Package size={16} className="text-zinc-400" /> Accepted Categories</h3>
-              <Link to="/ngo/settings" className="text-xs text-emerald-500 font-medium hover:underline">Edit</Link>
+          {/* Accepted categories — comma-separated, no chips */}
+          <div>
+            <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+              <p className="section-label">Accepted Categories</p>
+              <Link
+                to="/ngo/settings"
+                className="section-label hover:text-[var(--moss-light)] transition-colors"
+                style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
+              >
+                Edit →
+              </Link>
             </div>
             {profile.accepted_categories.length === 0 ? (
-              <p className="text-sm text-zinc-500">No food categories configured. Set preferences in Settings.</p>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                No categories configured.{' '}
+                <Link to="/ngo/settings" style={{ color: 'var(--moss-light)', textDecoration: 'none' }}>
+                  Set preferences →
+                </Link>
+              </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {profile.accepted_categories.map((cat) => (
-                  <span key={cat} className="badge-gray px-2 py-1 text-xs">
-                    {cat.replace(/_/g, ' ')}
-                  </span>
-                ))}
-              </div>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                {profile.accepted_categories
+                  .map((c) => CATEGORY_DISPLAY[c] ?? c.replace(/_/g, ' '))
+                  .join(' · ')}
+              </p>
             )}
           </div>
 
-          {/* Current demand */}
-          <div className="panel">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="section-title mb-0"><ArrowRight size={16} className="text-zinc-400" /> Current Demand</h3>
-              <Link to="/ngo/settings" className="text-xs text-emerald-500 font-medium hover:underline">Add</Link>
+          {/* Current demand — hairline feed list */}
+          <div>
+            <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
+              <p className="section-label">Current Demand</p>
+              <Link
+                to="/ngo/settings"
+                className="section-label hover:text-[var(--moss-light)] transition-colors"
+                style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
+              >
+                Add →
+              </Link>
             </div>
             {profile.demand.length === 0 ? (
-              <p className="text-sm text-zinc-500">No demand entries. Add them in Settings to improve matching.</p>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                No demand entries.{' '}
+                <Link to="/ngo/settings" style={{ color: 'var(--moss-light)', textDecoration: 'none' }}>
+                  Add them to improve matching →
+                </Link>
+              </p>
             ) : (
-              <div className="divide-y divide-zinc-800 border border-zinc-800 rounded-sm">
+              <div className="surface-dense" style={{ overflow: 'hidden' }}>
                 {profile.demand.map((d, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-zinc-950">
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderBottom: i < profile.demand.length - 1 ? '1px solid var(--border-hair)' : 'none',
+                    }}
+                  >
                     <div>
-                      <p className="text-sm font-semibold text-zinc-100 mb-1">
-                        {d.food_category.replace(/_/g, ' ')}
+                      <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
+                        {CATEGORY_DISPLAY[d.food_category] ?? d.food_category.replace(/_/g, ' ')}
                       </p>
-                      <p className="text-xs text-zinc-500 tabular-nums">
-                        Priority {d.priority} • Valid until {new Date(d.valid_until).toLocaleDateString()}
+                      <p style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                        Priority {d.priority} · Valid until {new Date(d.valid_until).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className="badge-blue tabular-nums">{d.required_quantity_kg} kg</span>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-display)',
+                        fontSize: '1rem',
+                        fontWeight: 300,
+                        color: 'var(--text-secondary)',
+                        fontVariantNumeric: 'tabular-nums',
+                        fontVariationSettings: "'opsz' 16",
+                      }}
+                    >
+                      {d.required_quantity_kg} kg
+                    </span>
                   </div>
                 ))}
               </div>
@@ -161,58 +232,69 @@ export function NGODashboard() {
           </div>
         </div>
 
-        {/* Right — Quick actions & hours */}
-        <div className="space-y-6">
+        {/* ── Right rail: actions + operating hours ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
           {/* Quick actions */}
-          <div className="panel">
-            <h3 className="section-title"><ArrowRight size={16} className="text-zinc-400" /> Quick Actions</h3>
-            <div className="space-y-3">
+          <div>
+            <p className="section-label" style={{ marginBottom: '12px' }}>Actions</p>
+            <div className="surface-dense" style={{ overflow: 'hidden' }}>
               {[
-                { label: 'View Incoming Offers', href: '/ngo/incoming', icon: <Package size={16} />, desc: 'Review matched donations' },
-                { label: 'Update Settings', href: '/ngo/settings', icon: <Settings size={16} />, desc: 'Capacity, demand & profile' },
-              ].map((a) => (
-                <Link key={a.href} to={a.href}
-                  className="flex items-start gap-3 p-4 bg-zinc-950 border border-zinc-800 rounded-sm hover:bg-zinc-800 transition-colors">
-                  <div className="mt-0.5 text-zinc-400">
-                    {a.icon}
+                { label: 'Incoming Offers', href: '/ngo/incoming', icon: <Package size={13} />, desc: 'Review matched donations' },
+                { label: 'Settings',        href: '/ngo/settings', icon: <Settings size={13} />, desc: 'Capacity, demand & profile' },
+              ].map((a, i, arr) => (
+                <Link
+                  key={a.href}
+                  to={a.href}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--border-hair)' : 'none',
+                    textDecoration: 'none',
+                    transition: 'background 0.1s',
+                  }}
+                  className="hover:bg-hover"
+                >
+                  <div style={{ color: 'var(--text-muted)', flexShrink: 0 }}>{a.icon}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '2px' }}>{a.label}</p>
+                    <p style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{a.desc}</p>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-100 mb-0.5">{a.label}</p>
-                    <p className="text-xs text-zinc-500">{a.desc}</p>
-                  </div>
+                  <ArrowUpRight size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                 </Link>
               ))}
             </div>
           </div>
 
-          {/* Operating hours */}
-          <div className="panel">
-            <h3 className="section-title"><Clock size={16} className="text-zinc-400" /> Operating Hours</h3>
-            <div className="flex items-center gap-3 p-4 bg-zinc-950 border border-zinc-800 rounded-sm">
-              <div className="flex-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 mb-1">Opens</p>
-                <p className="text-lg font-semibold tabular-nums text-zinc-100">{profile.operating_hours.start}</p>
-              </div>
-              <div className="text-zinc-600">—</div>
-              <div className="flex-1 text-right">
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 mb-1">Closes</p>
-                <p className="text-lg font-semibold tabular-nums text-zinc-100">{profile.operating_hours.end}</p>
-              </div>
+          {/* Operating hours — two inline MetricDisplays */}
+          <div>
+            <p className="section-label" style={{ marginBottom: '12px' }}>Operating Hours</p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <MetricDisplay value={profile.operating_hours.start} label="Opens"  size="sm" />
+              <MetricDisplay value={profile.operating_hours.end}   label="Closes" size="sm" />
             </div>
-            <Link to="/ngo/settings" className="text-xs mt-4 block text-center text-emerald-500 hover:underline">
-              Edit hours
+            <Link
+              to="/ngo/settings"
+              className="section-label hover:text-[var(--moss-light)] transition-colors"
+              style={{ color: 'var(--text-muted)', textDecoration: 'none', marginTop: '8px', display: 'block' }}
+            >
+              Edit hours →
             </Link>
           </div>
 
           {/* NGO ID */}
-          <div className="panel p-5">
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 mb-1">NGO ID</p>
-            <p className="text-xs font-mono text-zinc-400 break-all">
+          <div>
+            <p className="section-label" style={{ marginBottom: '6px' }}>NGO ID</p>
+            <p
+              className="font-mono-data"
+              style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}
+            >
               {profile.ngo_id}
             </p>
           </div>
         </div>
       </div>
-    </AppLayout>
+    </NGOLayout>
   );
 }

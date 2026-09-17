@@ -5,13 +5,13 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MapPin, Clock, Package, Truck, CheckCircle, XCircle, Upload, AlertTriangle, Crosshair } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Package, Truck, CheckCircle, XCircle, Upload, AlertTriangle, Crosshair, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiClient } from '../../api/client';
 import type { Donation, SuccessEnvelope } from '../../types/api';
 import { StatusBadge } from '../../components/donor/StatusBadge';
 import { useDonationWebSocket } from '../../hooks/useDonationWebSocket';
-import { AppLayout } from '../../components/layout/AppLayout';
+import { DonorLayout } from '../../components/layout/DonorLayout';
 
 // Status timeline order
 const STATUS_TIMELINE = [
@@ -33,11 +33,15 @@ function StatusTimeline({ currentStatus }: { currentStatus: string }) {
   const isTerminalBad = ['NO_MATCH_FOUND', 'REJECTED', 'EXPIRED', 'CANCELLED', 'DRIVER_ISSUE'].includes(currentStatus);
 
   return (
-    <div className="panel p-6 border-[var(--border-strong)] bg-[var(--bg-page)] relative overflow-hidden h-full">
-      <div className="absolute top-0 right-0 p-4 opacity-5">
-        <Clock size={160} />
-      </div>
-      <div className="relative z-10">
+    <div
+      style={{
+        border: '1px solid var(--border-hair)',
+        background: 'var(--bg-panel)',
+        padding: '24px',
+        height: '100%',
+      }}
+    >
+      <div>
         <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--text-secondary)] mb-6 flex items-center gap-2">
           <Clock size={14} className="text-[var(--text-muted)]" /> Telemetry Sequence
         </h3>
@@ -138,7 +142,7 @@ export function DonationDetails() {
 
   if (isLoading) {
     return (
-      <AppLayout>
+      <DonorLayout>
         <div className="space-y-6">
           <div className="skeleton h-12 w-1/3 rounded-md" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -149,13 +153,13 @@ export function DonationDetails() {
             <div className="skeleton h-96 w-full rounded-md" />
           </div>
         </div>
-      </AppLayout>
+      </DonorLayout>
     );
   }
 
   if (error || !data) {
     return (
-      <AppLayout>
+      <DonorLayout>
         <div className="panel p-16 text-center border-[var(--error)]/20 bg-[var(--error)]/5">
           <div className="w-16 h-16 rounded-full bg-[var(--error)]/10 flex items-center justify-center mx-auto mb-4">
              <XCircle size={32} className="text-[var(--error)]" />
@@ -163,7 +167,7 @@ export function DonationDetails() {
           <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">Telemetry Lost</h3>
           <p className="text-[var(--error)] font-medium text-sm">Failed to retrieve payload details from the network.</p>
         </div>
-      </AppLayout>
+      </DonorLayout>
     );
   }
 
@@ -171,7 +175,7 @@ export function DonationDetails() {
   const isCancellable = CANCELLABLE.includes(donation.status);
 
   return (
-    <AppLayout>
+    <DonorLayout>
       {/* Header */}
       <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
@@ -357,7 +361,7 @@ export function DonationDetails() {
           <StatusTimeline currentStatus={donation.status} />
         </div>
       </div>
-    </AppLayout>
+    </DonorLayout>
   );
 }
 

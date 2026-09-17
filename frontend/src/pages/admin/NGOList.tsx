@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Building2, CheckCircle, XCircle, Clock, Search, Weight, ChevronRight } from 'lucide-react';
 import { apiClient } from '../../api/client';
-import { AppLayout } from '../../components/layout/AppLayout';
+import { AdminLayout } from '../../components/layout/AdminLayout';
 import type { NGO, SuccessEnvelope } from '../../types/api';
 
 type FilterStatus = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -39,7 +39,7 @@ export function NGOList() {
   );
 
   return (
-    <AppLayout>
+    <AdminLayout>
       {/* Header */}
       <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -167,7 +167,7 @@ export function NGOList() {
           </div>
         </div>
       )}
-    </AppLayout>
+    </AdminLayout>
   );
 }
 

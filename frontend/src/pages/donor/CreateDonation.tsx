@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Package, MapPin, Shield, ArrowLeft, ArrowRight, Loader2, X, Info } from 'lucide-react';
 import { apiClient } from '../../api/client';
-import { AppLayout } from '../../components/layout/AppLayout';
+import { DonorLayout } from '../../components/layout/DonorLayout';
 
 const ALLERGENS = ['Gluten', 'Dairy', 'Eggs', 'Nuts', 'Soy', 'Fish', 'Shellfish', 'Sesame'];
 
@@ -107,7 +107,7 @@ export function CreateDonation() {
   const onSubmit = (data: FormValues) => mutation.mutate(data);
 
   return (
-    <AppLayout>
+    <DonorLayout>
       {/* Header */}
       <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -311,7 +311,7 @@ export function CreateDonation() {
           </div>
         </form>
       </div>
-    </AppLayout>
+    </DonorLayout>
   );
 }
 

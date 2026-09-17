@@ -1,139 +1,325 @@
 /**
  * LandingPage — public-facing homepage.
- * Shows live platform stats from analytics endpoint.
- * Designed as a high-density, functional utility landing page.
+ * 7/5 asymmetric hero split (not 6/6).
+ * Traceability section: horizontal proportional timeline (not equal-column cards).
+ * Metrics: MetricDisplay components — no card boxes.
+ * NetworkRadar: SVG behind the metrics panel at 35% opacity.
  */
 
 import { Link } from 'react-router-dom';
-import { Package, Truck, Heart, ArrowRight, MapPin, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Leaf } from 'lucide-react';
 import { useAnalyticsOverview } from '../hooks/useAnalytics';
 import { NetworkRadar } from '../components/visuals/NetworkRadar';
+import { MetricDisplay } from '../components/common/MetricDisplay';
+import { ThemeToggle } from '../components/common/ThemeToggle';
+
+const LIFECYCLE_STEPS = [
+  {
+    step: '01',
+    label: 'Surplus Identified',
+    desc: 'Donor logs food details, quantity and pickup location.',
+    accent: 'var(--olive-grey)',
+  },
+  {
+    step: '02',
+    label: 'Capacity Matched',
+    desc: 'NGOs with available capacity accept based on proximity and category.',
+    accent: 'var(--amber-dim)',
+  },
+  {
+    step: '03',
+    label: 'Route Dispatched',
+    desc: 'Driver is assigned and navigates to the pickup location.',
+    accent: 'var(--moss-light)',
+  },
+  {
+    step: '04',
+    label: 'Handoff Verified',
+    desc: 'NGO confirms receipt. Network capacity and donor analytics update.',
+    accent: 'var(--moss-light)',
+  },
+];
 
 export function LandingPage() {
   const { data: stats } = useAnalyticsOverview();
 
   return (
-    <div className="min-h-screen flex flex-col bg-[var(--bg-page)] text-[var(--text-primary)]">
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)' }}>
+
       {/* ── Navbar ── */}
-      <nav className="border-b border-[var(--border-subtle)] bg-[var(--bg-page)] px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 bg-[var(--brand)] rounded-sm flex items-center justify-center" />
-          <span className="font-semibold tracking-tight text-[var(--text-primary)]">RePlate Ops</span>
+      <nav
+        className="border-b sticky top-0 z-50 flex items-center justify-between"
+        style={{
+          borderColor: 'var(--border-hair)',
+          background: 'var(--bg-base)',
+          padding: '0 32px',
+          height: '52px',
+        }}
+      >
+        <div className="flex items-center gap-2.5">
+          <div
+            style={{
+              width: '22px', height: '22px',
+              background: 'var(--moss)',
+              borderRadius: '2px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Leaf size={12} style={{ color: '#C8DFC9' }} />
+          </div>
+          <span
+            className="font-semibold"
+            style={{ color: 'var(--text-primary)', fontSize: '0.875rem', letterSpacing: '-0.02em' }}
+          >
+            RePlate Ops
+          </span>
         </div>
-        <div className="flex items-center gap-4">
-          <Link to="/login" className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">Sign In</Link>
-          <Link to="/login" className="btn-primary">Platform Access</Link>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Link
+            to="/login"
+            className="section-label"
+            style={{ color: 'var(--text-secondary)', textDecoration: 'none' }}
+          >
+            Sign In
+          </Link>
+          <Link to="/login" className="btn-primary" style={{ padding: '6px 14px', fontSize: '0.8125rem' }}>
+            Platform Access
+          </Link>
         </div>
       </nav>
 
-      {/* ── Hero: The Living Rescue Network ── */}
-      <section className="flex-1 flex flex-col justify-center px-6 py-24 max-w-6xl mx-auto w-full relative">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div className="relative z-10">
-            <h1 className="heading-major mb-6 leading-tight">
+      {/* ── Hero: 7/5 asymmetric split ── */}
+      <section style={{ padding: 'var(--sp-7) 32px var(--sp-6)', flex: 1 }}>
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'grid',
+            gridTemplateColumns: '7fr 5fr',
+            gap: '64px',
+            alignItems: 'center',
+          }}
+          className="grid-cols-1 lg:!grid-cols-[7fr_5fr]"
+        >
+          {/* Left — editorial copy */}
+          <div>
+            <p
+              className="section-label"
+              style={{ color: 'var(--moss-light)', marginBottom: '24px' }}
+            >
+              Living Rescue Network
+            </p>
+            <h1 className="heading-major" style={{ marginBottom: '28px', maxWidth: '14ch' }}>
               Surplus food, coordinated before it is lost.
             </h1>
-            <p className="text-lg text-[var(--text-secondary)] mb-8 max-w-lg leading-relaxed">
-              Connect the people, places, and routes that move food where it is needed. A real-time logistics network turning available surplus into completed handoffs.
+            <p
+              className="prose-body"
+              style={{ fontSize: '1.0625rem', marginBottom: '40px', lineHeight: 1.65 }}
+            >
+              Connect the people, places, and routes that move food where it is needed.
+              A real-time logistics network turning available surplus into completed handoffs.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/login" className="btn-primary px-6 py-3 text-base">
-                Enter Network <ArrowRight size={18} />
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link to="/login" className="btn-primary" style={{ padding: '10px 24px', fontSize: '0.9375rem' }}>
+                Enter Network <ArrowRight size={16} />
               </Link>
-              <a href="#traceability" className="btn-secondary px-6 py-3 text-base">
+              <a
+                href="#traceability"
+                className="btn-secondary"
+                style={{ padding: '10px 24px', fontSize: '0.9375rem' }}
+              >
                 View Traceability
               </a>
             </div>
           </div>
 
-          {/* Operational Metrics Panel */}
-          <div className="panel flex flex-col justify-center border-[var(--border-strong)] relative overflow-hidden h-full min-h-[350px]">
-            {/* Embedded SVG Visual */}
+          {/* Right — raw metric display, no card box */}
+          <div
+            style={{
+              position: 'relative',
+              padding: '32px',
+              border: '1px solid var(--border-hair)',
+              background: 'var(--bg-panel)',
+              borderRadius: '2px',
+              overflow: 'hidden',
+              minHeight: '360px',
+            }}
+          >
+            {/* NetworkRadar behind metrics */}
             <NetworkRadar />
-            
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-[var(--border-subtle)] relative z-10">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
-                <div className="w-2 h-2 rounded-none bg-[var(--success)] animate-pulse" /> Live Network Capacity
-              </h2>
-              <span className="badge-green">Operational</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-y-8 gap-x-4 relative z-10">
-              <div>
-                <p className="text-xs text-[var(--text-secondary)] mb-1 uppercase tracking-widest font-semibold">Active Logistics</p>
-                <p className="text-4xl font-bold text-[var(--text-primary)] font-mono-data">
-                  {stats?.active_deliveries ?? 0}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--text-secondary)] mb-1 uppercase tracking-widest font-semibold">Pending Surplus</p>
-                <p className="text-4xl font-bold text-[var(--text-primary)] font-mono-data">
-                  {stats?.active_donations ?? 0}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--text-secondary)] mb-1 uppercase tracking-widest font-semibold">Rescued Volume</p>
-                <p className="text-4xl font-bold text-[var(--text-primary)] font-mono-data">
-                  {stats?.total_food_rescued_kg?.toFixed(0) ?? 0} <span className="text-sm font-normal text-[var(--text-muted)]">kg</span>
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--text-secondary)] mb-1 uppercase tracking-widest font-semibold">Network Nodes</p>
-                <p className="text-4xl font-bold text-[var(--text-primary)] font-mono-data">
-                  {(stats?.registered_ngos ?? 0) + (stats?.registered_donors ?? 0)}
-                </p>
+
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <p className="section-label" style={{ marginBottom: '20px' }}>Network Activity</p>
+
+              {/* Asymmetric metric layout: 2 large + 2 smaller */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px 20px' }}>
+                <MetricDisplay
+                  value={stats?.active_deliveries ?? 0}
+                  label="Active Logistics"
+                  size="lg"
+                />
+                <MetricDisplay
+                  value={stats?.active_donations ?? 0}
+                  label="Pending Surplus"
+                  size="md"
+                />
+                <MetricDisplay
+                  value={stats?.total_food_rescued_kg?.toFixed(0) ?? 0}
+                  label="Rescued kg"
+                  unit="kg"
+                  size="md"
+                />
+                <MetricDisplay
+                  value={(stats?.registered_ngos ?? 0) + (stats?.registered_donors ?? 0)}
+                  label="Network Nodes"
+                  size="sm"
+                />
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Traceability Lifecycle ── */}
-      <section id="traceability" className="border-t border-[var(--border-subtle)] bg-[var(--bg-panel)] py-24 px-6">
-        <div className="max-w-6xl mx-auto w-full">
-          <div className="mb-16 max-w-2xl">
-            <h2 className="text-3xl font-bold tracking-tight text-[var(--text-primary)] mb-4">A donation moves.</h2>
-            <p className="text-lg text-[var(--text-secondary)]">From available surplus to a completed handoff, every step is tracked, allocated, and verified.</p>
+      {/* ── Traceability Lifecycle — horizontal timeline, not equal cards ── */}
+      <section
+        id="traceability"
+        style={{
+          borderTop: '1px solid var(--border-hair)',
+          background: 'var(--bg-panel)',
+          padding: 'var(--sp-6) 32px',
+        }}
+      >
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          {/* Section heading — left-aligned, not centered */}
+          <div style={{ marginBottom: 'var(--sp-6)' }}>
+            <p className="section-label" style={{ marginBottom: '12px' }}>Donation Lifecycle</p>
+            <h2
+              className="heading-section"
+              style={{ marginBottom: '10px', maxWidth: '20ch' }}
+            >
+              A donation moves.
+            </h2>
+            <p
+              className="prose-body"
+              style={{ fontSize: '0.9375rem' }}
+            >
+              Every step is tracked, allocated, and verified from surplus to handoff.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            {[
-              { icon: <MapPin size={24} />, step: 'Created', title: 'Surplus Identified', desc: 'Food details, quantity, and location are logged into the system by the donor.', status: 'badge-gray' },
-              { icon: <Package size={24} />, step: 'Accepted', title: 'Capacity Matched', desc: 'NGOs with available capacity accept the donation based on geographic proximity.', status: 'badge-blue' },
-              { icon: <Truck size={24} />, step: 'Pickup', title: 'Route Dispatched', desc: 'Driver is assigned and routes to the pickup location to collect the surplus.', status: 'badge-orange' },
-              { icon: <CheckCircle2 size={24} />, step: 'Delivered', title: 'Handoff Verified', desc: 'NGO confirms receipt, updating network capacity and donor analytics.', status: 'badge-green' },
-            ].map((s, idx) => (
-              <div key={s.step} className="panel relative overflow-hidden bg-[var(--bg-page)] border-[var(--border-subtle)]">
-                {idx !== 3 && (
-                  <div className="hidden md:block absolute top-12 -right-3 text-[var(--border-strong)]">
-                    <ArrowRight size={24} />
-                  </div>
-                )}
-                <div className="mb-6 flex justify-between items-start">
-                  <div className="p-3 bg-[var(--bg-panel-hover)] rounded-md inline-block text-[var(--text-primary)]">
-                    {s.icon}
-                  </div>
-                  <span className={s.status}>{s.step}</span>
+          {/* Horizontal timeline — not equal-column cards */}
+          <ol
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 0,
+              listStyle: 'none',
+              padding: 0,
+              margin: 0,
+              position: 'relative',
+            }}
+            className="grid-cols-1 sm:grid-cols-2 lg:!grid-cols-4"
+          >
+            {/* Connecting rule */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '20px',
+                left: '0',
+                right: '0',
+                height: '1px',
+                background: 'var(--border-med)',
+              }}
+              aria-hidden="true"
+            />
+
+            {LIFECYCLE_STEPS.map((step, idx) => (
+              <li
+                key={step.step}
+                style={{
+                  paddingTop: '44px',
+                  paddingRight: idx < 3 ? '24px' : 0,
+                  position: 'relative',
+                }}
+              >
+                {/* Step number — Fraunces serif, large */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '1.125rem',
+                    fontWeight: 300,
+                    color: step.accent,
+                    fontVariationSettings: "'opsz' 18",
+                    lineHeight: 1,
+                  }}
+                >
+                  {step.step}
                 </div>
-                <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">{s.title}</h3>
-                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{s.desc}</p>
-              </div>
+
+                <p
+                  style={{
+                    fontFamily: 'var(--font-ui)',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                    marginBottom: '8px',
+                    letterSpacing: '-0.015em',
+                  }}
+                >
+                  {step.label}
+                </p>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-ui)',
+                    fontSize: '0.8125rem',
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.6,
+                    maxWidth: '28ch',
+                  }}
+                >
+                  {step.desc}
+                </p>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-page)] py-8 px-6">
-        <div className="max-w-6xl mx-auto w-full flex flex-col sm:flex-row justify-between items-center gap-4">
+      <footer
+        style={{
+          borderTop: '1px solid var(--border-hair)',
+          background: 'var(--bg-base)',
+          padding: '20px 32px',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-[var(--brand)] rounded-sm" />
-            <span className="text-sm font-semibold tracking-tight text-[var(--text-secondary)]">RePlate Ops</span>
+            <div style={{ width: '16px', height: '16px', background: 'var(--moss)', borderRadius: '1px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Leaf size={9} style={{ color: '#C8DFC9' }} />
+            </div>
+            <span className="section-label" style={{ color: 'var(--text-muted)' }}>RePlate Ops</span>
           </div>
-          <p className="text-xs text-[var(--text-muted)] font-mono-data">System Build 2026.4</p>
+          <span className="font-mono-data section-label" style={{ color: 'var(--text-muted)', fontSize: '0.625rem' }}>
+            System Build 2026.4
+          </span>
         </div>
       </footer>
     </div>
   );
 }
-
