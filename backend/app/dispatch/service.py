@@ -12,6 +12,7 @@ Delivery lifecycle handled here:
   -> IN_TRANSIT                        location ping > 150 m from the pickup
   -> DELIVERED | PARTIALLY_DELIVERED   POST /deliveries/{id}/deliver
   DRIVER_ASSIGNED | PICKUP_STARTED -> DRIVER_ISSUE -> reassigned, same NGO
+  DRIVER_ASSIGNED | PICKUP_STARTED | DRIVER_ISSUE -> CANCELLED   donor cancels
 
 Concurrency: the donation row is locked (SELECT ... FOR UPDATE) for the whole
 assignment, and a driver is claimed with a compare-and-set UPDATE on
@@ -620,6 +621,56 @@ async def report_driver_issue(db: AsyncSession, delivery: Delivery, driver_id: s
         events.append(_event("drivers", "driver.status_changed", driver_id=driver_id,
                              vehicle_id=vehicle.id, availability_status=OFFLINE))
     return events
+
+
+@dataclass
+class CancellationRelease:
+    events: list[Event]
+    driver_released: bool  # a driver went back to AVAILABLE: retry pending donations
+
+
+async def release_for_cancelled_donation(
+    db: AsyncSession, donation_id: str, reason: str | None, cancelled_by: str
+) -> CancellationRelease:
+    """Donor cancels: close the donation's delivery before pickup and free the
+    driver. Locks the donation row (serialising with dispatch), then the active
+    delivery. 409 if the food was picked up in the meantime. Caller commits the
+    donation's own CANCELLED status in the same transaction."""
+    await db.execute(
+        select(Donation).where(Donation.id == donation_id).with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    result = await db.execute(
+        select(Delivery)
+        .where(
+            Delivery.donation_id == donation_id,
+            Delivery.status.in_((*ACTIVE_DELIVERY_STATUSES, DeliveryStatus.DRIVER_ISSUE)),
+        )
+        .with_for_update()
+    )
+    deliveries = list(result.scalars())
+    if any(d.status not in ISSUE_ALLOWED_FROM and d.status != DeliveryStatus.DRIVER_ISSUE for d in deliveries):
+        raise api_error(409, "ALREADY_IN_TRANSIT", "Cannot cancel a donation once it has been picked up.")
+
+    events: list[Event] = []
+    driver_released = False
+    for delivery in deliveries:
+        previous = delivery.status
+        delivery.status = DeliveryStatus.CANCELLED
+        _audit(db, "delivery", delivery.id, "delivery_cancelled", {
+            "donation_id": donation_id, "driver_id": delivery.driver_id, "previous_status": previous.value,
+            "reason": reason, "cancelled_by": cancelled_by,
+        })
+        events.append(_delivery_status_event(delivery))
+        if previous == DeliveryStatus.DRIVER_ISSUE:
+            continue  # that driver was already taken offline when the issue was reported
+        vehicle = await vehicle_for_driver(db, delivery.driver_id)
+        if vehicle is not None and vehicle.availability_status == BUSY:
+            vehicle.availability_status = AVAILABLE
+            driver_released = True
+            events.append(_event("drivers", "driver.status_changed", driver_id=vehicle.driver_id,
+                                 vehicle_id=vehicle.id, availability_status=AVAILABLE))
+    return CancellationRelease(events=events, driver_released=driver_released)
 
 
 # ─── driver-facing views ────────────────────────────────────────────────────
