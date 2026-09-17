@@ -7,9 +7,9 @@ stays ACCEPTED and is retried the moment any driver becomes available (goes
 online or finishes a delivery), so nothing depends on polling.
 
 Delivery lifecycle handled here:
-  DRIVER_ASSIGNED -> PICKUP_STARTED    first live location after assignment
+  DRIVER_ASSIGNED -> PICKUP_STARTED    POST /deliveries/{id}/start (optional)
   -> PICKED_UP                         POST /deliveries/{id}/pickup
-  -> IN_TRANSIT                        first live location after pickup
+  -> IN_TRANSIT                        location ping > 150 m from the pickup
   -> DELIVERED | PARTIALLY_DELIVERED   POST /deliveries/{id}/deliver
   DRIVER_ASSIGNED | PICKUP_STARTED -> DRIVER_ISSUE -> reassigned, same NGO
 
@@ -57,7 +57,7 @@ from app.models import (
     Donor,
     Vehicle,
 )
-from app.routing.geo import LatLng, format_latlng, parse_latlng
+from app.routing.geo import LatLng, format_latlng, haversine_km, is_valid_latlng, parse_latlng
 from app.routing.service import calculate_route, get_heuristic
 from app.ws.manager import manager
 
@@ -75,10 +75,8 @@ DISPATCHABLE_DONATION_STATUSES = (DonationStatus.ACCEPTED, DonationStatus.DRIVER
 PICKUP_ALLOWED_FROM = frozenset({DeliveryStatus.DRIVER_ASSIGNED, DeliveryStatus.PICKUP_STARTED})
 DELIVER_ALLOWED_FROM = frozenset({DeliveryStatus.PICKED_UP, DeliveryStatus.IN_TRANSIT})
 ISSUE_ALLOWED_FROM = PICKUP_ALLOWED_FROM  # after pickup the food is on board: handled manually
-MOVEMENT_TRANSITIONS = {
-    DeliveryStatus.DRIVER_ASSIGNED: DeliveryStatus.PICKUP_STARTED,
-    DeliveryStatus.PICKED_UP: DeliveryStatus.IN_TRANSIT,
-}
+# ASSUMPTION: 150 m clears GPS noise around the pickup before calling it "in transit".
+IN_TRANSIT_DISTANCE_KM = 0.15
 
 Event = tuple[str, dict[str, Any]]
 
@@ -465,24 +463,80 @@ async def run_dispatch_pending() -> list[DispatchOutcome]:
 
 # ─── delivery lifecycle ─────────────────────────────────────────────────────
 
-async def on_driver_location(db: AsyncSession, driver_id: str) -> tuple[Delivery | None, list[Event]]:
-    """Movement-derived transitions. The driver app streams location only while
-    the driver is working a job, so the first ping after assignment means they
-    are heading to the pickup, and the first ping after pickup means the food is
-    in transit. Caller commits."""
+@dataclass
+class LocationUpdate:
+    vehicle: Vehicle
+    delivery: Delivery | None
+    events: list[Event]
+    # An AVAILABLE driver whose location was unknown just became dispatchable.
+    should_dispatch_pending: bool
+
+
+async def record_driver_location(
+    db: AsyncSession, driver_id: str, location: LatLng, now: datetime | None = None
+) -> LocationUpdate:
+    """Store a live location ping and derive what follows from it. Caller commits.
+
+    - /ws/drivers always gets driver.location_update.
+    - While the driver has an active delivery, /ws/deliveries gets
+      delivery.location_update with the heuristic ETA to the next stop.
+    - PICKED_UP -> IN_TRANSIT once the driver is more than IN_TRANSIT_DISTANCE_KM
+      from the pickup. PICKUP_STARTED is never inferred from location (available
+      drivers stream location too); it comes from POST /deliveries/{id}/start.
+    """
+    now = as_aware(now or utcnow())
+    if not is_valid_latlng(*location):
+        raise api_error(422, "INVALID_LOCATION", "latitude must be -90..90 and longitude -180..180.")
+    vehicle = await vehicle_for_driver(db, driver_id)
+    if vehicle is None:
+        raise api_error(404, "DRIVER_PROFILE_NOT_FOUND", "No vehicle profile for this driver.")
+    had_location = parse_latlng(vehicle.current_location) is not None
+    vehicle.current_location = format_latlng(location)
+
+    events: list[Event] = []
     delivery = await active_delivery_for_driver(db, driver_id)
-    if delivery is None:
-        return None, []
-    next_status = MOVEMENT_TRANSITIONS.get(delivery.status)
-    if next_status is None:
-        return delivery, []
-    delivery.status = next_status
-    _audit(db, "delivery", delivery.id, "movement_detected", {"status": next_status.value, "driver_id": driver_id})
-    events = [
-        _delivery_status_event(delivery),
-        await _set_donation_status(db, delivery.donation_id, DonationStatus(next_status.value)),
-    ]
-    return delivery, events
+    if delivery is not None:
+        donation = await db.get(Donation, delivery.donation_id)
+        pickup = parse_latlng(donation.pickup_location) if donation is not None else None
+        if (
+            delivery.status == DeliveryStatus.PICKED_UP
+            and pickup is not None
+            and haversine_km(location, pickup) > IN_TRANSIT_DISTANCE_KM
+        ):
+            delivery.status = DeliveryStatus.IN_TRANSIT
+            _audit(db, "delivery", delivery.id, "movement_detected",
+                   {"status": delivery.status.value, "driver_id": driver_id, "latitude": location[0],
+                    "longitude": location[1]})
+            events += [
+                _delivery_status_event(delivery),
+                await _set_donation_status(db, delivery.donation_id, DonationStatus.IN_TRANSIT),
+            ]
+
+        heading_to_pickup = delivery.status in PICKUP_ALLOWED_FROM
+        if heading_to_pickup:
+            target = pickup
+        else:
+            ngo = await db.get(NGO, delivery.ngo_id)
+            target = parse_latlng(ngo.location) if ngo is not None else None
+        eta = (
+            max(0, math.ceil(get_heuristic().estimate(location, target, now).eta_minutes))
+            if target is not None else None
+        )
+        events.append(_event(
+            "deliveries", "delivery.location_update",
+            delivery_id=delivery.id, donation_id=delivery.donation_id, driver_id=driver_id,
+            status=delivery.status.value, next_stop="PICKUP" if heading_to_pickup else "DROPOFF",
+            eta_minutes=eta, latitude=location[0], longitude=location[1],
+        ))
+
+    events.insert(0, _event("drivers", "driver.location_update",
+                            driver_id=driver_id, latitude=location[0], longitude=location[1]))
+    return LocationUpdate(
+        vehicle=vehicle,
+        delivery=delivery,
+        events=events,
+        should_dispatch_pending=vehicle.availability_status == AVAILABLE and not had_location,
+    )
 
 
 async def start_pickup(db: AsyncSession, delivery: Delivery, driver_id: str) -> list[Event]:
