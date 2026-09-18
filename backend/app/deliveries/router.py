@@ -11,6 +11,7 @@ POST /api/v1/deliveries/{id}/pickup       — driver confirms pickup (idempotent
 POST /api/v1/deliveries/{id}/deliver      — driver confirms delivery (idempotent)
 POST /api/v1/handover/{delivery_id}       — NGO's half of digital sign-off (idempotent)
 """
+from app.core.time import ist_now
 from datetime import datetime
 from typing import Annotated
 
@@ -125,7 +126,7 @@ async def deliver(
 
     # Sets DELIVERED or PARTIALLY_DELIVERED (same rule as /handover) and frees the vehicle.
     events = await confirm_delivery(db, delivery, body.quantity_handed_over)
-    now = datetime.utcnow()
+    now = ist_now()
     db.add(AuditLog(
         entity_type="delivery", entity_id=delivery.id, event_type="delivery_confirmed",
         payload={**body.model_dump(), "driver_id": driver_user.id, "status": delivery.status.value},
@@ -192,7 +193,7 @@ async def handover(
             if body.quantity_handed_over >= donation.quantity_kg
             else DonationStatus.PARTIALLY_DELIVERED
         )
-        donation.updated_at = datetime.utcnow()
+        donation.updated_at = ist_now()
         delivery.status = (
             DeliveryStatus.DELIVERED
             if donation.status == DonationStatus.DELIVERED

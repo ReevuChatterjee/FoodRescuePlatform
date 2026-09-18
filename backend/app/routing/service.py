@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Routing service — the only entry point other modules should import.
 
 Two deliberate paths:
@@ -11,7 +12,7 @@ Two deliberate paths:
 
 With the default ROUTING_PROVIDER=heuristic both paths return identical numbers.
 """
-from __future__ import annotations
+from app.core.time import IST
 
 import logging
 import math
@@ -78,7 +79,7 @@ def get_heuristic() -> HeuristicRouteProvider:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(IST)
 
 
 def estimate_route(origin: LatLng, destination: LatLng, departure: datetime | None = None) -> RouteEstimate:

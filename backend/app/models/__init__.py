@@ -5,6 +5,7 @@ Person 1 owns these schemas; Person 6 reads them for analytics.
 Models match the data model in the project description PDF exactly.
 """
 
+from app.core.time import ist_now
 from datetime import datetime
 from sqlalchemy import String, Integer, Float, DateTime, JSON, ForeignKey, Enum, Text, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -63,7 +64,7 @@ class User(Base):
     phone: Mapped[str] = mapped_column(String(20))
     password_hash: Mapped[str] = mapped_column(String(200))
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now)
 
 
 class Donor(Base):
@@ -77,7 +78,7 @@ class Donor(Base):
     contact_person: Mapped[str] = mapped_column(String(200))
     verification_status: Mapped[str] = mapped_column(String(50))
     daily_waste_category: Mapped[str] = mapped_column(String(50))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now)
 
 
 class NGO(Base):
@@ -95,7 +96,7 @@ class NGO(Base):
     verification_status: Mapped[NGOVerificationStatus] = mapped_column(
         Enum(NGOVerificationStatus), default=NGOVerificationStatus.PENDING, index=True
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now)
 
 
 class NGOFoodCategory(Base):
@@ -115,7 +116,7 @@ class NGODemand(Base):
     required_quantity_kg: Mapped[float] = mapped_column(Float)
     priority: Mapped[str] = mapped_column(String(20))  # LOW, MEDIUM, HIGH, CRITICAL
     valid_until: Mapped[datetime] = mapped_column(DateTime)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now)
 
 
 class Donation(Base):
@@ -140,8 +141,8 @@ class Donation(Base):
     matched_ngo_id: Mapped[str | None] = mapped_column(ForeignKey("ngos.id"), nullable=True, index=True)
     match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     weights_version_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now)
 
 
 class Vehicle(Base):
@@ -185,7 +186,7 @@ class HandoverRecord(Base):
     recipient_signature: Mapped[str | None] = mapped_column(String(500), nullable=True)
     disclaimer_version: Mapped[str] = mapped_column(String(50))
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now)
 
 
 class NGOVerificationDocument(Base):
@@ -195,7 +196,7 @@ class NGOVerificationDocument(Base):
     ngo_id: Mapped[str] = mapped_column(ForeignKey("ngos.id"), index=True)
     document_type: Mapped[str] = mapped_column(String(100))  # "REGISTRATION_CERTIFICATE", "FSSAI_ALLIANCE_ID", etc.
     file_url: Mapped[str] = mapped_column(String(500))
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now)
 
 
 class AuditLog(Base):
@@ -208,7 +209,7 @@ class AuditLog(Base):
     payload: Mapped[dict] = mapped_column(JSON)
     record_hash: Mapped[str] = mapped_column(String(64))
     previous_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now, index=True)
 
 
 class MatchingWeightsHistory(Base):
@@ -231,7 +232,7 @@ class MatchingWeightsHistory(Base):
     w_demand: Mapped[float] = mapped_column(Float)
     w_route: Mapped[float] = mapped_column(Float)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now)
 
 
 class DonationRejection(Base):
@@ -247,4 +248,4 @@ class DonationRejection(Base):
     donation_id: Mapped[str] = mapped_column(ForeignKey("donations.id"), index=True)
     ngo_id: Mapped[str] = mapped_column(ForeignKey("ngos.id"), index=True)
     reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    rejected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    rejected_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now)

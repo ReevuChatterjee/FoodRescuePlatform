@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Matching router — Person 4 endpoints, wired to Person 1 backend.
 
@@ -21,7 +22,8 @@ Auth summary (per contract):
   POST /accept     — NGO (self) | ADMIN
   POST /reject     — NGO (self) | ADMIN
 """
-from __future__ import annotations
+from app.core.time import IST
+from app.core.time import ist_now
 
 from datetime import datetime, timezone
 from typing import Annotated
@@ -127,7 +129,7 @@ async def get_candidates(
     orm_donation = orm_result.scalar_one_or_none()
     if orm_donation and orm_donation.status == DonationStatus.AVAILABLE:
         orm_donation.status = DonationStatus.MATCHING
-        orm_donation.updated_at = datetime.utcnow()
+        orm_donation.updated_at = ist_now()
         await db.commit()
         await manager.broadcast("donations", {
             "event": "donation.status_changed",
@@ -149,14 +151,14 @@ async def get_candidates(
         ngos=ngos,
         routes=routes,
         weights=weights,
-        reference_time=datetime.now(timezone.utc),
+        reference_time=datetime.now(IST),
         excluded_ngo_ids=excluded if excluded else None,
     )
 
     # If no candidates survive, transition to NO_MATCH_FOUND
     if not result.matches and orm_donation:
         orm_donation.status = DonationStatus.NO_MATCH_FOUND
-        orm_donation.updated_at = datetime.utcnow()
+        orm_donation.updated_at = ist_now()
         await db.commit()
         await manager.broadcast("donations", {
             "event": "donation.no_match_found",
@@ -165,7 +167,7 @@ async def get_candidates(
     elif result.matches and orm_donation:
         orm_donation.status = DonationStatus.MATCHED
         orm_donation.matched_ngo_id = result.matches[0].ngo_id
-        orm_donation.updated_at = datetime.utcnow()
+        orm_donation.updated_at = ist_now()
         await db.commit()
         await manager.broadcast("donations", {
             "event": "donation.matched",
@@ -243,7 +245,7 @@ async def accept_match(
     donation.matched_ngo_id = body.ngo_id
     donation.match_score = body.match_score
     donation.weights_version_id = body.weights_version_id
-    donation.updated_at = datetime.utcnow()
+    donation.updated_at = ist_now()
 
     db.add(AuditLog(
         entity_type="donation",
@@ -329,7 +331,7 @@ async def reject_match(
         donation_id=donation_id,
         ngo_id=body.ngo_id,
         reason=body.reason,
-        rejected_at=datetime.utcnow(),
+        rejected_at=ist_now(),
     ))
     db.add(AuditLog(
         entity_type="donation",
@@ -357,13 +359,13 @@ async def reject_match(
         routes=routes,
         weights=weights,
         excluded_ngo_ids=excluded,
-        reference_time=datetime.now(timezone.utc),
+        reference_time=datetime.now(IST),
     )
 
     # Update donation status
     if not rematch_result.matches:
         donation.status = DonationStatus.NO_MATCH_FOUND
-        donation.updated_at = datetime.utcnow()
+        donation.updated_at = ist_now()
         await db.commit()
         await manager.broadcast("donations", {
             "event": "donation.no_match_found",
@@ -373,7 +375,7 @@ async def reject_match(
         # Transition to MATCHED for the next candidate
         donation.status = DonationStatus.MATCHED
         donation.matched_ngo_id = rematch_result.matches[0].ngo_id
-        donation.updated_at = datetime.utcnow()
+        donation.updated_at = ist_now()
         await db.commit()
         await manager.broadcast("donations", {
             "event": "donation.rematched",

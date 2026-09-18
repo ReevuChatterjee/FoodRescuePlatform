@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Dispatch service — turns an accepted match into food actually moving (§6, §9).
 
 NGO accepts -> find available drivers -> check vehicle capacity and expiry
@@ -19,7 +20,7 @@ assignment, and a driver is claimed with a compare-and-set UPDATE on
 vehicles.availability_status, so two dispatch runs can never double-assign a
 donation or a driver.
 """
-from __future__ import annotations
+from app.core.time import IST
 
 import logging
 import math
@@ -84,21 +85,21 @@ Event = tuple[str, dict[str, Any]]
 
 # ─── small helpers ──────────────────────────────────────────────────────────
 
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+def now_ist() -> datetime:
+    return datetime.now(IST)
 
 
 def as_aware(dt: datetime) -> datetime:
-    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+    return dt.replace(tzinfo=IST) if dt.tzinfo is None else dt.astimezone(IST)
 
 
 def as_naive(dt: datetime) -> datetime:
     """DB columns are naive UTC and asyncpg rejects aware datetimes for them."""
-    return dt.astimezone(timezone.utc).replace(tzinfo=None) if dt.tzinfo else dt
+    return dt.astimezone(IST).replace(tzinfo=None) if dt.tzinfo else dt
 
 
 def _event(channel: str, name: str, **payload: Any) -> Event:
-    return channel, {"event": name, **payload, "timestamp": iso_z(utcnow())}
+    return channel, {"event": name, **payload, "timestamp": iso_z(now_ist())}
 
 
 def _audit(db: AsyncSession, entity_type: str, entity_id: str, event_type: str, payload: dict) -> None:
@@ -213,7 +214,7 @@ async def _set_donation_status(db: AsyncSession, donation_id: str, status: Donat
     donation = await db.get(Donation, donation_id)
     if donation is not None:
         donation.status = status
-        donation.updated_at = as_naive(utcnow())
+        donation.updated_at = as_naive(now_ist())
     return _event("donations", "donation.status_changed", donation_id=donation_id, status=status.value)
 
 
@@ -387,7 +388,7 @@ async def _dispatch_locked(
     delivery.route_distance_km = round(chosen.to_dropoff.distance_km, 2)
     delivery.estimated_duration_min = max(1, math.ceil(chosen.to_dropoff.eta_minutes))
     donation.status = DonationStatus.DRIVER_ASSIGNED
-    donation.updated_at = as_naive(utcnow())
+    donation.updated_at = as_naive(now_ist())
 
     eta_to_pickup = max(0, math.ceil(chosen.to_pickup.eta_minutes))
     _audit(db, "delivery", delivery.id, "driver_reassigned" if reassigning else "driver_assigned", {
@@ -433,7 +434,7 @@ async def dispatch_donation(
     """Assign a driver to one accepted donation. Commits its own transaction and
     broadcasts after commit, so call it on a session with no pending changes."""
     try:
-        outcome = await _dispatch_locked(db, donation_id, as_aware(now or utcnow()), config, record_pending)
+        outcome = await _dispatch_locked(db, donation_id, as_aware(now or now_ist()), config, record_pending)
     except Exception:
         await db.rollback()
         raise
@@ -445,7 +446,7 @@ async def dispatch_pending(
     db: AsyncSession, *, now: datetime | None = None, config: DispatchConfig = DEFAULT_DISPATCH_CONFIG
 ) -> list[DispatchOutcome]:
     """Retry accepted / driver-issue donations, most urgent expiry first."""
-    now = as_aware(now or utcnow())
+    now = as_aware(now or now_ist())
     has_active_delivery = (
         select(Delivery.id)
         .where(Delivery.donation_id == Donation.id, Delivery.status.in_(ACTIVE_DELIVERY_STATUSES))
@@ -516,7 +517,7 @@ async def record_driver_location(
       from the pickup. PICKUP_STARTED is never inferred from location (available
       drivers stream location too); it comes from POST /deliveries/{id}/start.
     """
-    now = as_aware(now or utcnow())
+    now = as_aware(now or now_ist())
     if not is_valid_latlng(*location):
         raise api_error(422, "INVALID_LOCATION", "latitude must be -90..90 and longitude -180..180.")
     vehicle = await vehicle_for_driver(db, driver_id)
@@ -612,7 +613,7 @@ async def confirm_pickup(
     if vehicle is not None and vehicle.capacity_kg and confirmed_quantity_kg > vehicle.capacity_kg:
         raise api_error(400, "EXCEEDS_VEHICLE_CAPACITY",
                         f"Your vehicle carries up to {vehicle.capacity_kg:.1f} kg.", "confirmed_quantity_kg")
-    delivery.actual_pickup_time = as_naive(utcnow())
+    delivery.actual_pickup_time = as_naive(now_ist())
     delivery.status = DeliveryStatus.PICKED_UP
     return [
         _delivery_status_event(delivery),
@@ -631,7 +632,7 @@ async def confirm_delivery(db: AsyncSession, delivery: Delivery, quantity_handed
     # Same rule as the NGO handover endpoint, so the two sign-offs never disagree.
     full = donation is None or quantity_handed_over >= donation.quantity_kg
     delivery.status = DeliveryStatus.DELIVERED if full else DeliveryStatus.PARTIALLY_DELIVERED
-    delivery.actual_delivery_time = as_naive(utcnow())
+    delivery.actual_delivery_time = as_naive(now_ist())
     events = [
         _delivery_status_event(delivery),
         await _set_donation_status(db, delivery.donation_id, DonationStatus(delivery.status.value)),
@@ -753,7 +754,7 @@ async def build_current_job(
     db: AsyncSession, driver_id: str, now: datetime | None = None,
     config: DispatchConfig = DEFAULT_DISPATCH_CONFIG,
 ) -> dict[str, Any]:
-    now = as_aware(now or utcnow())
+    now = as_aware(now or now_ist())
     vehicle = await vehicle_for_driver(db, driver_id)
     if vehicle is None:
         raise api_error(404, "DRIVER_PROFILE_NOT_FOUND", "No vehicle profile for this driver.")

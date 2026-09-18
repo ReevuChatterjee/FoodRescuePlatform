@@ -6,6 +6,7 @@ Per Section I:
   - GET /ready — readiness (DB + Redis reachable)
 """
 
+from app.core.time import IST
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 from redis import asyncio as aioredis
@@ -103,7 +104,7 @@ async def debug_match():
                 ngos=ngos,
                 routes=routes,
                 weights=weights,
-                reference_time=datetime.now(timezone.utc),
+                reference_time=datetime.now(IST),
                 excluded_ngo_ids=excluded
             )
             return {"matches": len(res.matches), "ngos_loaded": len(ngos)}

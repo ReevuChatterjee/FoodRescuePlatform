@@ -1,3 +1,4 @@
+from app.core.time import IST, ist_now
 """
 Shared response envelope helpers per Global Conventions §1:
 
@@ -15,15 +16,11 @@ from fastapi import HTTPException
 
 
 def iso_z(dt: datetime) -> str:
-    """Format a datetime as UTC ISO-8601 with a trailing Z, per Global
-    Conventions §1 — safe for both naive datetimes (assumed already UTC, e.g.
-    server-generated via datetime.utcnow()) and timezone-aware ones (e.g.
-    parsed by Pydantic from a client-supplied "...Z" string, which would
-    otherwise round-trip through .isoformat() as "...+00:00Z" — a bug this
-    helper exists specifically to avoid)."""
+    """Format a datetime as IST ISO-8601 with a trailing +05:30.
+    Safe for both naive datetimes (assumed already IST) and timezone-aware ones."""
     if dt.tzinfo is not None:
-        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-    return dt.isoformat() + "Z"
+        dt = dt.astimezone(IST).replace(tzinfo=None)
+    return dt.isoformat() + "+05:30"
 
 
 def envelope(data: dict) -> dict:

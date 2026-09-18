@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Time-of-day congestion model for Bengaluru.
 
 Sourced vs assumed — keep this distinction visible, evaluators will ask:
@@ -14,7 +15,7 @@ This is a model, not live traffic. When a live-traffic provider is configured
 (see providers.py) it supplies the traffic duration instead, and this model is
 only used as the offline fallback.
 """
-from __future__ import annotations
+from app.core.time import IST
 
 from datetime import datetime, timedelta, timezone
 from typing import Literal
@@ -51,7 +52,7 @@ def congestion_multiplier(at: datetime, model: TrafficModel = "time_of_day") -> 
     if model == "city_average":
         return AVERAGE_CONGESTION_RATIO
     if at.tzinfo is None:  # the codebase stores naive UTC
-        at = at.replace(tzinfo=timezone.utc)
+        at = at.replace(tzinfo=IST)
     local = at.astimezone(IST)
     hours = local.hour + local.minute / 60 + local.second / 3600
     index = int(hours) % 24

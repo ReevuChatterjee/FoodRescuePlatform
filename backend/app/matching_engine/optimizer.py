@@ -1,10 +1,11 @@
+from __future__ import annotations
 """Orchestrates candidate filtering, scoring and ranking for one donation.
 
 This is the single entry point (`match`) that Person 1 calls. It is a
 pure function: dicts/Pydantic models in, a deterministic ranked result
 out. No DB session, ORM, HTTP call, or auth check anywhere in here.
 """
-from __future__ import annotations
+from app.core.time import IST
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -121,9 +122,9 @@ def match(
     Complexity: O(n) filtering, O(n) scoring, O(n log n) sorting, where
     n = len(ngos). See README.md for the full analysis.
     """
-    reference_time = reference_time or datetime.now(timezone.utc)
+    reference_time = reference_time or datetime.now(IST)
     if reference_time.tzinfo is None:
-        raise ValueError("reference_time must be timezone-aware (UTC)")
+        raise ValueError("reference_time must be timezone-aware (IST)")
 
     filter_result = filter_candidates(
         donation=donation,

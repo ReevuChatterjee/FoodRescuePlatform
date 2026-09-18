@@ -1,3 +1,4 @@
+from __future__ import annotations
 """POST /api/v1/routes/calculate — Person 5's routing API (§6).
 
 Consumed by Person 4 (route inputs), Person 2's donor map and Person 5's driver
@@ -16,7 +17,7 @@ app. Response `data`:
 
 Everything after traffic_aware is an additive field (docs/person5-contract-additions.md).
 """
-from __future__ import annotations
+from app.core.time import IST
 
 from datetime import timezone
 from typing import Annotated
@@ -39,7 +40,7 @@ async def calculate(
 ):
     departure = body.departure_time
     if departure is not None and departure.tzinfo is None:
-        departure = departure.replace(tzinfo=timezone.utc)
+        departure = departure.replace(tzinfo=IST)
     estimate = await calculate_route(
         (body.origin.latitude, body.origin.longitude),
         (body.destination.latitude, body.destination.longitude),

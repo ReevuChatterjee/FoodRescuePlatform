@@ -1,3 +1,5 @@
+from app.core.time import IST
+from app.core.time import ist_now
 import logging
 from datetime import datetime, timezone
 
@@ -30,7 +32,7 @@ async def run_matching(donation_id: str):
                 return
             
             orm_donation.status = DonationStatus.MATCHING
-            orm_donation.updated_at = datetime.utcnow()
+            orm_donation.updated_at = ist_now()
             await db.commit()
             
             await manager.broadcast("donations", {
@@ -54,7 +56,7 @@ async def run_matching(donation_id: str):
                 ngos=ngos,
                 routes=routes,
                 weights=weights,
-                reference_time=datetime.now(timezone.utc),
+                reference_time=datetime.now(IST),
                 excluded_ngo_ids=excluded if excluded else None,
             )
 
@@ -67,7 +69,7 @@ async def run_matching(donation_id: str):
 
             if not match_result.matches:
                 orm_donation.status = DonationStatus.NO_MATCH_FOUND
-                orm_donation.updated_at = datetime.utcnow()
+                orm_donation.updated_at = ist_now()
                 await db.commit()
                 await manager.broadcast("donations", {
                     "event": "donation.no_match_found",
@@ -78,7 +80,7 @@ async def run_matching(donation_id: str):
                 orm_donation.matched_ngo_id = match_result.matches[0].ngo_id
                 orm_donation.match_score = match_result.matches[0].score
                 orm_donation.weights_version_id = match_result.weights_version_id
-                orm_donation.updated_at = datetime.utcnow()
+                orm_donation.updated_at = ist_now()
                 await db.commit()
                 await manager.broadcast("donations", {
                     "event": "donation.matched",

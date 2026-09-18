@@ -1,3 +1,4 @@
+from app.core.time import ist_now
 import asyncio
 from datetime import datetime
 from passlib.context import CryptContext
@@ -27,7 +28,7 @@ async def seed_demo_accounts():
             phone="1111111111",
             password_hash=pwd_context.hash("password123"),
             role=UserRole.DONOR,
-            created_at=datetime.utcnow()
+            created_at=ist_now()
         )
         db.add(donor_user)
         await db.flush()
@@ -53,7 +54,7 @@ async def seed_demo_accounts():
             phone="2222222222",
             password_hash=pwd_context.hash("password123"),
             role=UserRole.NGO,
-            created_at=datetime.utcnow()
+            created_at=ist_now()
         )
         db.add(ngo_user)
         await db.flush()

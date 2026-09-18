@@ -1,5 +1,6 @@
 """NGO profile, capacity, category, demand, and incoming-offer APIs."""
 
+from app.core.time import ist_now
 from datetime import datetime
 from typing import Annotated
 from uuid import uuid4
@@ -170,7 +171,7 @@ def demand_response(demand: NGODemand) -> dict:
 @router.post("/{ngo_id}/demand", status_code=201)
 async def create_demand(ngo_id: str, body: DemandRequest, user: Annotated[User, Depends(require_ngo)], db: Annotated[AsyncSession, Depends(get_db)]):
     await owned_ngo(ngo_id, user, db)
-    demand = NGODemand(ngo_id=ngo_id, **body.model_dump(), updated_at=datetime.utcnow())
+    demand = NGODemand(ngo_id=ngo_id, **body.model_dump(), updated_at=ist_now())
     db.add(demand)
     await db.commit()
     await db.refresh(demand)
@@ -185,7 +186,7 @@ async def update_demand(ngo_id: str, demand_id: int, body: DemandRequest, user: 
         raise HTTPException(404, "Demand not found")
     for field, value in body.model_dump().items():
         setattr(demand, field, value)
-    demand.updated_at = datetime.utcnow()
+    demand.updated_at = ist_now()
     await db.commit()
     return envelope(demand_response(demand))
 

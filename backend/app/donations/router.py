@@ -10,6 +10,7 @@ PATCH  /api/v1/donations/{id}           — partial update (matching engine / ad
 PATCH  /api/v1/donations/{id}/cancel    — donor cancels pre-pickup
 POST   /api/v1/donations/{id}/photos    — multipart photo upload (audit trail)
 """
+from app.core.time import ist_now, to_naive_ist
 from datetime import datetime
 from typing import Annotated
 
@@ -87,16 +88,16 @@ async def create_donation(
 ):
     donor = await _get_donor_profile(donor_user, db)
 
-    now = datetime.utcnow()
+    now = ist_now()
     donation = Donation(
         id=new_id("don"),
         donor_id=donor.id,
         food_category=body.food_category,
         food_name=body.food_name,
         quantity_kg=body.quantity_kg,
-        prepared_at=body.prepared_at,
-        available_from=body.available_from,
-        expiry_time=body.expiry_time,
+        prepared_at=to_naive_ist(body.prepared_at),
+        available_from=to_naive_ist(body.available_from),
+        expiry_time=to_naive_ist(body.expiry_time),
         pickup_location=body.pickup_location.model_dump(),
         special_handling=body.special_handling,
         food_safety_info=body.food_safety_info.model_dump() if body.food_safety_info else None,
@@ -209,7 +210,7 @@ async def update_donation(
     if body.weights_version_id is not None:
         donation.weights_version_id = str(body.weights_version_id)
 
-    donation.updated_at = datetime.utcnow()
+    donation.updated_at = ist_now()
     await db.commit()
     await db.refresh(donation)
 
@@ -247,7 +248,7 @@ async def cancel_donation(
     release = await release_for_cancelled_donation(db, donation.id, body.reason, donor_user.id)
 
     donation.status = DonationStatus.CANCELLED
-    donation.updated_at = datetime.utcnow()
+    donation.updated_at = ist_now()
 
     db.add(AuditLog(
         entity_type="donation",

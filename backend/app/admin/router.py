@@ -6,6 +6,7 @@ Consumed by Person 3's NGO UI (sees verification status updates via WebSocket).
 Per Section C: state machine PENDING → APPROVED/REJECTED.
 """
 
+from app.core.time import ist_now
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel
@@ -95,7 +96,7 @@ async def verify_ngo(
     # Update verification status
     old_status = ngo.verification_status
     ngo.verification_status = NGOVerificationStatus[body.status]
-    verified_at = datetime.utcnow()
+    verified_at = ist_now()
 
     # Write audit log
     audit_entry = AuditLog(

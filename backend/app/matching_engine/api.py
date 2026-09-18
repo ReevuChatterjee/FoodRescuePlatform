@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Thin FastAPI wiring for Person 1 to mount (or copy the pattern from).
 
 Contains zero scoring logic. Its only job is: receive request -> load
@@ -8,7 +9,7 @@ call matching_engine.match -> serialize -> return. Replace the three
 The matching algorithm must never query the database directly, which
 is why those lookups live here and not inside optimizer.py.
 """
-from __future__ import annotations
+from app.core.time import IST
 
 from datetime import datetime, timezone
 
@@ -41,7 +42,7 @@ async def get_candidates(donation_id: str) -> dict:
         ngos=ngos,
         routes=routes,
         weights=weights,
-        reference_time=datetime.now(timezone.utc),
+        reference_time=datetime.now(IST),
     )
     return serialize_matching_result(result)
 

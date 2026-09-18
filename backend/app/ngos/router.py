@@ -10,6 +10,7 @@ PATCH /api/v1/ngos/{id}/demand     — upsert current demand (Person 4 input D)
 PATCH /api/v1/ngos/{id}/capacity   — update available capacity (hard-constraint input)
 GET   /api/v1/ngos/{id}/incoming   — donations currently offered to this NGO
 """
+from app.core.time import ist_now, to_naive_ist
 from datetime import datetime
 from typing import Annotated, Optional
 from uuid import uuid4
@@ -310,7 +311,7 @@ async def create_demand(
 ):
     ngo = await _get_ngo_or_404(ngo_id, db)
     _require_self_or_admin(ngo_user, ngo)
-    demand = NGODemand(ngo_id=ngo.id, **body.model_dump(), updated_at=datetime.utcnow())
+    demand = NGODemand(ngo_id=ngo.id, **body.model_dump(exclude={"valid_until"}), valid_until=to_naive_ist(body.valid_until), updated_at=ist_now())
     db.add(demand)
     await db.commit()
     await db.refresh(demand)
@@ -332,8 +333,8 @@ async def update_demand(
         food_category=body.food_category,
         required_quantity_kg=body.required_quantity_kg,
         priority=body.priority,
-        valid_until=body.valid_until,
-        updated_at=datetime.utcnow(),
+        valid_until=to_naive_ist(body.valid_until),
+        updated_at=ist_now(),
     ))
     await db.commit()
 
@@ -361,8 +362,10 @@ async def update_specific_demand(
     if demand is None:
         raise api_error(404, "DEMAND_NOT_FOUND", f"Demand {demand_id} not found.")
     for field, value in body.model_dump().items():
+        if field == "valid_until" and value is not None:
+            value = to_naive_ist(value)
         setattr(demand, field, value)
-    demand.updated_at = datetime.utcnow()
+    demand.updated_at = ist_now()
     await db.commit()
     return envelope(_demand_to_dict(demand))
 
@@ -430,7 +433,7 @@ async def incoming_offers(
     )
     donations = result.scalars().all()
 
-    now = datetime.utcnow()
+    now = ist_now()
     # Person 5: pickup -> NGO heuristic route (no network), departing when the food is available.
     routes = {d.id: offer_route_summary(d.pickup_location, ngo.location, max(now, d.available_from))
               for d in donations}

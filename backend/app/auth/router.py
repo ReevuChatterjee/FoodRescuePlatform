@@ -8,6 +8,7 @@ GET  /auth/me         — current user profile + linked donor_id / ngo_id / driv
 
 No Authorization header on register/login/refresh, per Global Conventions §1.
 """
+from app.core.time import ist_now
 from datetime import datetime
 from typing import Annotated
 
@@ -47,7 +48,7 @@ async def register(body: RegisterRequest, db: Annotated[AsyncSession, Depends(ge
         phone=body.phone,
         password_hash=pwd_context.hash(body.password),
         role=UserRole[body.role],
-        created_at=datetime.utcnow(),
+        created_at=ist_now(),
     )
     db.add(user)
     # Flush now so the users row exists before role-specific child rows are

@@ -9,6 +9,7 @@ Usage (from backend/, inside the running container or a venv with DATABASE_URL s
 
 Safe to re-run: no-ops if a user with that email already exists.
 """
+from app.core.time import ist_now
 import argparse
 import asyncio
 from datetime import datetime
@@ -37,7 +38,7 @@ async def seed_admin(email: str, password: str, name: str, phone: str) -> None:
             phone=phone,
             password_hash=pwd_context.hash(password),
             role=UserRole.ADMIN,
-            created_at=datetime.utcnow(),
+            created_at=ist_now(),
         )
         db.add(user)
         await db.commit()

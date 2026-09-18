@@ -1,4 +1,5 @@
-﻿"""
+from __future__ import annotations
+"""
 Matching service — bridges the SQLAlchemy ORM layer and the pure matching engine.
 
 This module is the ONLY place that translates between:
@@ -17,7 +18,7 @@ the time of day. It uses the deterministic estimator (no network I/O) so ranking
 many candidates stays fast; dispatch re-checks the chosen route with the
 configured provider. Signature and return type are unchanged.
 """
-from __future__ import annotations
+from app.core.time import IST
 
 from datetime import datetime, timezone
 from typing import Optional
@@ -77,7 +78,7 @@ async def load_donation(donation_id: str, db: AsyncSession) -> Optional[me.Donat
     def _utc(dt: datetime) -> datetime:
         if dt is None:
             return dt
-        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+        return dt.replace(tzinfo=IST) if dt.tzinfo is None else dt
 
     return me.Donation(
         id=row.id,
@@ -134,7 +135,7 @@ async def load_active_ngos(db: AsyncSession) -> list[me.NGOCandidate]:
     def _utc(dt: datetime) -> datetime:
         if dt is None:
             return dt
-        return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+        return dt.replace(tzinfo=IST) if dt.tzinfo is None else dt
 
     candidates: list[me.NGOCandidate] = []
     for ngo in ngo_rows:
@@ -197,7 +198,7 @@ def load_routes(
     estimates = estimate_routes_from(
         (donation.pickup_location.latitude, donation.pickup_location.longitude),
         {ngo.ngo_id: (ngo.location.latitude, ngo.location.longitude) for ngo in ngos},
-        departure=datetime.now(timezone.utc),
+        departure=datetime.now(IST),
     )
     return {
         ngo_id: me.RouteMetrics(
