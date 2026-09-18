@@ -76,9 +76,23 @@ async def run_matching(donation_id: str):
                     "donation_id": donation_id,
                 })
             else:
+                best_match = match_result.matches[0]
                 orm_donation.status = DonationStatus.MATCHED
-                orm_donation.matched_ngo_id = match_result.matches[0].ngo_id
-                orm_donation.match_score = match_result.matches[0].score
+                orm_donation.matched_ngo_id = best_match.ngo_id
+                orm_donation.match_score = best_match.score
+                orm_donation.match_breakdown = {
+                    "capacity_score": best_match.capacity_score,
+                    "shelf_life_score": best_match.shelf_life_score,
+                    "transit_score": best_match.transit_score,
+                    "demand_score": best_match.demand_score,
+                    "route_score": best_match.route_score,
+                    "eta_minutes": best_match.eta_minutes,
+                    "ngo_capacity_kg": best_match.ngo_capacity_kg,
+                    "donation_quantity_kg": best_match.donation_quantity_kg,
+                    "distance_km": best_match.distance_km,
+                    "demand_kg": best_match.demand_kg,
+                    "shelf_life_minutes": best_match.shelf_life_minutes
+                }
                 orm_donation.weights_version_id = match_result.weights_version_id
                 orm_donation.updated_at = ist_now()
                 await db.commit()

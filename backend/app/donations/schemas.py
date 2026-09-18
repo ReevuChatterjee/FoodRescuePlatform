@@ -41,6 +41,7 @@ class UpdateDonationRequest(BaseModel):
     status: str | None = None
     matched_ngo_id: str | None = None
     match_score: float | None = None
+    match_breakdown: dict | None = None
     weights_version_id: float | str | None = None
 
 

@@ -71,6 +71,7 @@ async def _to_dict(donation: Donation, db: AsyncSession) -> dict:
         "status": donation.status.value,
         "matched_ngo_id": donation.matched_ngo_id,
         "match_score": donation.match_score,
+        "match_breakdown": donation.match_breakdown,
         "weights_version_id": donation.weights_version_id,
         "driver_id": driver_id,
         "eta_minutes": eta_minutes,
@@ -207,6 +208,8 @@ async def update_donation(
         donation.matched_ngo_id = body.matched_ngo_id
     if body.match_score is not None:
         donation.match_score = body.match_score
+    if body.match_breakdown is not None:
+        donation.match_breakdown = body.match_breakdown
     if body.weights_version_id is not None:
         donation.weights_version_id = str(body.weights_version_id)
 

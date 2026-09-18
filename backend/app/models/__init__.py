@@ -140,6 +140,7 @@ class Donation(Base):
     status: Mapped[DonationStatus] = mapped_column(Enum(DonationStatus), index=True)
     matched_ngo_id: Mapped[str | None] = mapped_column(ForeignKey("ngos.id"), nullable=True, index=True)
     match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    match_breakdown: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     weights_version_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=ist_now)

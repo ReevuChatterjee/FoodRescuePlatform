@@ -27,6 +27,11 @@ class ScoredMatch:
     demand_score: float
     route_score: float
     eta_minutes: float
+    ngo_capacity_kg: float
+    donation_quantity_kg: float
+    distance_km: float
+    demand_kg: float
+    shelf_life_minutes: float
 
 
 @dataclass(frozen=True)
@@ -94,6 +99,11 @@ def _score_candidate(
         demand_score=round(d, 4),
         route_score=round(r, 4),
         eta_minutes=round(eta),
+        ngo_capacity_kg=round(ngo.available_capacity_kg, 1),
+        donation_quantity_kg=round(donation.quantity_kg, 1),
+        distance_km=round(route.distance_km, 1),
+        demand_kg=round(demand_kg, 1),
+        shelf_life_minutes=round(remaining_life_minutes),
     )
 
 
