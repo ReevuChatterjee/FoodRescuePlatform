@@ -155,6 +155,7 @@ export function useStartTrip() {
       return res.data.data;
     },
     onSuccess: invalidate,
+    onError: invalidate,
   });
 }
 
@@ -170,6 +171,7 @@ export function useConfirmPickup() {
       return res.data.data;
     },
     onSuccess: invalidate,
+    onError: invalidate,
   });
 }
 
@@ -195,6 +197,7 @@ export function useConfirmDelivery() {
       return res.data.data;
     },
     onSuccess: invalidate,
+    onError: invalidate,
   });
 }
 

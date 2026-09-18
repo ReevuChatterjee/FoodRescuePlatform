@@ -134,7 +134,7 @@ export function DriverDashboard() {
       </button>
       <button
         type="submit"
-        className="btn-driver"
+        className="btn-primary"
         disabled={locationMutation.isPending || !lat || !lng}
         style={{ flexShrink: 0, padding: '8px 20px' }}
       >
@@ -157,9 +157,9 @@ export function DriverDashboard() {
         </div>
       )}
 
-      <div style={{ maxWidth: '680px', padding: 'var(--sp-5)' }}>
+      <div style={{ maxWidth: '680px', padding: '1.25rem' }}>
         {/* Driver identity block — no card, no watermark */}
-        <div style={{ marginBottom: 'var(--sp-6)', paddingBottom: 'var(--sp-5)', borderBottom: '1px solid var(--border-hair)' }}>
+        <div style={{ marginBottom: '1.5rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border-hair)' }}>
           <p className="section-label" style={{ marginBottom: '8px' }}>Unit Identity</p>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -232,7 +232,7 @@ export function DriverDashboard() {
 
         {driver && streaming && (
           <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 mb-8" aria-live="polite">
-            <Radio size={12} className={location.lastSentAt ? 'text-[var(--brand)]' : ''} />
+            <Radio size={12} className={location.lastSentAt ? 'text-[var(--moss)]' : ''} />
             {location.lastError
               ?? (location.lastSentAt
                 ? `Location shared at ${new Date(location.lastSentAt).toLocaleTimeString()}`
@@ -241,7 +241,7 @@ export function DriverDashboard() {
         )}
 
         {/* Coordinate entry info */}
-        <div style={{ marginBottom: 'var(--sp-5)' }}>
+        <div style={{ marginBottom: '1.25rem' }}>
           <p className="section-label" style={{ marginBottom: '10px' }}>Positional Telemetry</p>
           <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '60ch' }}>
             Broadcast your current coordinates to the dispatch algorithm.
@@ -254,7 +254,7 @@ export function DriverDashboard() {
         {lat && lng && (
           <div
             className="surface-dense"
-            style={{ padding: '14px 16px', marginBottom: 'var(--sp-5)', display: 'flex', alignItems: 'center', gap: '24px' }}
+            style={{ padding: '14px 16px', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '24px' }}
           >
             <div>
               <p className="section-label" style={{ marginBottom: '4px' }}>Latitude</p>
@@ -281,7 +281,7 @@ export function DriverDashboard() {
           style={{
             padding: '12px 16px',
             borderLeft: '3px solid var(--border-med)',
-            marginBottom: 'var(--sp-5)',
+            marginBottom: '1.25rem',
             display: 'flex',
             alignItems: 'flex-start',
             gap: '12px',
@@ -362,8 +362,8 @@ function AvailabilityToggle({ status, hasJob, position }: {
           location: online ? null : position,
         })}
         className={`min-h-[48px] px-5 rounded-sm border text-sm font-bold uppercase tracking-widest flex items-center gap-2 ${online
-          ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
-          : 'border-[var(--border-strong)] text-[var(--text-secondary)]'}`}
+          ? 'border-[var(--moss)] bg-[var(--moss)]/10 text-[var(--moss)]'
+          : 'border-[var(--border-hair)] text-[var(--text-secondary)]'}`}
       >
         {setAvailability.isPending ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} />} {label}
       </button>
@@ -375,8 +375,8 @@ function AvailabilityToggle({ status, hasJob, position }: {
 function IdleState({ status, capacityKg }: { status: string; capacityKg: number }) {
   const online = status === 'AVAILABLE';
   return (
-    <div className="panel p-8 text-center space-y-3 bg-[var(--bg-page)] border-[var(--border-strong)]">
-      <Truck size={40} className={`mx-auto ${online ? 'text-[var(--brand)]' : 'text-[var(--text-muted)]'}`} />
+    <div className="panel p-8 text-center space-y-3 bg-[var(--bg-base)] border-[var(--border-hair)]">
+      <Truck size={40} className={`mx-auto ${online ? 'text-[var(--moss)]' : 'text-[var(--text-muted)]'}`} />
       <p className="text-lg font-semibold text-[var(--text-primary)]">
         {online ? 'Waiting for a job' : 'You are offline'}
       </p>

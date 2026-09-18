@@ -3,7 +3,7 @@
  * PATCH /api/v1/ngos/{id}/capacity, /demand, and /
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -73,7 +73,15 @@ export function NGOSettings() {
   const ngoId = profile?.ngo_id;
 
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(profile?.accepted_categories ?? []);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (profile) {
+      const cats = profile.accepted_categories ? [...profile.accepted_categories] : [];
+      if (!cats.includes('COOKED')) cats.push('COOKED');
+      setSelectedCategories(cats);
+    }
+  }, [profile]);
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -137,7 +145,7 @@ export function NGOSettings() {
         </div>
       </div>
 
-      <div className="max-w-2xl space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full max-w-none">
         {/* ── Capacity ── */}
         <SectionCard title="Active Storage Capacity" icon={<Weight size={14} />}>
           <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">

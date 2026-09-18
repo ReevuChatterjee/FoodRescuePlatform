@@ -26,11 +26,7 @@ interface MetricDisplayProps {
   children?: ReactNode;
 }
 
-const SIZE_STYLES: Record<string, { fontSize: string; opsz: number }> = {
-  lg: { fontSize: '4.5rem',  opsz: 72 },
-  md: { fontSize: '2.75rem', opsz: 48 },
-  sm: { fontSize: '1.75rem', opsz: 24 },
-};
+
 
 export function MetricDisplay({
   value,
@@ -42,61 +38,47 @@ export function MetricDisplay({
   className = '',
   children,
 }: MetricDisplayProps) {
-  const { fontSize, opsz } = SIZE_STYLES[size];
+  const sizeStyles = {
+    lg: 'text-6xl md:text-[4.5rem] tracking-tighter',
+    md: 'text-4xl md:text-[2.75rem] tracking-tight',
+    sm: 'text-2xl md:text-[1.75rem] tracking-tight',
+  };
 
   const isDeltaPositive = delta?.startsWith('+');
   const isDeltaNegative = delta?.startsWith('-');
   const deltaColor = isDeltaPositive
-    ? 'var(--moss-light)'
+    ? 'text-primary'
     : isDeltaNegative
-    ? 'var(--terracotta)'
-    : 'var(--text-muted)';
+    ? 'text-error'
+    : 'text-on-surface-variant';
 
   return (
-    <div className={`metric-display ${className}`}>
+    <div className={`flex flex-col gap-0 ${className}`}>
       {/* Numeral */}
       <div className="flex items-baseline gap-2">
         <span
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize,
-            fontWeight: 300,
-            lineHeight: 1,
-            letterSpacing: '-0.025em',
-            color: 'var(--text-primary)',
-            fontVariantNumeric: 'tabular-nums',
-            fontVariationSettings: `'opsz' ${opsz}`,
-          }}
+          className={`font-display font-bold leading-none text-on-surface font-mono-data ${sizeStyles[size]}`}
         >
           {value}
         </span>
         {unit && (
-          <span
-            style={{
-              fontSize: '0.875rem',
-              fontWeight: 400,
-              color: 'var(--text-muted)',
-              fontFamily: 'var(--font-ui)',
-              letterSpacing: 0,
-            }}
-          >
+          <span className="text-sm font-medium text-on-surface-variant font-ui tracking-normal">
             {unit}
           </span>
         )}
       </div>
 
       {/* Hairline rule with optional accent fill and delta */}
-      <div className="metric-rule" style={{ marginTop: '8px', marginBottom: '6px' }}>
+      <div className="w-full h-px bg-outline-variant my-2 relative">
         {accentFill !== undefined && (
           <div
-            className="metric-rule-accent"
+            className="absolute left-0 top-0 h-full bg-primary transition-[width] duration-500 ease-out"
             style={{ width: `${Math.min(Math.max(accentFill, 0), 100)}%` }}
           />
         )}
         {delta && (
           <span
-            className="metric-delta"
-            style={{ color: deltaColor }}
+            className={`absolute right-0 bottom-1 font-ui text-[0.6875rem] font-semibold bg-surface px-1 ${deltaColor}`}
           >
             {delta}
           </span>
@@ -104,7 +86,9 @@ export function MetricDisplay({
       </div>
 
       {/* Label */}
-      <span className="metric-label">{label}</span>
+      <span className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant">
+        {label}
+      </span>
 
       {/* Optional slot (sparkline, etc.) */}
       {children}

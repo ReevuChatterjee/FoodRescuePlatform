@@ -41,7 +41,7 @@ import { NGOSettings } from './pages/ngo/NGOSettings';
 // Driver
 import { DriverDashboard } from './pages/driver/DriverDashboard';
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,

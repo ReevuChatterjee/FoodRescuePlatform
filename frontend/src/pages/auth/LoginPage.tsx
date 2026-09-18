@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,6 +12,7 @@ import { ArrowRight, Leaf, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { apiClient } from '../../api/client';
 import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
+import { ThemeToggle } from '../../components/common/ThemeToggle';
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────
 
@@ -123,60 +124,75 @@ export function LoginPage() {
   const isRegisterPending = registerForm.formState.isSubmitting;
 
   return (
-    <div className="min-h-screen flex bg-[var(--bg-page)] text-[var(--text-primary)]">
-      {/* Left branding panel */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col relative bg-[var(--bg-panel)] border-r border-[var(--border-subtle)]">
+    <div className="min-h-screen flex bg-surface text-on-surface">
+      {/* Left branding panel - Deep Forest Green */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col relative bg-primary overflow-hidden">
+        {/* Subtle background pattern/gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary-container opacity-50" />
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary-container rounded-full blur-[100px] translate-x-1/2 -translate-y-1/4 opacity-30" />
+        
         <div className="relative z-10 flex flex-col h-full px-16 py-12">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[var(--brand)] rounded-sm flex items-center justify-center">
-              <Leaf size={20} className="text-black" />
+          <Link to="/" className="flex items-center gap-3 w-fit hover:opacity-90 transition-opacity text-on-primary">
+            <Leaf size={28} className="text-white" />
+            <div className="flex flex-col">
+              <span className="font-display text-[1.125rem] font-bold tracking-tight leading-none text-white">RePlate</span>
+              <span className="font-ui text-[0.625rem] font-bold uppercase tracking-wider text-primary-fixed-dim leading-tight">Civic Logistics</span>
             </div>
-            <span className="text-[var(--text-primary)] font-semibold tracking-tight text-lg">RePlate Ops</span>
-          </div>
+          </Link>
 
           {/* Content */}
           <div className="flex-1 flex flex-col justify-center">
-            <h1 className="heading-major leading-tight mb-6 text-[var(--text-primary)]">
-              Operations <br />
+            <h1 className="font-display text-[3.5rem] font-bold leading-tight mb-6 text-white tracking-tight">
+              Civic Food <br />
               Logistics Terminal.
             </h1>
-            <p className="text-lg leading-relaxed mb-12 text-[var(--text-secondary)]">
-              Authorized access only. Enter your credentials to manage incoming surplus, route drivers, and trace completed handoffs.
+            <p className="font-ui text-[1.125rem] leading-relaxed mb-12 text-on-primary-container max-w-md">
+              Secure access for authorized municipal hubs, commercial kitchens, and certified couriers. Coordinate surplus routing with zero guesswork.
             </p>
           </div>
 
           {/* Footer */}
-          <p className="text-xs text-[var(--text-muted)] font-mono-data">
-            SYSTEM BUILD 2026.4
-          </p>
+          <div className="flex items-center justify-end">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 
-      {/* Right auth panel */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-16 bg-[var(--bg-page)]">
+      {/* Right auth panel - Warm Parchment */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-16 bg-surface">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="w-9 h-9 bg-[var(--brand)] rounded-sm flex items-center justify-center">
-              <Leaf size={18} className="text-black" />
+          <Link to="/" className="flex items-center gap-3 mb-10 lg:hidden text-primary">
+            <Leaf size={28} className="text-[var(--moss)]" />
+            <div className="flex flex-col">
+              <span className="font-display text-[1.125rem] font-bold tracking-tight leading-none">RePlate</span>
+              <span className="font-ui text-[0.625rem] font-bold uppercase tracking-wider text-text-muted leading-tight">Civic Logistics</span>
             </div>
-            <span className="font-semibold tracking-tight text-[var(--text-primary)]">RePlate Ops</span>
-          </div>
+          </Link>
+
+          <h2 className="font-display text-2xl font-bold text-on-surface mb-2 tracking-tight">
+            {mode === 'login' ? 'Welcome back' : 'Register a Node'}
+          </h2>
+          <p className="text-sm text-on-surface-variant mb-8">
+            {mode === 'login' ? 'Enter your credentials to access the terminal.' : 'Join the decentralized food logistics network.'}
+          </p>
 
           {/* Tab switcher */}
-          <div className="flex p-1 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-sm mb-8">
+          <div className="flex p-1 bg-surface-container-high border border-outline-variant rounded-lg mb-8">
             {(['login', 'register'] as const).map((m) => {
               const isActive = mode === m;
               return (
                 <button
                   key={m}
                   onClick={() => { setMode(m); setError(null); }}
-                  className={`flex-1 py-2 rounded-sm text-sm font-semibold tracking-wide transition-colors ${
-                    isActive ? 'bg-[var(--bg-panel-hover)] text-[var(--text-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-page)]'
+                  className={`flex-1 py-2.5 rounded-md text-[0.875rem] font-semibold tracking-wide transition-all duration-200 ${
+                    isActive 
+                      ? 'bg-surface text-primary shadow-sm' 
+                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
                   }`}
                 >
-                  {m === 'login' ? 'Authentication' : 'Registration'}
+                  {m === 'login' ? 'Sign In' : 'Register'}
                 </button>
               );
             })}
@@ -184,8 +200,9 @@ export function LoginPage() {
 
           {/* Error */}
           {error && (
-            <div className="mb-6 px-4 py-3 rounded-md text-sm font-medium bg-[var(--error)]/10 border border-[var(--error)]/20 text-[var(--error)]">
-              {error}
+            <div className="mb-6 px-4 py-3 rounded-lg text-sm font-medium bg-error-container/30 border border-error/20 text-error flex items-start gap-2">
+              <div className="mt-0.5">⚠</div>
+              <div>{error}</div>
             </div>
           )}
 
@@ -206,8 +223,8 @@ export function LoginPage() {
                   <input {...loginForm.register('password')} type={showPassword ? 'text' : 'password'}
                     className="input-base pr-12 font-mono" placeholder="••••••••" autoComplete="current-password" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-on-surface-variant hover:text-on-surface transition-colors">
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
                 {loginForm.formState.errors.password && (
@@ -215,16 +232,17 @@ export function LoginPage() {
                 )}
               </div>
 
-              <button type="submit" className="btn-primary w-full py-3 mt-2" disabled={isLoginPending}>
+              <button type="submit" className="btn-primary w-full py-3 mt-2 text-[0.9375rem] shadow-sm" disabled={isLoginPending}>
                 {isLoginPending ? <Loader2 size={18} className="animate-spin" /> : <>Authorize Access <ArrowRight size={16} /></>}
               </button>
 
-              <div className="mt-6 border border-[var(--border-subtle)] bg-[var(--bg-panel)] p-4 rounded-md">
-                <p className="text-xs text-[var(--text-secondary)] font-medium mb-1 tracking-wide uppercase">Diagnostics Access</p>
+              <div className="mt-8 border border-outline-variant bg-surface-container-low p-4 rounded-lg relative overflow-hidden group hover:border-primary/30 transition-colors">
+                <div className="absolute top-0 left-0 w-1 h-full bg-primary/20 group-hover:bg-primary transition-colors" />
+                <p className="text-[0.6875rem] text-on-surface-variant font-bold mb-1 tracking-wider uppercase">Diagnostics Access</p>
                 <button type="button" onClick={() => {
                   loginForm.setValue('email', 'admin@cpi.com');
-                  loginForm.setValue('password', 'admin123');
-                }} className="text-sm font-mono-data text-[var(--text-primary)] hover:text-[var(--brand)]">admin@cpi.com</button>
+                  loginForm.setValue('password', 'password123');
+                }} className="text-[0.875rem] font-mono font-medium text-primary hover:text-primary-container-highest underline decoration-primary/30 underline-offset-2">admin@cpi.com</button>
               </div>
 
             </form>
@@ -263,8 +281,8 @@ export function LoginPage() {
                   <input {...registerForm.register('password')} type={showPassword ? 'text' : 'password'}
                     className="input-base pr-12 font-mono" placeholder="Min. 8 characters" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-on-surface-variant hover:text-on-surface transition-colors">
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
                 {registerForm.formState.errors.password && (
@@ -272,82 +290,90 @@ export function LoginPage() {
                 )}
               </div>
 
-              <div>
+              <div className="pt-2 relative z-10">
                 <label className="form-label">Node Designation</label>
-                <select {...registerForm.register('role')} className="select-base">
-                  <option value="DONOR">Supplier (Donor)</option>
-                  <option value="NGO">Distributor (NGO)</option>
-                  <option value="DRIVER">Logistics (Driver)</option>
+                <select {...registerForm.register('role')} className="select-base bg-surface-container-lowest">
+                  <option value="DONOR">Supplier (Commercial Kitchen)</option>
+                  <option value="NGO">Distributor (Community Pantry)</option>
+                  <option value="DRIVER">Logistics (Certified Fleet)</option>
                 </select>
               </div>
 
-              {/* DONOR fields */}
-              {watchedRole === 'DONOR' && (
-                <>
-                  <div>
-                    <label className="form-label">Facility Name</label>
-                    <input {...registerForm.register('organisation_name')} className="input-base" placeholder="e.g. Green Kitchen Restaurant" />
+              {/* Dynamic Fields Section */}
+              <div className="pt-2 space-y-4">
+                {/* DONOR fields */}
+                {watchedRole === 'DONOR' && (
+                  <div className="p-4 rounded-lg bg-surface-container border border-outline-variant space-y-4 relative">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+                    <div>
+                      <label className="form-label">Facility Name</label>
+                      <input {...registerForm.register('organisation_name')} className="input-base bg-surface-container-lowest" placeholder="e.g. Green Kitchen Restaurant" />
+                    </div>
+                    <div>
+                      <label className="form-label">Pickup Coordinates / Address</label>
+                      <LocationAutocomplete
+                        value={registerForm.watch('address') || ''}
+                        onChange={(val) => registerForm.setValue('address', val)}
+                        onSelect={(addr, lat, lng) => {
+                          registerForm.setValue('address', addr);
+                          registerForm.setValue('latitude', lat);
+                          registerForm.setValue('longitude', lng);
+                        }}
+                        placeholder="Full pickup address"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="form-label">Pickup Coordinates / Address</label>
-                    <LocationAutocomplete
-                      value={registerForm.watch('address') || ''}
-                      onChange={(val) => registerForm.setValue('address', val)}
-                      onSelect={(addr, lat, lng) => {
-                        registerForm.setValue('address', addr);
-                        registerForm.setValue('latitude', lat);
-                        registerForm.setValue('longitude', lng);
-                      }}
-                      placeholder="Full pickup address"
-                    />
-                  </div>
-                </>
-              )}
+                )}
 
-              {/* NGO fields */}
-              {watchedRole === 'NGO' && (
-                <>
-                  <div>
-                    <label className="form-label">Organization Name</label>
-                    <input {...registerForm.register('organisation_name')} className="input-base" placeholder="e.g. City Food Bank" />
+                {/* NGO fields */}
+                {watchedRole === 'NGO' && (
+                  <div className="p-4 rounded-lg bg-surface-container border border-outline-variant space-y-4 relative">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-secondary" />
+                    <div>
+                      <label className="form-label">Organization Name</label>
+                      <input {...registerForm.register('organisation_name')} className="input-base bg-surface-container-lowest" placeholder="e.g. City Food Bank" />
+                    </div>
+                    <div>
+                      <label className="form-label">Delivery Location</label>
+                      <LocationAutocomplete
+                        value={registerForm.watch('address') || ''}
+                        onChange={(val) => registerForm.setValue('address', val)}
+                        onSelect={(addr, lat, lng) => {
+                          registerForm.setValue('address', addr);
+                          registerForm.setValue('latitude', lat);
+                          registerForm.setValue('longitude', lng);
+                        }}
+                        placeholder="Full address"
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Total Storage Capacity (kg)</label>
+                      <input {...registerForm.register('storage_capacity_kg')}
+                        type="number" min="1" className="input-base font-mono-data bg-surface-container-lowest" placeholder="e.g. 500" />
+                      {registerForm.formState.errors.storage_capacity_kg && (
+                        <p className="form-error">{registerForm.formState.errors.storage_capacity_kg.message}</p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <label className="form-label">Delivery Location</label>
-                    <LocationAutocomplete
-                      value={registerForm.watch('address') || ''}
-                      onChange={(val) => registerForm.setValue('address', val)}
-                      onSelect={(addr, lat, lng) => {
-                        registerForm.setValue('address', addr);
-                        registerForm.setValue('latitude', lat);
-                        registerForm.setValue('longitude', lng);
-                      }}
-                      placeholder="Full address"
-                    />
-                  </div>
-                  <div>
-                    <label className="form-label">Total Storage Capacity (kg)</label>
-                    <input {...registerForm.register('storage_capacity_kg')}
-                      type="number" min="1" className="input-base font-mono-data" placeholder="e.g. 500" />
-                    {registerForm.formState.errors.storage_capacity_kg && (
-                      <p className="form-error">{registerForm.formState.errors.storage_capacity_kg.message}</p>
-                    )}
-                  </div>
-                </>
-              )}
+                )}
 
-              {/* DRIVER fields */}
-              {watchedRole === 'DRIVER' && (
-                <div>
-                  <label className="form-label">Transit Capacity (kg)</label>
-                  <input {...registerForm.register('vehicle_capacity_kg')}
-                    type="number" min="1" className="input-base font-mono-data" placeholder="e.g. 100" />
-                  {registerForm.formState.errors.vehicle_capacity_kg && (
-                    <p className="form-error">{registerForm.formState.errors.vehicle_capacity_kg.message}</p>
-                  )}
-                </div>
-              )}
+                {/* DRIVER fields */}
+                {watchedRole === 'DRIVER' && (
+                  <div className="p-4 rounded-lg bg-surface-container border border-outline-variant space-y-4 relative">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+                    <div>
+                      <label className="form-label">Transit Capacity (kg)</label>
+                      <input {...registerForm.register('vehicle_capacity_kg')}
+                        type="number" min="1" className="input-base font-mono-data bg-surface-container-lowest" placeholder="e.g. 100" />
+                      {registerForm.formState.errors.vehicle_capacity_kg && (
+                        <p className="form-error">{registerForm.formState.errors.vehicle_capacity_kg.message}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
-              <button type="submit" className="btn-primary w-full py-3" disabled={isRegisterPending}>
+              <button type="submit" className="btn-primary w-full py-3 mt-4 text-[0.9375rem] shadow-sm" disabled={isRegisterPending}>
                 {isRegisterPending ? <Loader2 size={18} className="animate-spin" /> : <>Register Node <ArrowRight size={16} /></>}
               </button>
             </form>

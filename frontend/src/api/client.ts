@@ -8,7 +8,9 @@
 import axios from 'axios';
 import { useAuthStore } from '../hooks/useAuthStore';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Use an empty base URL so the Vite dev server proxy handles /api/* requests.
+// In production, set VITE_API_BASE_URL to the backend origin.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -16,6 +18,7 @@ export const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
 
 // Request interceptor: add JWT from localStorage
 apiClient.interceptors.request.use(

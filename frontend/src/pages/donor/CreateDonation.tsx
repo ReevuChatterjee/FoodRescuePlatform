@@ -65,6 +65,12 @@ const TEMP_OPTIONS = [
   { value: 'FROZEN', label: 'Deep Freeze' },
 ];
 
+const getLocalISOString = (ms: number) => {
+  const date = new Date(ms);
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+};
+
 export function CreateDonation() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -85,9 +91,9 @@ export function CreateDonation() {
     defaultValues: {
       food_category: 'COOKED',
       quantity_kg: 10,
-      prepared_at: new Date(Date.now() - 3600000).toISOString().slice(0, 16),
-      available_from: new Date().toISOString().slice(0, 16),
-      expiry_time: new Date(Date.now() + 10800000).toISOString().slice(0, 16),
+      prepared_at: getLocalISOString(Date.now() - 3600000),
+      available_from: getLocalISOString(Date.now()),
+      expiry_time: getLocalISOString(Date.now() + 10800000),
       pickup_location: { latitude: undefined as unknown as number, longitude: undefined as unknown as number, address: '' },
       food_safety_info: { storage_temp_required: 'ROOM_TEMP', allergen_tags: [], packaging_type: 'Box' },
     },
@@ -143,40 +149,40 @@ export function CreateDonation() {
   return (
     <DonorLayout>
       {/* Header */}
-      <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="page-title">Generate Dispatch Payload</h1>
-          <p className="page-subtitle">Submit surplus food specifications to the routing network.</p>
+          <h1 className="text-3xl font-bold font-display tracking-tight text-on-surface mb-1">Generate Dispatch Payload</h1>
+          <p className="text-sm font-medium text-on-surface-variant">Submit surplus food specifications to the routing network.</p>
         </div>
-        <button className="btn-secondary px-4 py-2" onClick={() => navigate('/donor')}>
+        <button className="inline-flex items-center gap-2 px-4 py-2 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-md font-semibold text-sm transition-colors border border-outline-variant" onClick={() => navigate('/donor')}>
           <ArrowLeft size={16} /> Abort Entry
         </button>
       </div>
 
       <div className="max-w-3xl mx-auto w-full mt-6">
         {/* Tracker */}
-        <div className="mb-10 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-md p-4 flex items-center justify-between relative shadow-sm">
+        <div className="mb-10 bg-surface-container-lowest border border-outline-variant rounded-lg p-5 flex items-center justify-between relative shadow-sm">
           {/* Connecting line */}
-          <div className="absolute top-1/2 left-8 right-8 h-px bg-[var(--border-strong)] -translate-y-1/2 z-0 hidden sm:block"></div>
+          <div className="absolute top-1/2 left-8 right-8 h-px bg-outline-variant -translate-y-1/2 z-0 hidden sm:block"></div>
           
           {STEPS.map((s) => {
             const isCompleted = step > s.id;
             const isCurrent = step === s.id;
             
             return (
-              <div key={s.id} className="relative z-10 flex flex-col items-center gap-2 bg-[var(--bg-panel)] px-2">
+              <div key={s.id} className="relative z-10 flex flex-col items-center gap-3 bg-surface-container-lowest px-4">
                 <div 
-                  className={`w-8 h-8 rounded-sm flex items-center justify-center transition-colors border ${
-                    isCurrent ? 'bg-[var(--brand)] text-black border-[var(--brand)]' 
-                    : isCompleted ? 'bg-[var(--success)] text-white border-[var(--success)]' 
-                    : 'bg-[var(--bg-page)] text-[var(--text-muted)] border-[var(--border-strong)]'
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors border-2 ${
+                    isCurrent ? 'bg-primary-container text-on-primary-container border-primary-container shadow-sm' 
+                    : isCompleted ? 'bg-success text-on-primary border-success shadow-sm' 
+                    : 'bg-surface text-outline-variant border-outline-variant'
                   }`}
                 >
                   {s.icon}
                 </div>
                 <div className="flex flex-col items-center">
-                   <span className="text-[10px] font-mono-data text-[var(--text-muted)]">STEP 0{s.id}</span>
-                   <span className={`text-xs font-semibold tracking-wide uppercase mt-0.5 ${isCurrent ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>
+                   <span className="text-[0.625rem] font-bold tracking-wider uppercase font-mono-data text-outline">STEP 0{s.id}</span>
+                   <span className={`text-xs font-bold tracking-tight mt-0.5 ${isCurrent ? 'text-on-surface' : 'text-on-surface-variant'}`}>
                      {s.label}
                    </span>
                 </div>
@@ -187,52 +193,52 @@ export function CreateDonation() {
 
         {/* Error banner */}
         {mutation.isError && (
-          <div className="mb-6 px-4 py-3 rounded-md border border-[var(--error)]/20 bg-[var(--error)]/10 text-[var(--error)] text-sm font-semibold tracking-wide flex items-center gap-2">
+          <div className="mb-6 px-4 py-3 rounded-md border border-error/30 bg-error/5 text-error text-sm font-bold tracking-wide flex items-center gap-2">
              <Info size={16} /> Transaction failed. Review input constraints.
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="panel p-6 border-[var(--border-strong)] bg-[var(--bg-page)] shadow-sm">
+          <div className="bg-surface-container-lowest p-8 border border-outline-variant rounded-xl shadow-sm">
             {/* ── Step 1: Food Details ── */}
             {step === 1 && (
               <div className="space-y-6">
                 <div>
-                  <label className="form-label">Payload Designation</label>
-                  <input {...register('food_name')} className="input-base" placeholder="e.g. 50x Assorted Sandwiches" />
-                  {errors.food_name && <p className="form-error">{errors.food_name.message}</p>}
+                  <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Payload Designation</label>
+                  <input {...register('food_name')} className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-medium text-on-surface placeholder:text-outline-variant focus:border-primary focus:ring-1 focus:ring-primary transition-shadow outline-none" placeholder="e.g. 50x Assorted Sandwiches" />
+                  {errors.food_name && <p className="text-xs font-semibold text-error mt-1.5">{errors.food_name.message}</p>}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="form-label">Classification</label>
-                    <select {...register('food_category')} className="select-base">
+                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Classification</label>
+                    <select {...register('food_category')} className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
                       {CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="form-label">Net Mass (kg)</label>
+                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Net Mass (kg)</label>
                     <input {...register('quantity_kg', { valueAsNumber: true })} type="number" step="0.1" min="0.1"
-                      className="input-base font-mono-data" placeholder="e.g. 15.5" />
-                    {errors.quantity_kg && <p className="form-error">{errors.quantity_kg.message}</p>}
+                      className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-bold font-mono-data text-on-surface placeholder:text-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="e.g. 15.5" />
+                    {errors.quantity_kg && <p className="text-xs font-semibold text-error mt-1.5">{errors.quantity_kg.message}</p>}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-[var(--border-subtle)] pt-6 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 border-t border-outline-variant pt-6 mt-2">
                   <div>
-                    <label className="form-label">Preparation Time</label>
-                    <input {...register('prepared_at')} type="datetime-local" className="input-base font-mono-data text-sm" />
-                    {errors.prepared_at && <p className="form-error">{errors.prepared_at.message}</p>}
+                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Preparation Time</label>
+                    <input {...register('prepared_at')} type="datetime-local" className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-[0.8125rem] font-bold font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                    {errors.prepared_at && <p className="text-xs font-semibold text-error mt-1.5">{errors.prepared_at.message}</p>}
                   </div>
                   <div>
-                    <label className="form-label">Ready for Transit</label>
-                    <input {...register('available_from')} type="datetime-local" className="input-base font-mono-data text-sm" />
-                    {errors.available_from && <p className="form-error">{errors.available_from.message}</p>}
+                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Ready for Transit</label>
+                    <input {...register('available_from')} type="datetime-local" className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-[0.8125rem] font-bold font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                    {errors.available_from && <p className="text-xs font-semibold text-error mt-1.5">{errors.available_from.message}</p>}
                   </div>
                   <div>
-                    <label className="form-label">Critical Expiration</label>
-                    <input {...register('expiry_time')} type="datetime-local" className="input-base font-mono-data text-sm text-[var(--warning)]" />
-                    {errors.expiry_time && <p className="form-error">{errors.expiry_time.message}</p>}
+                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Critical Expiration</label>
+                    <input {...register('expiry_time')} type="datetime-local" className="w-full h-11 px-3 bg-error/5 border border-error/30 rounded-md text-[0.8125rem] font-bold font-mono-data text-error focus:border-error focus:ring-1 focus:ring-error outline-none" />
+                    {errors.expiry_time && <p className="text-xs font-semibold text-error mt-1.5">{errors.expiry_time.message}</p>}
                   </div>
                 </div>
               </div>
@@ -242,7 +248,7 @@ export function CreateDonation() {
             {step === 2 && (
               <div className="space-y-6">
                 <div>
-                  <label className="form-label">Facility Address</label>
+                  <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Facility Address</label>
                   <LocationAutocomplete
                     value={watch('pickup_location.address')}
                     onChange={(val) => setValue('pickup_location.address', val)}
@@ -254,11 +260,11 @@ export function CreateDonation() {
                     }}
                     placeholder="e.g. Loading Bay 3, 42 MG Road, Bengaluru"
                   />
-                  {errors.pickup_location?.address && <p className="form-error">{errors.pickup_location.address.message}</p>}
+                  {errors.pickup_location?.address && <p className="text-xs font-semibold text-error mt-1.5">{errors.pickup_location.address.message}</p>}
                 </div>
-                <div className="p-4 rounded-sm border border-[var(--border-subtle)] bg-[var(--bg-panel)] flex items-start gap-3 mt-4">
-                  <MapPin size={16} className="text-[var(--brand)] mt-0.5" />
-                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 flex items-start gap-3 mt-4">
+                  <MapPin size={16} className="text-primary mt-0.5 flex-shrink-0" />
+                  <p className="text-sm font-medium text-primary leading-relaxed">
                      Provide exact geographic coordinates. The algorithmic dispatch engine relies on this precision to minimize transit times.
                   </p>
                 </div>
@@ -268,30 +274,30 @@ export function CreateDonation() {
             {/* ── Step 3: Safety & Handling ── */}
             {step === 3 && (
               <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <div>
-                    <label className="form-label">Thermal Constraints</label>
-                    <select {...register('food_safety_info.storage_temp_required')} className="select-base">
+                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Thermal Constraints</label>
+                    <select {...register('food_safety_info.storage_temp_required')} className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
                       {TEMP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="form-label">Enclosure Specs</label>
-                    <input {...register('food_safety_info.packaging_type')} className="input-base"
+                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Enclosure Specs</label>
+                    <input {...register('food_safety_info.packaging_type')} className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-medium text-on-surface placeholder:text-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                       placeholder="e.g. Vacuum-sealed GN pans" />
                   </div>
                 </div>
 
-                <div className="border-t border-[var(--border-subtle)] pt-6 mt-2">
-                  <label className="form-label">Handling Directives (Optional)</label>
-                  <input {...register('special_handling')} className="input-base"
+                <div className="border-t border-outline-variant pt-6 mt-2">
+                  <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Handling Directives (Optional)</label>
+                  <input {...register('special_handling')} className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-medium text-on-surface placeholder:text-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                     placeholder="e.g. DO NOT STACK. Keep horizontal." />
                 </div>
 
                 {/* Allergen chips */}
-                <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-4 rounded-sm mt-4">
-                  <label className="form-label mb-3 block">Identify Contaminants / Allergens</label>
-                  <div className="flex flex-wrap gap-2">
+                <div className="bg-surface-container border border-outline-variant p-5 rounded-lg mt-6 shadow-sm">
+                  <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-4">Identify Contaminants / Allergens</label>
+                  <div className="flex flex-wrap gap-2.5">
                     {ALLERGENS.map((a) => {
                       const selected = allergens.includes(a);
                       return (
@@ -299,19 +305,19 @@ export function CreateDonation() {
                           key={a}
                           type="button"
                           onClick={() => setAllergens((prev) => selected ? prev.filter((x) => x !== a) : [...prev, a])}
-                          className={`px-3 py-1.5 rounded-sm text-xs font-semibold tracking-wide border transition-all flex items-center gap-1.5
-                            ${selected ? 'bg-[var(--error)] text-black border-[var(--error)] shadow-sm' : 'bg-[var(--bg-page)] border-[var(--border-strong)] text-[var(--text-secondary)] hover:border-[var(--text-muted)]'}`}
+                          className={`px-3.5 py-2 rounded-full text-[0.8125rem] font-bold tracking-tight border transition-all flex items-center gap-1.5 shadow-sm
+                            ${selected ? 'bg-error text-white border-error' : 'bg-surface-container-lowest border-outline-variant text-on-surface hover:border-outline hover:bg-surface'}`}
                         >
-                          {selected && <X size={12} />}
+                          {selected && <X size={14} />}
                           {a}
                         </button>
                       );
                     })}
                   </div>
                   {allergens.length > 0 && (
-                    <div className="mt-4 p-2 bg-[var(--error)]/10 border border-[var(--error)]/20 rounded-sm">
-                       <p className="text-xs font-semibold tracking-wide text-[var(--error)] flex items-center gap-2">
-                         <Shield size={14} /> IDENTIFIED: {allergens.join(', ')}
+                    <div className="mt-5 p-3 bg-error/10 border border-error/20 rounded-md">
+                       <p className="text-xs font-bold tracking-wider uppercase text-error flex items-center gap-2">
+                         <Shield size={16} /> IDENTIFIED: {allergens.join(', ')}
                        </p>
                     </div>
                   )}
@@ -321,21 +327,21 @@ export function CreateDonation() {
           </div>
 
           {/* Navigation buttons */}
-          <div className="flex justify-between items-center mt-6">
+          <div className="flex justify-between items-center mt-8">
             <button
               type="button"
-              className="px-6 py-2.5 rounded-sm text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-2"
+              className="px-6 py-2.5 rounded-md text-sm font-bold text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-2 hover:bg-surface-container"
               onClick={() => step === 1 ? navigate('/donor') : setStep((s) => s - 1)}
             >
               <ArrowLeft size={16} /> {step === 1 ? 'Cancel Entry' : 'Previous Step'}
             </button>
 
             {step < 3 ? (
-              <button type="button" className="btn-primary px-8 py-2.5 flex items-center gap-2" onClick={nextStep}>
+              <button type="button" className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-on-primary rounded-md font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm" onClick={nextStep}>
                 Next Phase <ArrowRight size={16} />
               </button>
             ) : (
-              <button type="submit" className="btn-primary px-8 py-2.5 flex items-center gap-2 bg-[var(--brand)] text-black shadow-sm" disabled={mutation.isPending}>
+              <button type="submit" className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-on-primary rounded-md font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm" disabled={mutation.isPending}>
                 {mutation.isPending ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : <>Transmit Payload <Package size={16} /></>}
               </button>
             )}

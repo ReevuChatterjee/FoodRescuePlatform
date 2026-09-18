@@ -22,9 +22,9 @@ function MetricSkeleton({ size = 'lg' }: { size?: 'lg' | 'md' | 'sm' }) {
   const h = size === 'lg' ? '72px' : size === 'md' ? '44px' : '28px';
   return (
     <div>
-      <div className="skeleton" style={{ height: h, width: '80px', marginBottom: '8px' }} />
-      <div className="skeleton" style={{ height: '1px', width: '100%', marginBottom: '8px' }} />
-      <div className="skeleton" style={{ height: '10px', width: '60px' }} />
+      <div className="bg-surface-container-high rounded animate-pulse" style={{ height: h, width: '80px', marginBottom: '8px' }} />
+      <div className="bg-surface-container rounded animate-pulse w-full h-px mb-2" />
+      <div className="bg-surface-container-highest rounded animate-pulse h-3 w-16" />
     </div>
   );
 }
@@ -40,30 +40,20 @@ export function AdminDashboard() {
   return (
     <AdminLayout>
       {/* ── Page header ── */}
-      <div className="page-header">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10 pb-6 border-b border-outline-variant">
         <div>
-          <h1 className="page-title">Network Observatory</h1>
-          <p className="page-subtitle">Platform-wide metrics — auto-refreshes every 30s</p>
+          <h1 className="text-3xl font-bold font-display tracking-tight text-on-surface mb-2">Network Observatory</h1>
+          <p className="text-sm font-medium text-on-surface-variant tracking-normal">Platform-wide metrics — auto-refreshes every 30s</p>
         </div>
-        
       </div>
 
       {/* ── KPI Metric Rail ── */}
       {/* Asymmetric: 2 dominant (lg) + 5 smaller (sm) side by side */}
-      <section style={{ marginBottom: 'var(--sp-6)' }}>
-        <p className="section-label" style={{ marginBottom: '20px' }}>System Overview</p>
+      <section className="mb-12">
+        <p className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface mb-6">System Overview</p>
 
         {/* Two dominant metrics */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '40px',
-            marginBottom: '32px',
-            paddingBottom: '32px',
-            borderBottom: '1px solid var(--border-hair)',
-          }}
-        >
+        <div className="grid grid-cols-2 gap-10 mb-8 pb-8 border-b border-outline-variant">
           {isLoading ? (
             <><MetricSkeleton size="lg" /><MetricSkeleton size="lg" /></>
           ) : (
@@ -84,22 +74,15 @@ export function AdminDashboard() {
         </div>
 
         {/* Five secondary metrics in a horizontal rail */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: '28px',
-          }}
-          className="grid-cols-2 sm:grid-cols-3 lg:!grid-cols-5"
-        >
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-7">
           {isLoading
             ? Array(5).fill(0).map((_, i) => <MetricSkeleton key={i} size="sm" />)
             : [
-                { value: overview?.available_drivers  ?? 0, label: 'Avail. Drivers',  icon: <Truck size={11} /> },
-                { value: overview?.registered_ngos    ?? 0, label: 'Registered NGOs', icon: <CheckCircle size={11} /> },
-                { value: overview?.registered_donors  ?? 0, label: 'Donors',          icon: <Users size={11} /> },
-                { value: overview?.registered_drivers ?? 0, label: 'Total Drivers',   icon: <Truck size={11} /> },
-                { value: overview?.total_donations    ?? 0, label: 'Total Donations', icon: <Package size={11} /> },
+                { value: overview?.available_drivers  ?? 0, label: 'Avail. Drivers',  icon: <Truck size={12} /> },
+                { value: overview?.registered_ngos    ?? 0, label: 'Registered NGOs', icon: <CheckCircle size={12} /> },
+                { value: overview?.registered_donors  ?? 0, label: 'Donors',          icon: <Users size={12} /> },
+                { value: overview?.registered_drivers ?? 0, label: 'Total Drivers',   icon: <Truck size={12} /> },
+                { value: overview?.total_donations    ?? 0, label: 'Total Donations', icon: <Package size={12} /> },
               ].map((m) => (
                 <MetricDisplay key={m.label} value={m.value} label={m.label} size="sm" />
               ))
@@ -108,25 +91,14 @@ export function AdminDashboard() {
       </section>
 
       {/* ── Logistics + Social: asymmetric 7/5 ── */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '7fr 5fr',
-          gap: '32px',
-          marginBottom: 'var(--sp-6)',
-        }}
-        className="grid-cols-1 lg:!grid-cols-[7fr_5fr]"
-      >
+      <div className="grid grid-cols-1 lg:grid-cols-[7fr_5fr] gap-10 mb-12">
         {/* Logistics */}
         <div>
-          <p className="section-label" style={{ marginBottom: '20px' }}>
-            <Truck size={10} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+          <p className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface flex items-center mb-6">
+            <Truck size={12} className="mr-2 inline" />
             Logistics Efficiency
           </p>
-          <div
-            className="surface-dense"
-            style={{ padding: 0, overflow: 'hidden' }}
-          >
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-md overflow-hidden shadow-sm">
             {[
               {
                 label: 'Delivery Success Rate',
@@ -151,29 +123,17 @@ export function AdminDashboard() {
             ].map((m, i, arr) => (
               <div
                 key={m.label}
-                style={{
-                  padding: '14px 20px',
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--border-hair)' : 'none',
-                }}
+                className={`p-4 ${i < arr.length - 1 ? 'border-b border-b-outline-variant' : ''}`}
               >
-                <div className="flex justify-between items-baseline" style={{ marginBottom: m.bar !== null ? '8px' : 0 }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)' }}>{m.label}</span>
-                  <span
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: '1.125rem',
-                      fontWeight: 300,
-                      color: 'var(--text-primary)',
-                      fontVariantNumeric: 'tabular-nums',
-                      fontVariationSettings: "'opsz' 18",
-                    }}
-                  >
+                <div className={`flex justify-between items-baseline ${m.bar !== null ? 'mb-2' : ''}`}>
+                  <span className="text-[0.8125rem] text-on-surface-variant font-medium">{m.label}</span>
+                  <span className="font-display text-lg font-light text-on-surface tracking-tight font-mono-data">
                     {isLoading ? '—' : m.value}
                   </span>
                 </div>
                 {m.bar !== null && (
-                  <div className="capacity-bar">
-                    <div className="capacity-fill" style={{ width: isLoading ? '0%' : `${Math.min(m.bar, 100)}%` }} />
+                  <div className="h-1 bg-outline-variant rounded-full overflow-hidden">
+                    <div className="h-full bg-primary transition-[width] duration-500 ease-out" style={{ width: isLoading ? '0%' : `${Math.min(m.bar, 100)}%` }} />
                   </div>
                 )}
               </div>
@@ -183,11 +143,11 @@ export function AdminDashboard() {
 
         {/* Social Impact */}
         <div>
-          <p className="section-label" style={{ marginBottom: '20px' }}>
-            <Activity size={10} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} />
+          <p className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface flex items-center mb-6">
+            <Activity size={12} className="mr-2 inline" />
             Social Impact
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+          <div className="flex flex-col gap-8">
             {isLoading ? (
               <><MetricSkeleton size="md" /><MetricSkeleton size="md" /><MetricSkeleton size="sm" /></>
             ) : (
@@ -208,43 +168,36 @@ export function AdminDashboard() {
 
       {/* ── Quick Actions — compact hairline list, not card grid ── */}
       <section>
-        <p className="section-label" style={{ marginBottom: '16px' }}>Quick Actions</p>
-        <div className="surface-dense" style={{ overflow: 'hidden' }}>
+        <p className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface mb-5">Quick Actions</p>
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-md overflow-hidden shadow-sm">
           {[
             {
               label: 'Review NGO Verifications',
               href: '/admin/ngos/verify',
               meta: 'Pending approvals',
-              accent: 'var(--amber-dim)',
+              accent: 'bg-warning',
             },
             {
               label: 'Browse All NGOs',
               href: '/admin/ngos',
               meta: `${overview?.registered_ngos ?? 0} registered`,
-              accent: 'var(--moss-light)',
+              accent: 'bg-primary',
             },
           ].map((q, i, arr) => (
             <Link
               key={q.href}
               to={q.href}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 20px',
-                borderBottom: i < arr.length - 1 ? '1px solid var(--border-hair)' : 'none',
-                textDecoration: 'none',
-                transition: 'background 0.12s',
-              }}
-              className="hover:bg-hover"
+              className={`flex items-center justify-between p-4 hover:bg-surface-container transition-colors group ${
+                i < arr.length - 1 ? 'border-b border-b-outline-variant' : ''
+              }`}
             >
-              <div className="flex items-center gap-3">
-                <div style={{ width: '3px', height: '16px', background: q.accent, borderRadius: '1px', flexShrink: 0 }} />
-                <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)' }}>{q.label}</span>
+              <div className="flex items-center gap-4">
+                <div className={`w-[3px] h-4 rounded-[1px] flex-shrink-0 ${q.accent}`} />
+                <span className="text-sm font-semibold text-on-surface group-hover:text-primary transition-colors">{q.label}</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="section-label" style={{ color: 'var(--text-muted)' }}>{q.meta}</span>
-                <ArrowUpRight size={13} style={{ color: 'var(--text-muted)' }} />
+                <span className="font-ui text-[0.625rem] font-bold tracking-wider uppercase text-on-surface-variant">{q.meta}</span>
+                <ArrowUpRight size={16} className="text-on-surface-variant flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </Link>
           ))}

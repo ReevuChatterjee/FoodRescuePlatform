@@ -8,11 +8,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://backend:8000',
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:8000',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://backend:8000',
+        target: process.env.VITE_BACKEND_WS_URL || 'ws://localhost:8000',
         ws: true,
       },
     },
@@ -23,3 +23,4 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
   },
 })
+

@@ -76,9 +76,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-[var(--border-subtle)] bg-[var(--bg-panel)]">
-        <div className="w-6 h-6 bg-[var(--brand)] rounded-sm flex items-center justify-center">
-          <Leaf size={14} className="text-black" />
-        </div>
+        <Leaf size={20} className="text-[var(--moss)]" />
         <div>
           <p className="text-sm font-semibold tracking-tight text-[var(--text-primary)]">RePlate Ops</p>
         </div>

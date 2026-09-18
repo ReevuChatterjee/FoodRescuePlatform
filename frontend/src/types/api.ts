@@ -157,6 +157,20 @@ export interface Donation {
   matched_ngo_id: string | null;
   driver_id: string | null;
   eta_minutes: number | null;
+  match_score?: number | null;
+  match_breakdown?: {
+    capacity_score: number;
+    shelf_life_score: number;
+    transit_score: number;
+    demand_score: number;
+    route_score: number;
+    eta_minutes: number;
+    ngo_capacity_kg?: number;
+    donation_quantity_kg?: number;
+    distance_km?: number;
+    demand_kg?: number;
+    shelf_life_minutes?: number;
+  } | null;
   created_at: string;
 }
 

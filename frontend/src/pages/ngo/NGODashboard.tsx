@@ -30,10 +30,10 @@ export function NGODashboard() {
   if (isLoading) {
     return (
       <NGOLayout>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div className="skeleton" style={{ height: '40px', width: '200px' }} />
-          <div className="skeleton" style={{ height: '200px', width: '100%' }} />
-          <div className="skeleton" style={{ height: '140px', width: '100%' }} />
+        <div className="flex flex-col gap-3">
+          <div className="bg-surface-container-high rounded animate-pulse h-10 w-48" />
+          <div className="bg-surface-container-high rounded animate-pulse h-[200px] w-full" />
+          <div className="bg-surface-container-high rounded animate-pulse h-[140px] w-full" />
         </div>
       </NGOLayout>
     );
@@ -42,8 +42,8 @@ export function NGODashboard() {
   if (error || !profile) {
     return (
       <NGOLayout>
-        <div className="surface" style={{ padding: '48px', textAlign: 'center' }}>
-          <p style={{ color: 'var(--terracotta)', fontSize: '0.875rem', fontWeight: 500 }}>
+        <div className="bg-surface-container rounded-lg p-12 text-center border border-outline-variant">
+          <p className="text-sm font-semibold text-error">
             Failed to load NGO profile. Please refresh.
           </p>
         </div>
@@ -57,28 +57,28 @@ export function NGODashboard() {
   return (
     <NGOLayout>
       {/* Page header */}
-      <div className="page-header">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="page-title">{profile.organisation_name}</h1>
-          <p className="page-subtitle" style={{ maxWidth: '60ch' }}>{profile.address}</p>
+          <h1 className="text-3xl font-bold font-display tracking-tight text-on-surface mb-1">{profile.organisation_name}</h1>
+          <p className="text-sm font-medium text-on-surface-variant max-w-[60ch]">{profile.address}</p>
         </div>
         <div className="flex items-center gap-2">
           {isVerified && (
-            <span className="status-pill-success">
-              <span className="status-pill-dot dot-success" />
-              <CheckCircle size={9} style={{ marginRight: '2px' }} /> Verified
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-success/30 bg-success/5 text-success rounded-sm font-ui text-[0.625rem] font-bold tracking-wider uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-success" />
+              <CheckCircle size={10} /> Verified
             </span>
           )}
           {isPending && (
-            <span className="status-pill-warning">
-              <span className="status-pill-dot dot-amber" />
-              <Clock size={9} style={{ marginRight: '2px' }} /> Verification Pending
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-warning/30 bg-warning/5 text-warning rounded-sm font-ui text-[0.625rem] font-bold tracking-wider uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+              <Clock size={10} /> Verification Pending
             </span>
           )}
           {!isVerified && !isPending && (
-            <span className="status-pill-error">
-              <span className="status-pill-dot dot-error" />
-              <XCircle size={9} style={{ marginRight: '2px' }} /> Not Verified
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-error/30 bg-error/5 text-error rounded-sm font-ui text-[0.625rem] font-bold tracking-wider uppercase">
+              <span className="w-1.5 h-1.5 rounded-full bg-error" />
+              <XCircle size={10} /> Not Verified
             </span>
           )}
         </div>
@@ -86,23 +86,13 @@ export function NGODashboard() {
 
       {/* Pending notice */}
       {isPending && (
-        <div
-          style={{
-            marginBottom: 'var(--sp-5)',
-            padding: '12px 16px',
-            borderLeft: '3px solid var(--amber-dim)',
-            background: 'var(--amber-dim-bg)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '12px',
-          }}
-        >
-          <ShieldAlert size={16} style={{ color: 'var(--amber-dim)', marginTop: '1px', flexShrink: 0 }} />
+        <div className="mb-10 px-4 py-3 border-l-4 border-warning bg-warning/5 flex items-start gap-3">
+          <ShieldAlert size={16} className="text-warning mt-0.5 flex-shrink-0" />
           <div>
-            <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--amber-dim)', marginBottom: '4px' }}>
+            <p className="text-[0.8125rem] font-bold text-warning mb-1">
               Verification Pending
             </p>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
               Your NGO is awaiting admin review. You can still view your profile and incoming offers.
             </p>
           </div>
@@ -110,26 +100,22 @@ export function NGODashboard() {
       )}
 
       {/* Two-column layout: feed (left 2/3) + actions rail (right 1/3) */}
-      <div
-        style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}
-        className="grid-cols-1 lg:!grid-cols-[2fr_1fr]"
-      >
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8">
         {/* ── Left feed column ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
+        <div className="flex flex-col gap-10">
 
           {/* Capacity section — inline MetricDisplay, not a card */}
           <div>
-            <div className="flex items-center justify-between" style={{ marginBottom: '16px' }}>
-              <p className="section-label">Storage Capacity</p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="section-label text-on-surface">Storage Capacity</p>
               <Link
                 to="/ngo/settings"
-                className="section-label hover:text-[var(--moss-light)] transition-colors"
-                style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
+                className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant hover:text-primary transition-colors"
               >
                 Update →
               </Link>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '28px', marginBottom: '20px' }}>
+            <div className="grid grid-cols-2 gap-8 mb-5">
               <MetricDisplay
                 value={profile.available_capacity_kg}
                 label="Available Now"
@@ -147,25 +133,24 @@ export function NGODashboard() {
 
           {/* Accepted categories — comma-separated, no chips */}
           <div>
-            <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
-              <p className="section-label">Accepted Categories</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="section-label text-on-surface">Accepted Categories</p>
               <Link
                 to="/ngo/settings"
-                className="section-label hover:text-[var(--moss-light)] transition-colors"
-                style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
+                className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant hover:text-primary transition-colors"
               >
                 Edit →
               </Link>
             </div>
             {profile.accepted_categories.length === 0 ? (
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              <p className="text-[0.8125rem] text-on-surface-variant">
                 No categories configured.{' '}
-                <Link to="/ngo/settings" style={{ color: 'var(--moss-light)', textDecoration: 'none' }}>
+                <Link to="/ngo/settings" className="text-primary hover:underline">
                   Set preferences →
                 </Link>
               </p>
             ) : (
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              <p className="text-sm font-medium text-on-surface-variant leading-relaxed font-mono-data">
                 {profile.accepted_categories
                   .map((c) => CATEGORY_DISPLAY[c] ?? c.replace(/_/g, ' '))
                   .join(' · ')}
@@ -175,54 +160,38 @@ export function NGODashboard() {
 
           {/* Current demand — hairline feed list */}
           <div>
-            <div className="flex items-center justify-between" style={{ marginBottom: '12px' }}>
-              <p className="section-label">Current Demand</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="section-label text-on-surface">Current Demand</p>
               <Link
                 to="/ngo/settings"
-                className="section-label hover:text-[var(--moss-light)] transition-colors"
-                style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
+                className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant hover:text-primary transition-colors"
               >
                 Add →
               </Link>
             </div>
             {profile.demand.length === 0 ? (
-              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              <p className="text-[0.8125rem] text-on-surface-variant">
                 No demand entries.{' '}
-                <Link to="/ngo/settings" style={{ color: 'var(--moss-light)', textDecoration: 'none' }}>
+                <Link to="/ngo/settings" className="text-primary hover:underline">
                   Add them to improve matching →
                 </Link>
               </p>
             ) : (
-              <div className="surface-dense" style={{ overflow: 'hidden' }}>
+              <div className="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-[0_2px_4px_rgba(24,29,26,0.04)]">
                 {profile.demand.map((d, i) => (
                   <div
                     key={i}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      borderBottom: i < profile.demand.length - 1 ? '1px solid var(--border-hair)' : 'none',
-                    }}
+                    className={`flex items-center justify-between p-4 ${i < profile.demand.length - 1 ? 'border-b border-b-outline-variant' : ''}`}
                   >
                     <div>
-                      <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
+                      <p className="text-[0.8125rem] font-semibold text-on-surface mb-1">
                         {CATEGORY_DISPLAY[d.food_category] ?? d.food_category.replace(/_/g, ' ')}
                       </p>
-                      <p style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                        Priority {d.priority} · Valid until {new Date(d.valid_until).toLocaleDateString()}
+                      <p className="text-[0.6875rem] text-on-surface-variant font-mono-data">
+                        Priority {d.priority} <span className="text-outline-variant px-1">·</span> Valid until {new Date(d.valid_until).toLocaleDateString()}
                       </p>
                     </div>
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: '1rem',
-                        fontWeight: 300,
-                        color: 'var(--text-secondary)',
-                        fontVariantNumeric: 'tabular-nums',
-                        fontVariationSettings: "'opsz' 16",
-                      }}
-                    >
+                    <span className="font-display text-lg font-bold text-on-surface tracking-tight font-mono-data">
                       {d.required_quantity_kg} kg
                     </span>
                   </div>
@@ -233,35 +202,28 @@ export function NGODashboard() {
         </div>
 
         {/* ── Right rail: actions + operating hours ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+        <div className="flex flex-col gap-6">
           {/* Quick actions */}
           <div>
-            <p className="section-label" style={{ marginBottom: '12px' }}>Actions</p>
-            <div className="surface-dense" style={{ overflow: 'hidden' }}>
+            <p className="section-label text-on-surface mb-3">Actions</p>
+            <div className="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-[0_2px_4px_rgba(24,29,26,0.04)]">
               {[
-                { label: 'Incoming Offers', href: '/ngo/incoming', icon: <Package size={13} />, desc: 'Review matched donations' },
-                { label: 'Settings',        href: '/ngo/settings', icon: <Settings size={13} />, desc: 'Capacity, demand & profile' },
+                { label: 'Incoming Offers', href: '/ngo/incoming', icon: <Package size={14} />, desc: 'Review matched donations' },
+                { label: 'Settings',        href: '/ngo/settings', icon: <Settings size={14} />, desc: 'Capacity, demand & profile' },
               ].map((a, i, arr) => (
                 <Link
                   key={a.href}
                   to={a.href}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 16px',
-                    borderBottom: i < arr.length - 1 ? '1px solid var(--border-hair)' : 'none',
-                    textDecoration: 'none',
-                    transition: 'background 0.1s',
-                  }}
-                  className="hover:bg-hover"
+                  className={`flex items-center gap-3 p-3.5 hover:bg-surface-container transition-colors group ${
+                    i < arr.length - 1 ? 'border-b border-b-outline-variant' : ''
+                  }`}
                 >
-                  <div style={{ color: 'var(--text-muted)', flexShrink: 0 }}>{a.icon}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '2px' }}>{a.label}</p>
-                    <p style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{a.desc}</p>
+                  <div className="text-on-surface-variant flex-shrink-0 group-hover:text-primary transition-colors">{a.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[0.8125rem] font-semibold text-on-surface mb-0.5">{a.label}</p>
+                    <p className="text-[0.6875rem] text-on-surface-variant">{a.desc}</p>
                   </div>
-                  <ArrowUpRight size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                  <ArrowUpRight size={14} className="text-on-surface-variant flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Link>
               ))}
             </div>
@@ -269,15 +231,14 @@ export function NGODashboard() {
 
           {/* Operating hours — two inline MetricDisplays */}
           <div>
-            <p className="section-label" style={{ marginBottom: '12px' }}>Operating Hours</p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <p className="section-label text-on-surface mb-3">Operating Hours</p>
+            <div className="grid grid-cols-2 gap-4">
               <MetricDisplay value={profile.operating_hours.start} label="Opens"  size="sm" />
               <MetricDisplay value={profile.operating_hours.end}   label="Closes" size="sm" />
             </div>
             <Link
               to="/ngo/settings"
-              className="section-label hover:text-[var(--moss-light)] transition-colors"
-              style={{ color: 'var(--text-muted)', textDecoration: 'none', marginTop: '8px', display: 'block' }}
+              className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant hover:text-primary transition-colors mt-3 block"
             >
               Edit hours →
             </Link>
@@ -285,11 +246,8 @@ export function NGODashboard() {
 
           {/* NGO ID */}
           <div>
-            <p className="section-label" style={{ marginBottom: '6px' }}>NGO ID</p>
-            <p
-              className="font-mono-data"
-              style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}
-            >
+            <p className="section-label text-on-surface mb-1.5">NGO ID</p>
+            <p className="font-mono-data text-[0.6875rem] text-on-surface-variant break-all">
               {profile.ngo_id}
             </p>
           </div>

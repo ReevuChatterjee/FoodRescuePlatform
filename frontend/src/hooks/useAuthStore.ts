@@ -24,6 +24,8 @@ interface AuthState {
   clearAuth: () => void;
 }
 
+import { queryClient } from '../App';
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -39,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        queryClient.clear();
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
       },
     }),

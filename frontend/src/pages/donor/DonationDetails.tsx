@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MapPin, Clock, Package, Truck, CheckCircle, XCircle, Upload, AlertTriangle, Crosshair, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Package, Truck, CheckCircle, XCircle, Upload, AlertTriangle, Crosshair, Loader2, Activity } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiClient } from '../../api/client';
 import type { Donation, SuccessEnvelope } from '../../types/api';
@@ -248,6 +248,61 @@ export function DonationDetails() {
                 </div>
               </div>
             )}
+
+            {/* Matching Engine Breakdown */}
+            {donation.match_breakdown && (
+              <div className="mt-6 p-5 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-panel)] relative z-10 overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5">
+                  <Activity size={120} />
+                </div>
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[var(--border-subtle)] relative z-10">
+                  <Activity size={16} className="text-[var(--primary)]" />
+                  <span className="text-xs font-bold text-[var(--primary)] uppercase tracking-widest">Algorithm Score Breakdown</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 relative z-10">
+                  {[
+                    { label: 'Overall Match Score', score: `${(donation.match_score! * 100).toFixed(1)}%`, highlight: true },
+                    { 
+                      label: 'Capacity Fit (C)', 
+                      score: `${(donation.match_breakdown.capacity_score * 100).toFixed(1)}%`,
+                      detail: donation.match_breakdown.ngo_capacity_kg ? `${donation.match_breakdown.donation_quantity_kg}kg / ${donation.match_breakdown.ngo_capacity_kg}kg` : undefined
+                    },
+                    { 
+                      label: 'Shelf Life Decay (S)', 
+                      score: `${(donation.match_breakdown.shelf_life_score * 100).toFixed(1)}%`,
+                      detail: donation.match_breakdown.shelf_life_minutes ? `${Math.floor(donation.match_breakdown.shelf_life_minutes / 60)}h ${Math.floor(donation.match_breakdown.shelf_life_minutes % 60)}m left` : undefined
+                    },
+                    { 
+                      label: 'Transit Efficiency (T)', 
+                      score: `${(donation.match_breakdown.transit_score * 100).toFixed(1)}%`,
+                      detail: donation.match_breakdown.eta_minutes ? `${donation.match_breakdown.eta_minutes} min ETA` : undefined
+                    },
+                    { 
+                      label: 'Demand Urgency (D)', 
+                      score: `${(donation.match_breakdown.demand_score * 100).toFixed(1)}%`,
+                      detail: donation.match_breakdown.demand_kg !== undefined ? (donation.match_breakdown.demand_kg > 0 ? `${donation.match_breakdown.demand_kg}kg Requested` : `No Explicit Demand`) : undefined
+                    },
+                    { 
+                      label: 'Route Distance (R)', 
+                      score: `${(donation.match_breakdown.route_score * 100).toFixed(1)}%`,
+                      detail: donation.match_breakdown.distance_km ? `${donation.match_breakdown.distance_km} km` : undefined
+                    },
+                  ].map((metric) => (
+                    <div key={metric.label} className={`p-3 rounded-sm border ${metric.highlight ? 'border-[var(--primary)]/30 bg-[var(--primary)]/5' : 'border-[var(--border-subtle)] bg-[var(--bg-page)]'}`}>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-1">{metric.label}</p>
+                      <div className="flex items-baseline gap-2">
+                        <p className={`font-mono-data text-sm font-bold ${metric.highlight ? 'text-[var(--primary)]' : 'text-[var(--text-primary)]'}`}>
+                          {metric.score}
+                        </p>
+                        {metric.detail && (
+                          <span className="text-[10px] text-[var(--text-secondary)]">({metric.detail})</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -288,7 +343,7 @@ export function DonationDetails() {
                         onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
                       <div className={`input-base text-center py-4 cursor-pointer border-dashed border-2 ${photo ? 'border-[var(--brand)] text-[var(--brand)] bg-[var(--brand)]/5' : 'border-[var(--border-strong)] hover:border-[var(--brand)] text-[var(--text-muted)] hover:text-[var(--brand)]'} transition-all`}>
                         {photo ? (
-                          <span className="font-semibold text-xs tracking-wide">📎 {photo.name}</span>
+                          <span className="font-semibold text-xs tracking-wide"> {photo.name}</span>
                         ) : (
                           <span className="text-xs font-semibold tracking-wide uppercase">Select File</span>
                         )}
