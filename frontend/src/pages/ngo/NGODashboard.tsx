@@ -10,10 +10,8 @@
  */
 
 import { Link } from 'react-router-dom';
-import { CheckCircle, Clock, XCircle, Package, Settings, ArrowUpRight, ShieldAlert } from 'lucide-react';
 import { useMyNGOProfile } from '../../hooks/useNGO';
 import { NGOLayout } from '../../components/layout/NGOLayout';
-import { MetricDisplay } from '../../components/common/MetricDisplay';
 
 const CATEGORY_DISPLAY: Record<string, string> = {
   RAW_PRODUCE: 'Raw Produce',
@@ -57,45 +55,24 @@ export function NGODashboard() {
   return (
     <NGOLayout>
       {/* Page header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <div className="mb-10 pb-6 border-b border-outline-variant/30 flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold font-display tracking-tight text-on-surface mb-1">{profile.organisation_name}</h1>
-          <p className="text-sm font-medium text-on-surface-variant max-w-[60ch]">{profile.address}</p>
+          <p className="text-[0.6875rem] font-bold text-primary tracking-widest uppercase mb-2">NGO Dashboard</p>
+          <h1 className="text-[1.375rem] font-semibold text-on-surface mb-1.5 tracking-tight">{profile.organisation_name}</h1>
+          <p className="text-[0.875rem] text-on-surface-variant max-w-[50ch] leading-relaxed">{profile.address}</p>
         </div>
-        <div className="flex items-center gap-2">
-          {isVerified && (
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-success/30 bg-success/5 text-success rounded-sm font-ui text-[0.625rem] font-bold tracking-wider uppercase">
-              <span className="w-1.5 h-1.5 rounded-full bg-success" />
-              <CheckCircle size={10} /> Verified
-            </span>
-          )}
-          {isPending && (
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-warning/30 bg-warning/5 text-warning rounded-sm font-ui text-[0.625rem] font-bold tracking-wider uppercase">
-              <span className="w-1.5 h-1.5 rounded-full bg-warning" />
-              <Clock size={10} /> Verification Pending
-            </span>
-          )}
-          {!isVerified && !isPending && (
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border border-error/30 bg-error/5 text-error rounded-sm font-ui text-[0.625rem] font-bold tracking-wider uppercase">
-              <span className="w-1.5 h-1.5 rounded-full bg-error" />
-              <XCircle size={10} /> Not Verified
-            </span>
-          )}
+        <div className="text-right">
+          <p className="text-[0.6875rem] text-on-surface-variant uppercase tracking-wider mb-1">Verification</p>
+          <p className={`text-[0.875rem] font-medium ${isVerified ? 'text-primary' : isPending ? 'text-warning' : 'text-error'}`}>
+            {isVerified ? 'Verified' : isPending ? 'Pending review' : 'Not verified'}
+          </p>
         </div>
       </div>
 
       {/* Pending notice */}
       {isPending && (
-        <div className="mb-10 px-4 py-3 border-l-4 border-warning bg-warning/5 flex items-start gap-3">
-          <ShieldAlert size={16} className="text-warning mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-[0.8125rem] font-bold text-warning mb-1">
-              Verification Pending
-            </p>
-            <p className="text-xs text-on-surface-variant leading-relaxed">
-              Your NGO is awaiting admin review. You can still view your profile and incoming offers.
-            </p>
-          </div>
+        <div className="mb-10 text-[0.875rem] text-warning border border-warning/30 px-4 py-3">
+          <span className="font-bold">Verification Pending:</span> Your NGO is awaiting admin review. You can still view your profile and incoming offers.
         </div>
       )}
 
@@ -104,150 +81,155 @@ export function NGODashboard() {
         {/* ── Left feed column ── */}
         <div className="flex flex-col gap-10">
 
-          {/* Capacity section — inline MetricDisplay, not a card */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <p className="section-label text-on-surface">Storage Capacity</p>
+          {/* Capacity section */}
+          <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-md p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-wide">Storage</h2>
               <Link
                 to="/ngo/settings"
-                className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant hover:text-primary transition-colors"
+                className="text-[0.8125rem] text-on-surface-variant hover:text-primary transition-colors"
               >
-                Update →
+                Update
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-8 mb-5">
-              <MetricDisplay
-                value={profile.available_capacity_kg}
-                label="Available Now"
-                unit="kg"
-                size="md"
+            
+            <div className="flex items-end gap-3 mb-3">
+              <span className="text-[2.5rem] font-medium text-on-surface tracking-tighter leading-none font-mono-data">
+                {profile.available_capacity_kg}
+              </span>
+              <span className="text-[1rem] text-on-surface-variant pb-1">kg available</span>
+            </div>
+
+            <div className="h-[2px] w-full bg-outline-variant/30 overflow-hidden rounded-none mb-3">
+              <div
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${profile.storage_capacity_kg > 0 ? Math.min(((profile.storage_capacity_kg - profile.available_capacity_kg) / profile.storage_capacity_kg) * 100, 100) : 0}%` }}
               />
-              <MetricDisplay
-                value={profile.storage_capacity_kg}
-                label="Total Capacity"
-                unit="kg"
-                size="sm"
-              />
+            </div>
+
+            <div className="flex items-center justify-between text-[0.8125rem]">
+              <span className="text-on-surface-variant font-mono-data">{profile.storage_capacity_kg > 0 ? (((profile.storage_capacity_kg - profile.available_capacity_kg) / profile.storage_capacity_kg) * 100).toFixed(0) : 0}% utilized</span>
+              <span className="text-on-surface-variant font-mono-data">{profile.storage_capacity_kg} kg capacity</span>
             </div>
           </div>
 
-          {/* Accepted categories — comma-separated, no chips */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="section-label text-on-surface">Accepted Categories</p>
-              <Link
-                to="/ngo/settings"
-                className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant hover:text-primary transition-colors"
-              >
-                Edit →
-              </Link>
-            </div>
-            {profile.accepted_categories.length === 0 ? (
-              <p className="text-[0.8125rem] text-on-surface-variant">
-                No categories configured.{' '}
-                <Link to="/ngo/settings" className="text-primary hover:underline">
-                  Set preferences →
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Accepted categories */}
+            <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-md p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-wide">Accepted Categories</h2>
+                <Link
+                  to="/ngo/settings"
+                  className="text-[0.8125rem] text-on-surface-variant hover:text-primary transition-colors"
+                >
+                  Edit
                 </Link>
-              </p>
-            ) : (
-              <p className="text-sm font-medium text-on-surface-variant leading-relaxed font-mono-data">
-                {profile.accepted_categories
-                  .map((c) => CATEGORY_DISPLAY[c] ?? c.replace(/_/g, ' '))
-                  .join(' · ')}
-              </p>
-            )}
-          </div>
-
-          {/* Current demand — hairline feed list */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="section-label text-on-surface">Current Demand</p>
-              <Link
-                to="/ngo/settings"
-                className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant hover:text-primary transition-colors"
-              >
-                Add →
-              </Link>
-            </div>
-            {profile.demand.length === 0 ? (
-              <p className="text-[0.8125rem] text-on-surface-variant">
-                No demand entries.{' '}
-                <Link to="/ngo/settings" className="text-primary hover:underline">
-                  Add them to improve matching →
-                </Link>
-              </p>
-            ) : (
-              <div className="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-[0_2px_4px_rgba(24,29,26,0.04)]">
-                {profile.demand.map((d, i) => (
-                  <div
-                    key={i}
-                    className={`flex items-center justify-between p-4 ${i < profile.demand.length - 1 ? 'border-b border-b-outline-variant' : ''}`}
-                  >
-                    <div>
-                      <p className="text-[0.8125rem] font-semibold text-on-surface mb-1">
-                        {CATEGORY_DISPLAY[d.food_category] ?? d.food_category.replace(/_/g, ' ')}
-                      </p>
-                      <p className="text-[0.6875rem] text-on-surface-variant font-mono-data">
-                        Priority {d.priority} <span className="text-outline-variant px-1">·</span> Valid until {new Date(d.valid_until).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span className="font-display text-lg font-bold text-on-surface tracking-tight font-mono-data">
-                      {d.required_quantity_kg} kg
-                    </span>
-                  </div>
-                ))}
               </div>
-            )}
+              {profile.accepted_categories.length === 0 ? (
+                <p className="text-[0.875rem] text-on-surface-variant">
+                  No categories configured.{' '}
+                  <Link to="/ngo/settings" className="text-on-surface hover:underline">
+                    Set preferences
+                  </Link>
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {profile.accepted_categories.map((c) => (
+                    <div key={c} className="text-[0.875rem] text-on-surface pb-2 border-b border-outline-variant/30 last:border-0 last:pb-0">
+                      {CATEGORY_DISPLAY[c] ?? c.replace(/_/g, ' ')}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Current demand */}
+            <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-md p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-wide">Current Demand</h2>
+                <Link
+                  to="/ngo/settings"
+                  className="text-[0.8125rem] text-on-surface-variant hover:text-primary transition-colors"
+                >
+                  Add
+                </Link>
+              </div>
+              {profile.demand.length === 0 ? (
+                <div className="text-[0.875rem] text-on-surface-variant leading-relaxed">
+                  <p className="mb-2 font-medium text-on-surface">No active demand</p>
+                  <p className="mb-4">No food requests currently require matching.</p>
+                  <Link to="/ngo/settings" className="text-primary hover:underline underline-offset-2">
+                    Add demand →
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {profile.demand.map((d, i) => (
+                    <div key={i} className="flex items-start justify-between pb-3 border-b border-outline-variant/30 last:border-0 last:pb-0">
+                      <div>
+                        <p className="text-[0.875rem] text-on-surface font-medium">
+                          {CATEGORY_DISPLAY[d.food_category] ?? d.food_category.replace(/_/g, ' ')}
+                        </p>
+                        <p className="text-[0.75rem] text-on-surface-variant mt-0.5">
+                          Priority {d.priority} <span className="mx-1">·</span> Until {new Date(d.valid_until).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <span className="text-[0.875rem] text-on-surface font-mono-data mt-0.5">
+                        {d.required_quantity_kg} kg
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* ── Right rail: actions + operating hours ── */}
+        {/* ── Right rail: operations panel ── */}
         <div className="flex flex-col gap-6">
-          {/* Quick actions */}
-          <div>
-            <p className="section-label text-on-surface mb-3">Actions</p>
-            <div className="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-[0_2px_4px_rgba(24,29,26,0.04)]">
+          {/* Operations Panel */}
+          <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-md p-6">
+            <h2 className="text-[0.6875rem] font-bold text-on-surface-variant uppercase tracking-widest mb-5">Operations</h2>
+            
+            <div className="flex flex-col gap-5">
               {[
-                { label: 'Incoming Offers', href: '/ngo/incoming', icon: <Package size={14} />, desc: 'Review matched donations' },
-                { label: 'Settings',        href: '/ngo/settings', icon: <Settings size={14} />, desc: 'Capacity, demand & profile' },
-              ].map((a, i, arr) => (
+                { label: 'Incoming offers', href: '/ngo/incoming', desc: 'Review matched donations' },
+                { label: 'Settings',        href: '/ngo/settings', desc: 'Manage capacity, demand and profile' },
+              ].map((a) => (
                 <Link
                   key={a.href}
                   to={a.href}
-                  className={`flex items-center gap-3 p-3.5 hover:bg-surface-container transition-colors group ${
-                    i < arr.length - 1 ? 'border-b border-b-outline-variant' : ''
-                  }`}
+                  className="group block"
                 >
-                  <div className="text-on-surface-variant flex-shrink-0 group-hover:text-primary transition-colors">{a.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[0.8125rem] font-semibold text-on-surface mb-0.5">{a.label}</p>
-                    <p className="text-[0.6875rem] text-on-surface-variant">{a.desc}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[0.875rem] font-medium text-on-surface group-hover:text-primary transition-colors">{a.label}</p>
+                    <span className="text-[0.875rem] text-outline-variant group-hover:text-primary transition-colors">→</span>
                   </div>
-                  <ArrowUpRight size={14} className="text-on-surface-variant flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <p className="text-[0.8125rem] text-on-surface-variant mt-0.5">{a.desc}</p>
                 </Link>
               ))}
             </div>
-          </div>
 
-          {/* Operating hours — two inline MetricDisplays */}
-          <div>
-            <p className="section-label text-on-surface mb-3">Operating Hours</p>
-            <div className="grid grid-cols-2 gap-4">
-              <MetricDisplay value={profile.operating_hours.start} label="Opens"  size="sm" />
-              <MetricDisplay value={profile.operating_hours.end}   label="Closes" size="sm" />
+            <div className="mt-5 pt-5 border-t border-outline-variant/30">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[0.875rem] font-medium text-on-surface">Operating hours</p>
+                <Link
+                  to="/ngo/settings"
+                  className="text-[0.8125rem] text-on-surface-variant hover:text-primary transition-colors"
+                >
+                  Edit
+                </Link>
+              </div>
+              <p className="text-[0.8125rem] text-on-surface font-mono-data mb-1">
+                {profile.operating_hours.start} – {profile.operating_hours.end}
+              </p>
             </div>
-            <Link
-              to="/ngo/settings"
-              className="font-ui text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant hover:text-primary transition-colors mt-3 block"
-            >
-              Edit hours →
-            </Link>
           </div>
 
           {/* NGO ID */}
-          <div>
-            <p className="section-label text-on-surface mb-1.5">NGO ID</p>
-            <p className="font-mono-data text-[0.6875rem] text-on-surface-variant break-all">
+          <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-md p-6">
+            <h2 className="text-[0.6875rem] font-bold text-on-surface-variant uppercase tracking-widest mb-2">NGO ID</h2>
+            <p className="font-mono-data text-[0.8125rem] text-on-surface break-all">
               {profile.ngo_id}
             </p>
           </div>

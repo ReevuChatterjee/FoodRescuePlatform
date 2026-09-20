@@ -1,26 +1,5 @@
-/**
- * Current job summary for the driver (Person 5): next stop, priority, remaining
- * shelf life, slack, food details, special handling and safety info.
- */
-
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Clock, MapPin, Package, Snowflake, Timer } from 'lucide-react';
-import type { DriverJob, Priority } from '../../hooks/useDriver';
-
-const PRIORITY_BADGE: Record<Priority, string> = {
-  CRITICAL: 'badge-red',
-  HIGH: 'badge-orange',
-  MEDIUM: 'badge-yellow',
-  LOW: 'badge-green',
-  EXPIRED: 'badge-gray',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  DRIVER_ASSIGNED: 'Assigned',
-  PICKUP_STARTED: 'Heading to pickup',
-  PICKED_UP: 'Picked up',
-  IN_TRANSIT: 'In transit',
-};
+import type { DriverJob } from '../../hooks/useDriver';
 
 export function formatMinutes(minutes: number | null | undefined): string {
   if (minutes == null || !Number.isFinite(minutes)) return '—';
@@ -29,7 +8,6 @@ export function formatMinutes(minutes: number | null | undefined): string {
   return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`;
 }
 
-/** Minutes until `iso`, re-evaluated every 30 s so the countdown stays live. */
 function useMinutesUntil(iso: string) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -39,79 +17,107 @@ function useMinutesUntil(iso: string) {
   return (new Date(iso).getTime() - now) / 60_000;
 }
 
+const TIMELINE_STATES = [
+  { id: 'DRIVER_ASSIGNED', label: 'Assigned' },
+  { id: 'PICKUP_STARTED', label: 'Pickup' },
+  { id: 'PICKED_UP', label: 'Collected' },
+  { id: 'IN_TRANSIT', label: 'In transit' },
+  { id: 'DELIVERED', label: 'Delivered' }
+];
+
 export function JobCard({ job }: { job: DriverJob }) {
-  const toPickup = job.next_stop === 'PICKUP';
-  const stop = toPickup ? job.pickup : job.dropoff;
   const shelfLife = useMinutesUntil(job.timeline.expiry_time);
-  const slack = job.timeline.slack_minutes;
   const safety = job.food_safety_info;
+  
+  // Find current index
+  const currentIndex = TIMELINE_STATES.findIndex(s => s.id === job.status);
 
   return (
-    <section className="panel p-5 space-y-5 bg-[var(--bg-page)] border-[var(--border-strong)]" aria-label="Current job">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
-            Next stop · {toPickup ? 'Pickup' : 'Drop-off'}
-          </p>
-          <h2 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] mt-1">
-            {stop.organisation_name ?? (toPickup ? 'Donor pickup' : 'NGO drop-off')}
-          </h2>
-          {stop.address && (
-            <p className="text-sm text-[var(--text-secondary)] mt-1 flex items-center gap-1.5">
-              <MapPin size={14} className="shrink-0" /> {stop.address}
+    <div className="space-y-8">
+      
+      {/* Route Anchors (Massive Vertical Flow) */}
+      <div>
+         <div className="mb-2">
+           <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Pickup</p>
+           <p className="text-[1.5rem] font-semibold text-on-surface leading-tight mb-1">{job.pickup.organisation_name ?? 'Donor pickup'}</p>
+           {job.pickup.address && <p className="text-[1rem] text-on-surface-variant leading-relaxed">{job.pickup.address}</p>}
+         </div>
+         
+         <div className="py-2 pl-2">
+            <span className="text-xl font-bold text-outline-variant">↓</span>
+         </div>
+
+         <div className="mt-2">
+           <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Destination</p>
+           <p className="text-[1.5rem] font-semibold text-on-surface leading-tight mb-1">{job.dropoff.organisation_name ?? 'NGO drop-off'}</p>
+           {job.dropoff.address && <p className="text-[1rem] text-on-surface-variant leading-relaxed">{job.dropoff.address}</p>}
+         </div>
+      </div>
+
+      {/* Delivery Details Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 py-6 border-y border-outline-variant/30">
+         <div>
+            <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Food</p>
+            <p className="text-[0.875rem] text-on-surface font-medium">{job.food_name}</p>
+            <p className="text-[0.75rem] text-on-surface-variant">{job.food_category.replace(/_/g, ' ').toLowerCase()}</p>
+         </div>
+         <div>
+            <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Load</p>
+            <p className="text-[0.875rem] font-mono-data text-on-surface font-semibold">{job.quantity_kg.toFixed(1)} kg</p>
+         </div>
+         <div>
+            <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Pickup Window</p>
+            <p className="text-[0.875rem] font-mono-data text-on-surface font-semibold">
+              {job.timeline.estimated_pickup_time ? new Date(job.timeline.estimated_pickup_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'ASAP'}
             </p>
+         </div>
+         <div>
+            <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1">ETA</p>
+            <p className="text-[0.875rem] font-mono-data text-on-surface font-semibold">{formatMinutes(job.route_to_next_stop?.duration_minutes)}</p>
+            <p className={`text-[0.75rem] ${shelfLife < 60 ? 'text-warning font-semibold' : 'text-on-surface-variant'}`}>
+              Expires in {formatMinutes(shelfLife)}
+            </p>
+         </div>
+      </div>
+
+      {/* Handling & Safety (Only if present) */}
+      {(job.special_handling || safety) && (
+        <div className="bg-surface-container-lowest p-5 border-l-4 border-l-primary border-y border-y-outline-variant/50 border-r border-r-outline-variant/50 rounded-r space-y-4">
+          <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface mb-2">Special Handling</p>
+          
+          {job.special_handling && (
+             <p className="text-[0.875rem] font-medium text-on-surface">{job.special_handling}</p>
+          )}
+          {safety && (
+             <ul className="flex flex-wrap gap-x-6 gap-y-2 text-[0.875rem] text-on-surface-variant">
+               {safety.storage_temp_required && <li>• {safety.storage_temp_required.replace(/_/g, ' ')}</li>}
+               {safety.packaging_type && <li>• {safety.packaging_type.replace(/_/g, ' ')}</li>}
+               {safety.allergen_tags?.map((tag) => <li key={tag} className="text-warning font-medium">• Allergen: {tag}</li>)}
+             </ul>
           )}
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <span className={`badge ${PRIORITY_BADGE[job.priority]}`} data-testid="priority-badge">{job.priority}</span>
-          <span className="badge badge-gray">{STATUS_LABEL[job.status] ?? job.status}</span>
-        </div>
+      )}
+
+      {/* Operational Timeline */}
+      <div className="pt-2">
+         <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-3">Delivery Status</p>
+         <div className="flex items-center flex-wrap gap-y-2 text-[0.75rem] font-semibold uppercase tracking-wider">
+            {TIMELINE_STATES.map((state, i) => {
+              const isCurrent = i === currentIndex;
+              const isPast = i < currentIndex;
+              return (
+                <div key={state.id} className="flex items-center">
+                  <span className={`${isCurrent ? 'text-primary' : isPast ? 'text-primary/60' : 'text-on-surface-variant/40'}`}>
+                    {state.label}
+                  </span>
+                  {i < TIMELINE_STATES.length - 1 && (
+                    <span className="mx-2 text-outline-variant/50">→</span>
+                  )}
+                </div>
+              )
+            })}
+         </div>
       </div>
-
-      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Stat icon={<Clock size={14} />} label="ETA" value={formatMinutes(job.route_to_next_stop?.duration_minutes)}
-          hint={job.route_to_next_stop ? `${job.route_to_next_stop.distance_km.toFixed(1)} km` : undefined} />
-        <Stat icon={<Timer size={14} />} label="Shelf life left" value={formatMinutes(shelfLife)}
-          tone={shelfLife < 60 ? 'error' : undefined} />
-        <Stat icon={<AlertTriangle size={14} />} label="Slack" value={formatMinutes(slack)}
-          hint={slack != null && slack < 15 ? 'Tight: go now' : undefined}
-          tone={slack != null && slack < 15 ? 'warning' : undefined} />
-        <Stat icon={<Package size={14} />} label="Load" value={`${job.quantity_kg.toFixed(1)} kg`} hint={job.food_category} />
-      </dl>
-
-      <div className="space-y-2">
-        <p className="text-base font-semibold text-[var(--text-primary)]">{job.food_name}</p>
-        {job.special_handling && (
-          <p className="text-sm p-3 rounded-sm border border-[var(--warning)]/30 bg-[var(--warning)]/5 text-[var(--text-primary)] flex gap-2">
-            <Snowflake size={16} className="text-[var(--warning)] shrink-0 mt-0.5" /> {job.special_handling}
-          </p>
-        )}
-        {safety && (
-          <ul className="flex flex-wrap gap-2 text-xs">
-            {safety.storage_temp_required && <li className="badge badge-blue">{safety.storage_temp_required}</li>}
-            {safety.packaging_type && <li className="badge badge-gray">{safety.packaging_type.replace(/_/g, ' ')}</li>}
-            {safety.allergen_tags?.map((tag) => <li key={tag} className="badge badge-orange">Allergen: {tag}</li>)}
-          </ul>
-        )}
-        {!toPickup && job.dropoff.operating_hours && (
-          <p className="text-xs text-[var(--text-muted)]">
-            NGO open {job.dropoff.operating_hours.start}–{job.dropoff.operating_hours.end}
-          </p>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function Stat({ icon, label, value, hint, tone }: {
-  icon: React.ReactNode; label: string; value: string; hint?: string; tone?: 'error' | 'warning';
-}) {
-  const color = tone === 'error' ? 'text-[var(--error)]' : tone === 'warning' ? 'text-[var(--warning)]' : 'text-[var(--text-primary)]';
-  return (
-    <div className="p-3 rounded-sm bg-[var(--bg-panel)] border border-[var(--border-subtle)]">
-      <dt className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-1.5">{icon} {label}</dt>
-      <dd className={`text-lg font-bold font-mono-data mt-1 ${color}`}>{value}</dd>
-      {hint && <dd className="text-[11px] text-[var(--text-muted)]">{hint}</dd>}
     </div>
   );
 }

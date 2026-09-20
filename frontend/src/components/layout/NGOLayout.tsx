@@ -6,15 +6,15 @@
 
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, Settings, LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { useMyNGOProfile } from '../../hooks/useNGO';
 import { ThemeToggle } from '../common/ThemeToggle';
 
 const NAV = [
-  { label: 'Distribution Desk', href: '/ngo', icon: <LayoutDashboard size={15} /> },
-  { label: 'Incoming Supply', href: '/ngo/incoming', icon: <Package size={15} /> },
-  { label: 'Settings', href: '/ngo/settings', icon: <Settings size={15} /> },
+  { label: 'Distribution Desk', href: '/ngo' },
+  { label: 'Incoming Supply', href: '/ngo/incoming' },
+  { label: 'Settings', href: '/ngo/settings' },
 ];
 
 interface NGOLayoutProps {
@@ -37,7 +37,6 @@ export function NGOLayout({ children }: NGOLayoutProps) {
   const capacityUsedPct = profile?.storage_capacity_kg && profile.storage_capacity_kg > 0
     ? ((profile.storage_capacity_kg - profile.available_capacity_kg) / profile.storage_capacity_kg) * 100
     : 0;
-  const gaugeColor = capacityUsedPct > 90 ? 'bg-error' : capacityUsedPct > 70 ? 'bg-warning' : 'bg-primary-container';
   const textColor = capacityUsedPct > 90 ? 'text-error' : capacityUsedPct > 70 ? 'text-warning' : 'text-primary-container';
 
   const SidebarContent = () => (
@@ -55,21 +54,20 @@ export function NGOLayout({ children }: NGOLayoutProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-3 pt-4 flex flex-col gap-1">
+      <nav className="flex-1 py-6 flex flex-col gap-0.5">
         {NAV.map((item) => {
           const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               to={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+              className={`block px-5 py-2 text-[0.875rem] border-l-[3px] transition-all duration-150 ${
                 active 
-                  ? 'bg-primary-container text-on-primary-container' 
-                  : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                  ? 'text-on-surface font-medium border-primary bg-surface-container/50' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/30 border-transparent'
               }`}
               onClick={() => setMobileOpen(false)}
             >
-              {item.icon}
               {item.label}
             </Link>
           );
@@ -78,34 +76,34 @@ export function NGOLayout({ children }: NGOLayoutProps) {
 
       {/* Persistent Capacity Gauge */}
       {profile && (
-        <div className="mx-4 mb-4 p-4 border border-outline-variant rounded-lg bg-surface-container">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[0.6875rem] font-bold text-on-surface-variant tracking-wider uppercase">Capacity</span>
-            <span className={`text-xs font-bold font-mono-data ${textColor}`}>
+        <div className="px-5 mb-6">
+          <div className="text-[0.6875rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-3">
+            Storage
+          </div>
+          <div className="flex items-end justify-between mb-2">
+            <span className="text-[1.125rem] font-semibold text-on-surface tracking-tight leading-none font-mono-data">
+              {profile.available_capacity_kg} <span className="text-[0.6875rem] text-on-surface-variant font-sans font-medium uppercase tracking-wider">kg free</span>
+            </span>
+            <span className={`text-[0.75rem] font-medium font-mono-data ${textColor}`}>
               {capacityUsedPct.toFixed(0)}%
             </span>
           </div>
-          {/* Horizontal bar gauge */}
-          <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden mb-2">
+          <div className="h-[2px] w-full bg-outline-variant/30 overflow-hidden rounded-none">
             <div
-              className={`h-full ${gaugeColor} transition-all duration-500 ease-out`}
+              className={`h-full ${capacityUsedPct > 90 ? 'bg-error' : capacityUsedPct > 70 ? 'bg-warning' : 'bg-primary'} transition-all duration-300 ease-out`}
               style={{ width: `${Math.min(capacityUsedPct, 100)}%` }}
             />
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-[0.6875rem] font-medium text-on-surface-variant">
-              {profile.available_capacity_kg} kg free
-            </span>
-            <span className="text-[0.6875rem] font-medium text-on-surface">
-              {profile.storage_capacity_kg} kg total
-            </span>
+          <div className="flex justify-between mt-2">
+             <span className="text-[0.6875rem] text-on-surface-variant">Used</span>
+             <span className="text-[0.6875rem] text-on-surface-variant font-mono-data">{profile.storage_capacity_kg} kg max</span>
           </div>
         </div>
       )}
 
       {/* User + logout */}
       <div className="p-4 border-t border-outline-variant flex items-center gap-3 flex-shrink-0 bg-surface">
-        <div className="w-8 h-8 flex items-center justify-center text-xs font-bold bg-surface-container-high rounded-full text-on-surface flex-shrink-0">
+        <div className="w-8 h-8 flex items-center justify-center text-xs font-bold bg-surface-container-high text-on-surface flex-shrink-0">
           {user?.name?.charAt(0)?.toUpperCase() || 'N'}
         </div>
         <div className="flex-1 min-w-0">

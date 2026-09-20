@@ -1,18 +1,12 @@
-/**
- * DonorLayout — thin icon rail + single-column editorial content.
- * Feels like a personal ledger/history app, not a SaaS dashboard.
- * Content max-width: 800px. Airy spacing. Sidebar is icon-only on desktop.
- */
-
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Plus, LogOut, Menu, X, Leaf } from 'lucide-react';
+import { Menu, X, Leaf } from 'lucide-react';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { ThemeToggle } from '../common/ThemeToggle';
 
 const NAV = [
-  { label: 'My Donations', href: '/donor', icon: <LayoutDashboard size={16} /> },
-  { label: 'New Donation', href: '/donor/donate', icon: <Plus size={16} /> },
+  { label: 'Donations', href: '/donor' },
+  { label: 'Create donation', href: '/donor/donate' },
 ];
 
 interface DonorLayoutProps {
@@ -31,84 +25,81 @@ export function DonorLayout({ children }: DonorLayoutProps) {
     href === '/donor' ? location.pathname === href : location.pathname.startsWith(href);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface text-on-surface">
+    <div className="flex h-screen overflow-hidden bg-base text-on-surface">
 
-      {/* ── Desktop: thin icon sidebar ── */}
-      <aside className="hidden lg:flex flex-col flex-shrink-0 h-full border-r border-outline-variant w-[60px] bg-surface-container-lowest">
-        {/* Logo */}
-        <div className="flex items-center justify-center h-16 border-b border-outline-variant flex-shrink-0">
-          <Leaf size={20} className="text-[var(--moss)]" />
+      {/* ── Desktop Sidebar ── */}
+      <aside className="hidden lg:flex flex-col flex-shrink-0 h-full w-[260px] border-r border-outline-variant/30 bg-surface-container-lowest">
+        {/* Branding */}
+        <div className="flex items-center gap-3 h-16 px-6 border-b border-outline-variant/30 flex-shrink-0">
+          <Leaf size={20} className="text-primary" />
+          <span className="font-semibold text-[1.125rem] text-on-surface tracking-tight">RePlate</span>
         </div>
 
-        {/* Nav icons */}
-        <nav className="flex-1 flex flex-col items-center gap-2 pt-4 px-2">
-          {NAV.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                title={item.label}
-                className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${
-                  active 
-                    ? 'bg-primary-container text-on-primary-container' 
-                    : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
-                }`}
-              >
-                {item.icon}
-              </Link>
-            );
-          })}
+        {/* Navigation */}
+        <nav className="flex-1 flex flex-col pt-8 px-4">
+          <span className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-4 px-3">
+            Donor
+          </span>
+          <ul className="flex flex-col gap-1">
+            {NAV.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <li key={item.href}>
+                  <Link
+                    to={item.href}
+                    className={`block px-3 py-2 rounded-md text-[0.875rem] font-medium transition-colors ${
+                      active
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </nav>
-
-        {/* Sign out */}
-        <div className="flex flex-col items-center pb-4 gap-3">
-          <div className="w-8 h-8 flex items-center justify-center text-xs font-bold bg-surface-container-high rounded-full text-on-surface">
-            {user?.name?.charAt(0)?.toUpperCase() || 'D'}
-          </div>
-          <button
-            onClick={handleLogout}
-            title="Sign out"
-            className="w-10 h-10 flex items-center justify-center rounded-lg text-on-surface-variant hover:bg-error-container hover:text-error transition-colors"
-          >
-            <LogOut size={16} />
-          </button>
-        </div>
       </aside>
 
       {/* ── Mobile Overlay ── */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-64 flex flex-col border-r border-outline-variant bg-surface-container-lowest">
-            <div className="flex items-center justify-between h-16 px-4 border-b border-outline-variant">
-              <div className="flex items-center gap-2">
-                <Leaf size={20} className="text-[var(--moss)]" />
-                <span className="font-display font-bold text-on-surface">RePlate Ops</span>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <aside className="absolute left-0 top-0 bottom-0 w-[260px] flex flex-col border-r border-outline-variant/30 bg-surface-container-lowest">
+            <div className="flex items-center justify-between h-16 px-6 border-b border-outline-variant/30">
+              <div className="flex items-center gap-3">
+                <Leaf size={20} className="text-primary" />
+                <span className="font-semibold text-[1.125rem] text-on-surface tracking-tight">RePlate</span>
               </div>
-              <button onClick={() => setMobileOpen(false)} className="p-2 text-on-surface-variant hover:bg-surface-container rounded-md"><X size={20} /></button>
+              <button onClick={() => setMobileOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                <X size={20} />
+              </button>
             </div>
-            <nav className="flex-1 p-3 flex flex-col gap-1">
+            <nav className="flex-1 pt-8 px-4 flex flex-col gap-1">
+              <span className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-4 px-3">
+                Donor
+              </span>
               {NAV.map((item) => {
                 const active = isActive(item.href);
                 return (
                   <Link key={item.href} to={item.href} 
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                    className={`block px-3 py-2 rounded-md text-[0.875rem] font-medium transition-colors ${
                       active
-                        ? 'bg-primary-container text-on-primary-container'
+                        ? 'bg-primary/10 text-primary'
                         : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                     }`}
                     onClick={() => setMobileOpen(false)}
                   >
-                    {item.icon}{item.label}
+                    {item.label}
                   </Link>
                 );
               })}
             </nav>
-            <div className="p-4 border-t border-outline-variant">
-              <div className="text-xs font-medium text-on-surface-variant mb-3 px-2">{user?.email}</div>
-              <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold text-error hover:bg-error-container rounded-lg transition-colors">
-                <LogOut size={16} /> Sign out
+            <div className="p-4 border-t border-outline-variant/30 flex flex-col items-start gap-3">
+              <span className="text-[0.8125rem] font-medium text-on-surface-variant px-3">{user?.name}</span>
+              <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-[0.875rem] font-medium text-error hover:bg-error/10 rounded-md transition-colors">
+                Sign out
               </button>
             </div>
           </aside>
@@ -117,28 +108,27 @@ export function DonorLayout({ children }: DonorLayoutProps) {
 
       {/* ── Main area ── */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Topbar */}
-        <header className="flex items-center flex-shrink-0 border-b border-outline-variant h-16 px-4 lg:px-8 bg-surface">
-          <button className="p-2 lg:hidden mr-3 text-on-surface-variant hover:bg-surface-container rounded-md" onClick={() => setMobileOpen(true)}>
-            <Menu size={20} />
-          </button>
-          <div className="flex-1" />
-          <ThemeToggle />
-          <div className="flex items-center gap-4 ml-4 pl-4 border-l border-outline-variant">
-            <span className="hidden sm:block text-sm font-medium text-on-surface-variant">
-              {user?.name}
-            </span>
-            <button
-              onClick={handleLogout}
-              className="hidden lg:flex items-center gap-1.5 text-sm font-semibold text-on-surface-variant hover:text-error transition-colors"
-            >
-              <LogOut size={14} /> Sign out
+        {/* Quiet Topbar */}
+        <header className="flex items-center justify-between flex-shrink-0 border-b border-outline-variant/30 h-16 px-6 lg:px-8 bg-surface-container-lowest lg:bg-transparent">
+          <div className="flex items-center gap-4">
+            <button className="lg:hidden text-on-surface-variant hover:text-on-surface" onClick={() => setMobileOpen(true)}>
+              <Menu size={20} />
             </button>
+          </div>
+          
+          <div className="flex items-center gap-6">
+            <ThemeToggle />
+            <div className="hidden sm:flex items-center gap-6 text-[0.875rem] font-medium text-on-surface-variant">
+              <span>{user?.name}</span>
+              <button onClick={handleLogout} className="hover:text-error transition-colors">
+                Sign out
+              </button>
+            </div>
           </div>
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-12">
           <div className="max-w-[1000px] mx-auto">
             {children}
           </div>

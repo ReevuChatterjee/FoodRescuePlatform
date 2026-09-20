@@ -1,97 +1,60 @@
-/**
- * DonationDetails — detailed view with status timeline, map, photo upload, cancel.
- */
-
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MapPin, Clock, Package, Truck, CheckCircle, XCircle, Upload, AlertTriangle, Crosshair, Loader2, Activity } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiClient } from '../../api/client';
 import type { Donation, SuccessEnvelope } from '../../types/api';
-import { StatusBadge } from '../../components/donor/StatusBadge';
 import { useDonationWebSocket } from '../../hooks/useDonationWebSocket';
 import { DonorLayout } from '../../components/layout/DonorLayout';
 
-// Status timeline order
+// Semantic status mapping
+function getStatusIndicator(status: string) {
+  switch (status) {
+    case 'DELIVERED':
+      return { color: 'bg-primary', label: 'Delivered' };
+    case 'EXPIRED':
+    case 'CANCELLED':
+    case 'NO_MATCH_FOUND':
+    case 'REJECTED':
+    case 'DRIVER_ISSUE':
+      return { color: 'bg-error', label: status.replace(/_/g, ' ').charAt(0) + status.replace(/_/g, ' ').slice(1).toLowerCase() };
+    case 'AVAILABLE':
+    case 'MATCHING':
+    case 'MATCHED':
+    case 'ACCEPTED':
+    case 'DRIVER_ASSIGNED':
+    case 'PICKUP_STARTED':
+    case 'PICKED_UP':
+    case 'IN_TRANSIT':
+      return { color: 'bg-warning', label: 'Active' };
+    default:
+      return { color: 'bg-outline-variant', label: status };
+  }
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  RAW_PRODUCE: 'Raw produce',
+  COOKED:      'Cooked food',
+  PACKAGED:    'Packaged',
+  BAKED_GOODS: 'Baked goods',
+  DAIRY:       'Dairy',
+  MIXED:       'Mixed',
+};
+
 const STATUS_TIMELINE = [
-  { status: 'AVAILABLE',       icon: <Package size={14} />,     label: 'Payload Listed' },
-  { status: 'MATCHING',        icon: <Crosshair size={14} />,   label: 'Routing / Matching' },
-  { status: 'MATCHED',         icon: <CheckCircle size={14} />, label: 'Node Matched' },
-  { status: 'ACCEPTED',        icon: <CheckCircle size={14} />, label: 'Node Accepted' },
-  { status: 'DRIVER_ASSIGNED', icon: <Truck size={14} />,       label: 'Logistics Assigned' },
-  { status: 'PICKUP_STARTED',  icon: <Truck size={14} />,       label: 'En Route to Pickup' },
-  { status: 'PICKED_UP',       icon: <Truck size={14} />,       label: 'Payload Collected' },
-  { status: 'IN_TRANSIT',      icon: <Truck size={14} />,       label: 'In Transit' },
-  { status: 'DELIVERED',       icon: <CheckCircle size={14} />, label: 'Handoff Verified' },
+  { status: 'AVAILABLE',       label: 'Payload listed' },
+  { status: 'MATCHING',        label: 'Routing / matching' },
+  { status: 'MATCHED',         label: 'Node matched' },
+  { status: 'ACCEPTED',        label: 'Node accepted' },
+  { status: 'DRIVER_ASSIGNED', label: 'Logistics assigned' },
+  { status: 'PICKUP_STARTED',  label: 'En route to pickup' },
+  { status: 'PICKED_UP',       label: 'Payload collected' },
+  { status: 'IN_TRANSIT',      label: 'In transit' },
+  { status: 'DELIVERED',       label: 'Handoff verified' },
 ];
 
 const CANCELLABLE = ['AVAILABLE', 'MATCHING', 'MATCHED', 'ACCEPTED', 'DRIVER_ASSIGNED', 'PICKUP_STARTED'];
-
-function StatusTimeline({ currentStatus }: { currentStatus: string }) {
-  const currentIdx = STATUS_TIMELINE.findIndex((s) => s.status === currentStatus);
-  const isTerminalBad = ['NO_MATCH_FOUND', 'REJECTED', 'EXPIRED', 'CANCELLED', 'DRIVER_ISSUE'].includes(currentStatus);
-
-  return (
-    <div
-      style={{
-        border: '1px solid var(--border-hair)',
-        background: 'var(--bg-panel)',
-        padding: '24px',
-        height: '100%',
-      }}
-    >
-      <div>
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--text-secondary)] mb-6 flex items-center gap-2">
-          <Clock size={14} className="text-[var(--text-muted)]" /> Telemetry Sequence
-        </h3>
-        <div className="flex flex-col gap-0">
-          {STATUS_TIMELINE.map((step, i) => {
-            const done = currentIdx > i;
-            const active = currentIdx === i;
-            return (
-              <div key={step.status} className="flex items-start gap-4">
-                {/* Connector line */}
-                <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-sm flex items-center justify-center flex-shrink-0 transition-colors border ${
-                    done ? 'bg-[var(--success)] text-white border-[var(--success)]' : active ? 'bg-[var(--brand)]/10 border-[var(--brand)] text-[var(--brand)] shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-[var(--bg-panel)] border-[var(--border-subtle)] text-[var(--text-muted)]'
-                  }`}>
-                    {step.icon}
-                  </div>
-                  {i < STATUS_TIMELINE.length - 1 && (
-                    <div className={`w-px flex-1 mt-1 mb-1 min-h-[20px] transition-colors ${done ? 'bg-[var(--success)]' : 'bg-[var(--border-subtle)]'}`} />
-                  )}
-                </div>
-                <div className="pb-5 pt-1.5">
-                  <p className={`text-sm tracking-tight ${done || active ? 'text-[var(--text-primary)] font-semibold' : 'text-[var(--text-secondary)] font-medium'}`}>
-                    {step.label}
-                  </p>
-                  {active && !isTerminalBad && (
-                    <p className="text-[10px] font-mono-data mt-1 text-[var(--brand)] animate-pulse">ACTIVE STATE</p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-
-          {isTerminalBad && (
-            <div className="flex items-start gap-4 mt-2">
-              <div className="flex flex-col items-center">
-                <div className="w-8 h-8 rounded-sm bg-[var(--error)]/10 border border-[var(--error)] text-[var(--error)] flex items-center justify-center shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                  <XCircle size={14} />
-                </div>
-              </div>
-              <div className="pt-1.5">
-                 <p className="text-sm font-bold tracking-tight text-[var(--error)]">{currentStatus.replace(/_/g, ' ')}</p>
-                 <p className="text-[10px] font-mono-data mt-1 text-[var(--error)]">TERMINAL EXCEPTION</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function DonationDetails() {
   const { id } = useParams<{ id: string }>();
@@ -143,14 +106,14 @@ export function DonationDetails() {
   if (isLoading) {
     return (
       <DonorLayout>
-        <div className="space-y-6">
-          <div className="skeleton h-12 w-1/3 rounded-md" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="skeleton h-48 w-full rounded-md" />
-              <div className="skeleton h-48 w-full rounded-md" />
+        <div className="animate-pulse space-y-6">
+          <div className="h-10 bg-surface-container-lowest border border-outline-variant/30 rounded w-1/3" />
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-8">
+            <div className="space-y-6">
+              <div className="h-40 bg-surface-container-lowest border border-outline-variant/30 rounded" />
+              <div className="h-40 bg-surface-container-lowest border border-outline-variant/30 rounded" />
             </div>
-            <div className="skeleton h-96 w-full rounded-md" />
+            <div className="h-80 bg-surface-container-lowest border border-outline-variant/30 rounded" />
           </div>
         </div>
       </DonorLayout>
@@ -160,12 +123,9 @@ export function DonationDetails() {
   if (error || !data) {
     return (
       <DonorLayout>
-        <div className="panel p-16 text-center border-[var(--error)]/20 bg-[var(--error)]/5">
-          <div className="w-16 h-16 rounded-full bg-[var(--error)]/10 flex items-center justify-center mx-auto mb-4">
-             <XCircle size={32} className="text-[var(--error)]" />
-          </div>
-          <h3 className="text-base font-semibold text-[var(--text-primary)] mb-2">Telemetry Lost</h3>
-          <p className="text-[var(--error)] font-medium text-sm">Failed to retrieve payload details from the network.</p>
+        <div className="pt-12">
+          <p className="text-[1.25rem] font-medium text-error mb-2">Record unavailable</p>
+          <p className="text-[0.9375rem] text-on-surface-variant">Failed to retrieve operational data for this donation.</p>
         </div>
       </DonorLayout>
     );
@@ -173,250 +133,239 @@ export function DonationDetails() {
 
   const donation = data;
   const isCancellable = CANCELLABLE.includes(donation.status);
+  const currentIdx = STATUS_TIMELINE.findIndex((s) => s.status === donation.status);
+  const isTerminalBad = ['NO_MATCH_FOUND', 'REJECTED', 'EXPIRED', 'CANCELLED', 'DRIVER_ISSUE'].includes(donation.status);
+  const indicator = getStatusIndicator(donation.status);
 
   return (
     <DonorLayout>
-      {/* Header */}
-      <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <button className="btn-secondary px-3 py-2" onClick={() => navigate('/donor')}>
-            <ArrowLeft size={16} />
-          </button>
+      <div className="mb-8">
+        <button className="inline-flex items-center gap-2 text-[0.875rem] font-medium text-on-surface-variant hover:text-on-surface mb-6 transition-colors" onClick={() => navigate('/donor')}>
+          <ArrowLeft size={16} /> Back to donations
+        </button>
+        
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-outline-variant/30 pb-6">
           <div>
-            <h1 className="page-title">{donation.food_name}</h1>
-            <p className="page-subtitle font-mono-data text-[var(--text-muted)] mt-1 tracking-widest">PID: {donation.id}</p>
+            <h1 className="text-[1.75rem] font-semibold text-on-surface tracking-tight mb-1">{donation.food_name}</h1>
+            <p className="text-[0.8125rem] font-mono-data text-on-surface-variant">PID: {donation.id}</p>
           </div>
-        </div>
-        <div>
-          <StatusBadge status={donation.status} />
+          <div className="flex items-center gap-2">
+             <span className="text-[0.8125rem] font-medium text-on-surface-variant uppercase tracking-widest">Status:</span>
+             <span className={`w-2 h-2 rounded-full ${indicator.color}`} />
+             <span className="text-[0.9375rem] font-semibold text-on-surface">{indicator.label}</span>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left column — details + actions */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Main info */}
-          <div className="panel p-6 border-[var(--border-strong)] bg-[var(--bg-page)] relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-4 opacity-5">
-               <Package size={120} />
-             </div>
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--text-secondary)] mb-6 flex items-center gap-2 relative z-10">
-              <Package size={14} className="text-[var(--text-muted)]" /> Payload Specifications
-            </h3>
-            <div className="grid grid-cols-2 gap-4 relative z-10">
-              {[
-                { label: 'Classification', value: donation.food_category.replace(/_/g, ' ') },
-                { label: 'Net Mass', value: <span className="font-mono-data text-base">{donation.quantity_kg} kg</span> },
-                { label: 'Critical Expiry', value: <span className="font-mono-data text-[var(--warning)]">{format(new Date(donation.expiry_time), 'MMM d, yyyy HH:mm')}</span> },
-                { label: 'Network Entry', value: <span className="font-mono-data text-[var(--text-secondary)]">{format(new Date(donation.created_at), 'MMM d, yyyy HH:mm')}</span> },
-              ].map((d) => (
-                <div key={d.label} className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-md p-4">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2">{d.label}</p>
-                  <div className="text-sm font-medium text-[var(--text-primary)]">{d.value}</div>
-                </div>
-              ))}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-12 items-start">
+        {/* ── Main Content Column ── */}
+        <div className="space-y-12">
+          
+          {/* Payload */}
+          <section>
+            <h2 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-4 pb-2 border-b border-outline-variant/30">Payload</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+              <div>
+                <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Classification</p>
+                <p className="text-[0.875rem] text-on-surface">{CATEGORY_LABELS[donation.food_category] ?? donation.food_category}</p>
+              </div>
+              <div>
+                <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Quantity</p>
+                <p className="text-[0.875rem] text-on-surface">{donation.quantity_kg} kg</p>
+              </div>
+              <div>
+                <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Use by</p>
+                <p className="text-[0.875rem] text-on-surface font-mono-data">{format(new Date(donation.expiry_time), 'MMM d, HH:mm')}</p>
+              </div>
+              <div>
+                <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Listed</p>
+                <p className="text-[0.875rem] text-on-surface font-mono-data">{format(new Date(donation.created_at), 'MMM d, HH:mm')}</p>
+              </div>
             </div>
+          </section>
 
-            {/* Matched NGO & Driver */}
-            {(donation.matched_ngo_id || donation.driver_id || donation.eta_minutes !== null) && (
-              <div className="mt-6 p-5 rounded-md border border-[var(--brand)]/30 bg-[var(--brand)]/5 relative z-10">
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--brand)]/20">
-                  <div className="flex items-center gap-2">
-                    <Truck size={16} className="text-[var(--brand)]" />
-                    <span className="text-xs font-bold text-[var(--brand)] uppercase tracking-widest">Logistics Assignment</span>
+          {/* Matching Analysis */}
+          {(donation.matched_ngo_id || donation.match_breakdown) && (
+            <section>
+              <h2 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-4 pb-2 border-b border-outline-variant/30">Matching analysis</h2>
+              
+              {donation.matched_ngo_id && (
+                <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Destination</p>
+                    <p className="text-[0.875rem] text-on-surface font-mono-data">{donation.matched_ngo_id}</p>
                   </div>
-                  {donation.eta_minutes !== null && (
-                    <div className="flex items-center gap-2 bg-[var(--bg-page)] border border-[var(--warning)]/30 px-3 py-1 rounded-sm shadow-sm">
-                       <span className="text-[10px] font-semibold text-[var(--text-secondary)] tracking-widest uppercase">ETA</span>
-                       <span className="font-mono-data text-[var(--warning)] font-bold">{donation.eta_minutes} min</span>
-                    </div>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {donation.matched_ngo_id && (
-                    <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-3 rounded-sm">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-1">Destination Node</p>
-                      <p className="font-medium text-xs font-mono-data text-[var(--text-primary)] break-all">{donation.matched_ngo_id}</p>
-                    </div>
-                  )}
                   {donation.driver_id && (
-                    <div className="bg-[var(--bg-panel)] border border-[var(--border-subtle)] p-3 rounded-sm">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-1">Assigned Courier</p>
-                      <p className="font-medium text-xs font-mono-data text-[var(--text-primary)] break-all">{donation.driver_id}</p>
+                    <div>
+                      <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Assigned logistics</p>
+                      <p className="text-[0.875rem] text-on-surface font-mono-data">{donation.driver_id}</p>
                     </div>
                   )}
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Matching Engine Breakdown */}
-            {donation.match_breakdown && (
-              <div className="mt-6 p-5 rounded-md border border-[var(--border-subtle)] bg-[var(--bg-panel)] relative z-10 overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5">
-                  <Activity size={120} />
-                </div>
-                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-[var(--border-subtle)] relative z-10">
-                  <Activity size={16} className="text-[var(--primary)]" />
-                  <span className="text-xs font-bold text-[var(--primary)] uppercase tracking-widest">Algorithm Score Breakdown</span>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 relative z-10">
-                  {[
-                    { label: 'Overall Match Score', score: `${(donation.match_score! * 100).toFixed(1)}%`, highlight: true },
-                    { 
-                      label: 'Capacity Fit (C)', 
-                      score: `${(donation.match_breakdown.capacity_score * 100).toFixed(1)}%`,
-                      detail: donation.match_breakdown.ngo_capacity_kg ? `${donation.match_breakdown.donation_quantity_kg}kg / ${donation.match_breakdown.ngo_capacity_kg}kg` : undefined
-                    },
-                    { 
-                      label: 'Shelf Life Decay (S)', 
-                      score: `${(donation.match_breakdown.shelf_life_score * 100).toFixed(1)}%`,
-                      detail: donation.match_breakdown.shelf_life_minutes ? `${Math.floor(donation.match_breakdown.shelf_life_minutes / 60)}h ${Math.floor(donation.match_breakdown.shelf_life_minutes % 60)}m left` : undefined
-                    },
-                    { 
-                      label: 'Transit Efficiency (T)', 
-                      score: `${(donation.match_breakdown.transit_score * 100).toFixed(1)}%`,
-                      detail: donation.match_breakdown.eta_minutes ? `${donation.match_breakdown.eta_minutes} min ETA` : undefined
-                    },
-                    { 
-                      label: 'Demand Urgency (D)', 
-                      score: `${(donation.match_breakdown.demand_score * 100).toFixed(1)}%`,
-                      detail: donation.match_breakdown.demand_kg !== undefined ? (donation.match_breakdown.demand_kg > 0 ? `${donation.match_breakdown.demand_kg}kg Requested` : `No Explicit Demand`) : undefined
-                    },
-                    { 
-                      label: 'Route Distance (R)', 
-                      score: `${(donation.match_breakdown.route_score * 100).toFixed(1)}%`,
-                      detail: donation.match_breakdown.distance_km ? `${donation.match_breakdown.distance_km} km` : undefined
-                    },
-                  ].map((metric) => (
-                    <div key={metric.label} className={`p-3 rounded-sm border ${metric.highlight ? 'border-[var(--primary)]/30 bg-[var(--primary)]/5' : 'border-[var(--border-subtle)] bg-[var(--bg-page)]'}`}>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-1">{metric.label}</p>
-                      <div className="flex items-baseline gap-2">
-                        <p className={`font-mono-data text-sm font-bold ${metric.highlight ? 'text-[var(--primary)]' : 'text-[var(--text-primary)]'}`}>
-                          {metric.score}
-                        </p>
-                        {metric.detail && (
-                          <span className="text-[10px] text-[var(--text-secondary)]">({metric.detail})</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             {/* Location */}
-             <div className="panel p-6 border-[var(--border-subtle)]">
-               <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--text-secondary)] mb-4 flex items-center gap-2">
-                 <MapPin size={14} className="text-[var(--text-muted)]" /> Origin Coordinates
-               </h3>
-               <p className="text-sm text-[var(--text-primary)] mb-4 font-medium leading-relaxed border-l-2 border-[var(--brand)] pl-3">
-                 {(donation.pickup_location as any)?.address || 'Location not specified'}
-               </p>
-               {/* Map placeholder — real Leaflet map if lat/lng available */}
-               <div className="rounded-sm flex items-center justify-center bg-[var(--bg-panel)] border border-[var(--border-strong)] h-32 relative overflow-hidden">
-                  <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(var(--brand) 1px, transparent 1px)', backgroundSize: '10px 10px' }}></div>
-                 <div className="text-center relative z-10 bg-[var(--bg-page)]/80 backdrop-blur-sm p-3 rounded-sm border border-[var(--border-subtle)] shadow-sm">
-                   <MapPin size={24} className="mx-auto mb-2 text-[var(--brand)]" />
-                   <p className="text-[10px] text-[var(--text-secondary)] font-mono-data">
-                     {(donation.pickup_location as any)?.latitude
-                       ? `${(donation.pickup_location as any).latitude.toFixed(4)}, ${(donation.pickup_location as any).longitude.toFixed(4)}`
-                       : 'Awaiting coordinate lock'}
-                   </p>
-                 </div>
-               </div>
-             </div>
-
-             {/* Photo upload */}
-             <div className="panel p-6 border-[var(--border-subtle)] flex flex-col">
-               <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--text-secondary)] mb-4 flex items-center gap-2">
-                 <Upload size={14} className="text-[var(--text-muted)]" /> Visual Telemetry
-               </h3>
-               <p className="text-xs text-[var(--text-secondary)] mb-4 leading-relaxed">
-                 Attach verification imagery. Required for network audit logs and recipient validation.
-               </p>
-               <div className="flex-1 flex flex-col justify-end">
-                  <div className="flex items-center gap-3">
-                    <label className="flex-1 cursor-pointer">
-                      <input type="file" accept="image/*" className="hidden"
-                        onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
-                      <div className={`input-base text-center py-4 cursor-pointer border-dashed border-2 ${photo ? 'border-[var(--brand)] text-[var(--brand)] bg-[var(--brand)]/5' : 'border-[var(--border-strong)] hover:border-[var(--brand)] text-[var(--text-muted)] hover:text-[var(--brand)]'} transition-all`}>
-                        {photo ? (
-                          <span className="font-semibold text-xs tracking-wide"> {photo.name}</span>
-                        ) : (
-                          <span className="text-xs font-semibold tracking-wide uppercase">Select File</span>
-                        )}
-                      </div>
-                    </label>
-                    <button
-                      onClick={() => photoMutation.mutate()}
-                      disabled={!photo || photoMutation.isPending}
-                      className="btn-primary py-4 px-5 flex-shrink-0"
-                    >
-                      {photoMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                    </button>
+              {donation.match_breakdown && (
+                <div>
+                  <p className="text-[0.8125rem] text-on-surface-variant mb-6">
+                    Match score is calculated from capacity, shelf life, transit efficiency, demand urgency and route distance.
+                  </p>
+                  
+                  <div className="mb-6">
+                    <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Overall match score</p>
+                    <p className="text-[2rem] font-semibold text-primary">{(donation.match_score! * 100).toFixed(1)}%</p>
                   </div>
-                  {photoMutation.isSuccess && (
-                    <p className="text-[10px] font-mono-data font-bold mt-3 text-[var(--success)] uppercase tracking-widest">
-                       TRANSMISSION SUCCESSFUL
-                    </p>
-                  )}
-               </div>
-             </div>
-          </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                    <div>
+                      <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Capacity fit</p>
+                      <p className="text-[0.875rem] text-on-surface font-mono-data">{(donation.match_breakdown.capacity_score * 100).toFixed(1)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Shelf-life fit</p>
+                      <p className="text-[0.875rem] text-on-surface font-mono-data">{(donation.match_breakdown.shelf_life_score * 100).toFixed(1)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Transit efficiency</p>
+                      <p className="text-[0.875rem] text-on-surface font-mono-data">{(donation.match_breakdown.transit_score * 100).toFixed(1)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Demand urgency</p>
+                      <p className="text-[0.875rem] text-on-surface font-mono-data">{(donation.match_breakdown.demand_score * 100).toFixed(1)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Route distance</p>
+                      <p className="text-[0.875rem] text-on-surface font-mono-data">{(donation.match_breakdown.route_score * 100).toFixed(1)}%</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Origin */}
+          <section>
+            <h2 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-4 pb-2 border-b border-outline-variant/30">Origin</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Address</p>
+                <p className="text-[0.875rem] text-on-surface leading-relaxed">{(donation.pickup_location as any)?.address || 'Location not specified'}</p>
+              </div>
+              <div>
+                <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Coordinates</p>
+                <p className="text-[0.875rem] text-on-surface font-mono-data">
+                  {(donation.pickup_location as any)?.latitude 
+                    ? `${(donation.pickup_location as any).latitude.toFixed(4)}, ${(donation.pickup_location as any).longitude.toFixed(4)}`
+                    : '—'}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Verification */}
+          <section>
+            <h2 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-4 pb-2 border-b border-outline-variant/30">Verification imagery</h2>
+            <p className="text-[0.8125rem] text-on-surface-variant mb-4">Required for delivery and audit verification.</p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <label className="w-full sm:w-auto">
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => setPhoto(e.target.files?.[0] || null)} />
+                <div className="h-10 px-4 flex items-center justify-center bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-medium text-on-surface hover:bg-surface-container cursor-pointer transition-colors">
+                  {photo ? photo.name : 'Select file'}
+                </div>
+              </label>
+              <button
+                onClick={() => photoMutation.mutate()}
+                disabled={!photo || photoMutation.isPending}
+                className="h-10 px-6 bg-surface-container border border-outline-variant text-on-surface text-[0.875rem] font-medium rounded hover:bg-surface-container-high transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {photoMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Upload'}
+              </button>
+            </div>
+            {photoMutation.isSuccess && (
+              <p className="text-[0.8125rem] font-medium text-success mt-2">File successfully uploaded.</p>
+            )}
+          </section>
 
           {/* Cancel */}
           {isCancellable && (
-            <div className="panel p-6 border-[var(--error)] bg-[var(--error)]/5">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--error)] mb-4 flex items-center gap-2">
-                <AlertTriangle size={14} /> Critical Action
-              </h3>
-
+            <section className="pt-6">
+              <h2 className="text-[0.875rem] font-semibold text-error uppercase tracking-widest mb-4 pb-2 border-b border-error/20">Danger zone</h2>
+              
               {!showCancelConfirm ? (
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                   <p className="text-sm text-[var(--text-secondary)] max-w-md">
-                      Aborting this payload will remove it from the routing network and notify any matched logistics.
-                   </p>
-                   <button className="px-6 py-2.5 rounded-sm text-sm font-semibold tracking-wide flex items-center justify-center gap-2 bg-[var(--bg-page)] border border-[var(--error)] text-[var(--error)] hover:bg-[var(--error)] hover:text-black transition-colors shadow-sm flex-shrink-0" onClick={() => setShowCancelConfirm(true)}>
-                     Abort Payload
-                   </button>
+                  <p className="text-[0.875rem] text-on-surface-variant max-w-lg">
+                    Aborting this donation removes it from the routing network and notifies any matched logistics participants.
+                  </p>
+                  <button className="h-10 px-6 bg-transparent border border-error text-error text-[0.875rem] font-medium rounded hover:bg-error hover:text-white transition-colors flex-shrink-0" onClick={() => setShowCancelConfirm(true)}>
+                    Abort donation
+                  </button>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="p-4 bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-sm">
-                     <label className="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
-                        Reason for Abort
-                     </label>
-                     <input
-                       type="text"
-                       value={cancelReason}
-                       onChange={(e) => setCancelReason(e.target.value)}
-                       placeholder="e.g. Spilled, Expired, No longer available..."
-                       className="input-base border-[var(--border-strong)] focus:border-[var(--error)]"
-                     />
-                  </div>
+                <div className="max-w-lg">
+                  <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Reason for abort</label>
+                  <input
+                    type="text"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="e.g. Food spoiled, accidental listing"
+                    className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface mb-4 focus:border-error focus:ring-1 focus:ring-error outline-none transition-shadow"
+                  />
                   <div className="flex gap-3">
-                    <button className="btn-secondary flex-1" onClick={() => { setShowCancelConfirm(false); setCancelReason(''); }}>
-                      Cancel Abort
+                    <button className="flex-1 h-10 px-4 bg-surface-container text-on-surface-variant rounded text-[0.875rem] font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors" onClick={() => { setShowCancelConfirm(false); setCancelReason(''); }}>
+                      Cancel
                     </button>
-                    <button className="px-6 py-2.5 rounded-sm text-sm font-semibold tracking-wide flex items-center justify-center gap-2 bg-[var(--error)] text-black hover:bg-red-400 transition-colors shadow-sm flex-1" disabled={!cancelReason || cancelMutation.isPending}
+                    <button className="flex-1 h-10 px-4 bg-error text-white rounded text-[0.875rem] font-medium hover:bg-red-600 transition-colors flex items-center justify-center gap-2" disabled={!cancelReason || cancelMutation.isPending}
                       onClick={() => cancelMutation.mutate()}>
-                      {cancelMutation.isPending ? <><Loader2 size={16} className="animate-spin" /> EXECUTING…</> : 'CONFIRM ABORT'}
+                      {cancelMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Confirm abort'}
                     </button>
                   </div>
                 </div>
               )}
-            </div>
+            </section>
           )}
+
         </div>
 
-        {/* Right column — timeline */}
-        <div className="lg:h-full lg:min-h-[600px]">
-          <StatusTimeline currentStatus={donation.status} />
+        {/* ── Sidebar Telemetry ── */}
+        <div>
+          <h2 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/30">Telemetry</h2>
+          <div className="flex flex-col">
+            {STATUS_TIMELINE.map((step, i) => {
+              const done = currentIdx > i;
+              const active = currentIdx === i;
+              const showLine = i < STATUS_TIMELINE.length - 1;
+              
+              return (
+                <div key={step.status} className="flex items-start gap-4">
+                  <div className="flex flex-col items-center mt-1">
+                    <div className={`w-3 h-3 rounded-full flex-shrink-0 ${done ? 'bg-primary' : active ? 'border-2 border-primary' : 'border-2 border-outline-variant/50'}`} />
+                    {showLine && (
+                      <div className={`w-px min-h-[32px] my-1 ${done ? 'bg-primary/30' : 'bg-outline-variant/30'}`} />
+                    )}
+                  </div>
+                  <div className="pb-4">
+                    <p className={`text-[0.875rem] ${done || active ? 'text-on-surface font-medium' : 'text-on-surface-variant'}`}>
+                      {step.label}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+
+            {isTerminalBad && (
+              <div className="flex items-start gap-4 mt-2">
+                <div className="flex flex-col items-center mt-1">
+                  <div className="w-3 h-3 rounded-full flex-shrink-0 bg-error" />
+                </div>
+                <div>
+                  <p className="text-[0.875rem] font-semibold text-error">{donation.status.replace(/_/g, ' ')}</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
       </div>
     </DonorLayout>
   );
 }
-

@@ -1,14 +1,9 @@
-/**
- * LoginPage — handles both login and registration in a single premium UI.
- * Calls POST /api/v1/auth/login and POST /api/v1/auth/register.
- */
-
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowRight, Leaf, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Leaf, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { apiClient } from '../../api/client';
 import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
@@ -124,263 +119,229 @@ export function LoginPage() {
   const isRegisterPending = registerForm.formState.isSubmitting;
 
   return (
-    <div className="min-h-screen flex bg-surface text-on-surface">
-      {/* Left branding panel - Deep Forest Green */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col relative bg-primary overflow-hidden">
-        {/* Subtle background pattern/gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary to-primary-container opacity-50" />
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary-container rounded-full blur-[100px] translate-x-1/2 -translate-y-1/4 opacity-30" />
-        
-        <div className="relative z-10 flex flex-col h-full px-16 py-12">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 w-fit hover:opacity-90 transition-opacity text-on-primary">
-            <Leaf size={28} className="text-white" />
-            <div className="flex flex-col">
-              <span className="font-display text-[1.125rem] font-bold tracking-tight leading-none text-white">RePlate</span>
-              <span className="font-ui text-[0.625rem] font-bold uppercase tracking-wider text-primary-fixed-dim leading-tight">Civic Logistics</span>
-            </div>
-          </Link>
-
-          {/* Content */}
-          <div className="flex-1 flex flex-col justify-center">
-            <h1 className="font-display text-[3.5rem] font-bold leading-tight mb-6 text-white tracking-tight">
-              Civic Food <br />
-              Logistics Terminal.
-            </h1>
-            <p className="font-ui text-[1.125rem] leading-relaxed mb-12 text-on-primary-container max-w-md">
-              Secure access for authorized municipal hubs, commercial kitchens, and certified couriers. Coordinate surplus routing with zero guesswork.
-            </p>
+    <div className="min-h-screen flex flex-col bg-base text-on-surface">
+      
+      {/* ── Top Header ── */}
+      <header className="w-full flex items-center justify-between p-6 md:p-8">
+        <Link to="/" className="flex items-center gap-3 shrink-0 text-primary hover:opacity-80 transition-opacity">
+          <Leaf size={24} />
+          <div className="flex flex-col">
+            <span className="font-semibold text-[1.125rem] text-on-surface tracking-tight leading-none">
+              RePlate
+            </span>
+            <span className="text-[0.625rem] font-bold uppercase tracking-widest text-on-surface-variant leading-tight mt-0.5">
+              Civic Food Logistics
+            </span>
           </div>
+        </Link>
+        <ThemeToggle />
+      </header>
 
-          {/* Footer */}
-          <div className="flex items-center justify-end">
-            <ThemeToggle />
-          </div>
-        </div>
-      </div>
-
-      {/* Right auth panel - Warm Parchment */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-16 bg-surface">
-        <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <Link to="/" className="flex items-center gap-3 mb-10 lg:hidden text-primary">
-            <Leaf size={28} className="text-[var(--moss)]" />
-            <div className="flex flex-col">
-              <span className="font-display text-[1.125rem] font-bold tracking-tight leading-none">RePlate</span>
-              <span className="font-ui text-[0.625rem] font-bold uppercase tracking-wider text-text-muted leading-tight">Civic Logistics</span>
-            </div>
-          </Link>
-
-          <h2 className="font-display text-2xl font-bold text-on-surface mb-2 tracking-tight">
-            {mode === 'login' ? 'Welcome back' : 'Register a Node'}
-          </h2>
-          <p className="text-sm text-on-surface-variant mb-8">
-            {mode === 'login' ? 'Enter your credentials to access the terminal.' : 'Join the decentralized food logistics network.'}
-          </p>
-
-          {/* Tab switcher */}
-          <div className="flex p-1 bg-surface-container-high border border-outline-variant rounded-lg mb-8">
-            {(['login', 'register'] as const).map((m) => {
-              const isActive = mode === m;
-              return (
-                <button
-                  key={m}
-                  onClick={() => { setMode(m); setError(null); }}
-                  className={`flex-1 py-2.5 rounded-md text-[0.875rem] font-semibold tracking-wide transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-surface text-primary shadow-sm' 
-                      : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-                  }`}
-                >
-                  {m === 'login' ? 'Sign In' : 'Register'}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Error */}
+      {/* ── Main Content ── */}
+      <main className="flex-1 flex justify-center pb-20 px-4 md:px-8 pt-8 md:pt-16">
+        <div className="w-full flex flex-col items-center">
+          
+          {/* Error Message */}
           {error && (
-            <div className="mb-6 px-4 py-3 rounded-lg text-sm font-medium bg-error-container/30 border border-error/20 text-error flex items-start gap-2">
-              <div className="mt-0.5">⚠</div>
-              <div>{error}</div>
+            <div className="w-full max-w-[480px] mb-6 px-4 py-3 rounded text-[0.875rem] font-medium bg-error/10 border border-error/20 text-error flex items-start gap-2">
+              <span className="mt-0.5">⚠</span>
+              <span>{error}</span>
             </div>
           )}
 
           {/* ── LOGIN FORM ── */}
           {mode === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-5">
-              <div>
-                <label className="form-label">System Email</label>
-                <input {...loginForm.register('email')} type="email" className="input-base"
-                  placeholder="operator@replate.local" autoComplete="email" />
-                {loginForm.formState.errors.email && (
-                  <p className="form-error">{loginForm.formState.errors.email.message}</p>
-                )}
+            <div className="w-full max-w-[420px]">
+              <div className="mb-10">
+                <h2 className="text-[1.75rem] font-semibold text-on-surface tracking-tight mb-2">Welcome back</h2>
+                <p className="text-[0.9375rem] text-on-surface-variant leading-relaxed">Access your logistics workspace.</p>
               </div>
-              <div>
-                <label className="form-label">Passcode</label>
-                <div className="relative">
-                  <input {...loginForm.register('password')} type={showPassword ? 'text' : 'password'}
-                    className="input-base pr-12 font-mono" placeholder="••••••••" autoComplete="current-password" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-on-surface-variant hover:text-on-surface transition-colors">
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div>
+                  <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">System email</label>
+                  <input {...loginForm.register('email')} type="email" className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="operator@replate.local" autoComplete="email" />
+                  {loginForm.formState.errors.email && (
+                    <p className="text-[0.75rem] text-error mt-1.5">{loginForm.formState.errors.email.message}</p>
+                  )}
                 </div>
-                {loginForm.formState.errors.password && (
-                  <p className="form-error">{loginForm.formState.errors.password.message}</p>
-                )}
+                <div>
+                  <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Passcode</label>
+                  <div className="relative">
+                    <input {...loginForm.register('password')} type={showPassword ? 'text' : 'password'} className="w-full h-10 px-3 pr-10 rounded text-[0.875rem] font-mono bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="••••••••" autoComplete="current-password" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {loginForm.formState.errors.password && (
+                    <p className="text-[0.75rem] text-error mt-1.5">{loginForm.formState.errors.password.message}</p>
+                  )}
+                </div>
+
+                <button type="submit" className="w-full h-11 mt-2 rounded bg-primary text-on-primary text-[0.9375rem] font-medium hover:bg-primary/90 transition-colors flex items-center justify-center" disabled={isLoginPending}>
+                  {isLoginPending ? <Loader2 size={16} className="animate-spin" /> : <>Sign in</>}
+                </button>
+              </form>
+              
+              <div className="mt-10 pt-6 border-t border-outline-variant/30 text-center">
+                <span className="text-[0.875rem] text-on-surface-variant">New to RePlate? </span>
+                <button onClick={() => { setMode('register'); setError(null); }} className="text-[0.875rem] font-medium text-primary hover:underline">
+                  Register a node →
+                </button>
               </div>
-
-              <button type="submit" className="btn-primary w-full py-3 mt-2 text-[0.9375rem] shadow-sm" disabled={isLoginPending}>
-                {isLoginPending ? <Loader2 size={18} className="animate-spin" /> : <>Authorize Access <ArrowRight size={16} /></>}
-              </button>
-
-              <div className="mt-8 border border-outline-variant bg-surface-container-low p-4 rounded-lg relative overflow-hidden group hover:border-primary/30 transition-colors">
-                <div className="absolute top-0 left-0 w-1 h-full bg-primary/20 group-hover:bg-primary transition-colors" />
-                <p className="text-[0.6875rem] text-on-surface-variant font-bold mb-1 tracking-wider uppercase">Diagnostics Access</p>
-                <button type="button" onClick={() => {
-                  loginForm.setValue('email', 'admin@cpi.com');
-                  loginForm.setValue('password', 'password123');
-                }} className="text-[0.875rem] font-mono font-medium text-primary hover:text-primary-container-highest underline decoration-primary/30 underline-offset-2">admin@cpi.com</button>
-              </div>
-
-            </form>
+            </div>
           )}
 
           {/* ── REGISTER FORM ── */}
           {mode === 'register' && (
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="form-label">Operator Name</label>
-                  <input {...registerForm.register('name')} className="input-base" placeholder="Jane Doe" />
-                  {registerForm.formState.errors.name && (
-                    <p className="form-error">{registerForm.formState.errors.name.message}</p>
-                  )}
-                </div>
+            <div className="w-full max-w-[500px]">
+              <div className="mb-10">
+                <h2 className="text-[1.75rem] font-semibold text-on-surface tracking-tight mb-2">Register a node</h2>
+                <p className="text-[0.9375rem] text-on-surface-variant leading-relaxed">Create an account for a new logistics participant.</p>
+              </div>
+
+              <form onSubmit={handleRegister} className="space-y-10">
+                
+                {/* Account Information */}
                 <div>
-                  <label className="form-label">Email</label>
-                  <input {...registerForm.register('email')} type="email" className="input-base" placeholder="node@example.com" />
-                  {registerForm.formState.errors.email && (
-                    <p className="form-error">{registerForm.formState.errors.email.message}</p>
-                  )}
-                </div>
-                <div>
-                  <label className="form-label">Phone</label>
-                  <input {...registerForm.register('phone')} className="input-base font-mono-data" placeholder="9876543210" />
-                  {registerForm.formState.errors.phone && (
-                    <p className="form-error">{registerForm.formState.errors.phone.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="form-label">Secure Passcode</label>
-                <div className="relative">
-                  <input {...registerForm.register('password')} type={showPassword ? 'text' : 'password'}
-                    className="input-base pr-12 font-mono" placeholder="Min. 8 characters" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-on-surface-variant hover:text-on-surface transition-colors">
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                {registerForm.formState.errors.password && (
-                  <p className="form-error">{registerForm.formState.errors.password.message}</p>
-                )}
-              </div>
-
-              <div className="pt-2 relative z-10">
-                <label className="form-label">Node Designation</label>
-                <select {...registerForm.register('role')} className="select-base bg-surface-container-lowest">
-                  <option value="DONOR">Supplier (Commercial Kitchen)</option>
-                  <option value="NGO">Distributor (Community Pantry)</option>
-                  <option value="DRIVER">Logistics (Certified Fleet)</option>
-                </select>
-              </div>
-
-              {/* Dynamic Fields Section */}
-              <div className="pt-2 space-y-4">
-                {/* DONOR fields */}
-                {watchedRole === 'DONOR' && (
-                  <div className="p-4 rounded-lg bg-surface-container border border-outline-variant space-y-4 relative">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+                  <h3 className="text-[0.75rem] font-bold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/50">Account information</h3>
+                  <div className="space-y-5">
                     <div>
-                      <label className="form-label">Facility Name</label>
-                      <input {...registerForm.register('organisation_name')} className="input-base bg-surface-container-lowest" placeholder="e.g. Green Kitchen Restaurant" />
+                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Operator name</label>
+                      <input {...registerForm.register('name')} className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="Jane Doe" />
+                      {registerForm.formState.errors.name && (
+                        <p className="text-[0.75rem] text-error mt-1.5">{registerForm.formState.errors.name.message}</p>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Email</label>
+                        <input {...registerForm.register('email')} type="email" className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="node@example.com" />
+                        {registerForm.formState.errors.email && (
+                          <p className="text-[0.75rem] text-error mt-1.5">{registerForm.formState.errors.email.message}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Phone</label>
+                        <input {...registerForm.register('phone')} className="w-full h-10 px-3 rounded text-[0.875rem] font-mono-data bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="9876543210" />
+                        {registerForm.formState.errors.phone && (
+                          <p className="text-[0.75rem] text-error mt-1.5">{registerForm.formState.errors.phone.message}</p>
+                        )}
+                      </div>
                     </div>
                     <div>
-                      <label className="form-label">Pickup Coordinates / Address</label>
-                      <LocationAutocomplete
-                        value={registerForm.watch('address') || ''}
-                        onChange={(val) => registerForm.setValue('address', val)}
-                        onSelect={(addr, lat, lng) => {
-                          registerForm.setValue('address', addr);
-                          registerForm.setValue('latitude', lat);
-                          registerForm.setValue('longitude', lng);
-                        }}
-                        placeholder="Full pickup address"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* NGO fields */}
-                {watchedRole === 'NGO' && (
-                  <div className="p-4 rounded-lg bg-surface-container border border-outline-variant space-y-4 relative">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-secondary" />
-                    <div>
-                      <label className="form-label">Organization Name</label>
-                      <input {...registerForm.register('organisation_name')} className="input-base bg-surface-container-lowest" placeholder="e.g. City Food Bank" />
-                    </div>
-                    <div>
-                      <label className="form-label">Delivery Location</label>
-                      <LocationAutocomplete
-                        value={registerForm.watch('address') || ''}
-                        onChange={(val) => registerForm.setValue('address', val)}
-                        onSelect={(addr, lat, lng) => {
-                          registerForm.setValue('address', addr);
-                          registerForm.setValue('latitude', lat);
-                          registerForm.setValue('longitude', lng);
-                        }}
-                        placeholder="Full address"
-                      />
-                    </div>
-                    <div>
-                      <label className="form-label">Total Storage Capacity (kg)</label>
-                      <input {...registerForm.register('storage_capacity_kg')}
-                        type="number" min="1" className="input-base font-mono-data bg-surface-container-lowest" placeholder="e.g. 500" />
-                      {registerForm.formState.errors.storage_capacity_kg && (
-                        <p className="form-error">{registerForm.formState.errors.storage_capacity_kg.message}</p>
+                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Secure passcode</label>
+                      <div className="relative">
+                        <input {...registerForm.register('password')} type={showPassword ? 'text' : 'password'} className="w-full h-10 px-3 pr-10 rounded text-[0.875rem] font-mono bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="Min. 8 characters" />
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                      {registerForm.formState.errors.password && (
+                        <p className="text-[0.75rem] text-error mt-1.5">{registerForm.formState.errors.password.message}</p>
                       )}
                     </div>
                   </div>
-                )}
+                </div>
 
-                {/* DRIVER fields */}
-                {watchedRole === 'DRIVER' && (
-                  <div className="p-4 rounded-lg bg-surface-container border border-outline-variant space-y-4 relative">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
+                {/* Node Information */}
+                <div>
+                  <h3 className="text-[0.75rem] font-bold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/50">Node information</h3>
+                  <div className="space-y-5">
                     <div>
-                      <label className="form-label">Transit Capacity (kg)</label>
-                      <input {...registerForm.register('vehicle_capacity_kg')}
-                        type="number" min="1" className="input-base font-mono-data bg-surface-container-lowest" placeholder="e.g. 100" />
-                      {registerForm.formState.errors.vehicle_capacity_kg && (
-                        <p className="form-error">{registerForm.formState.errors.vehicle_capacity_kg.message}</p>
-                      )}
+                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Node designation</label>
+                      <select {...registerForm.register('role')} className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow">
+                        <option value="DONOR">Commercial Kitchen (Donor)</option>
+                        <option value="NGO">Food Program (Recipient)</option>
+                        <option value="DRIVER">Transport Fleet (Driver)</option>
+                      </select>
                     </div>
-                  </div>
-                )}
-              </div>
 
-              <button type="submit" className="btn-primary w-full py-3 mt-4 text-[0.9375rem] shadow-sm" disabled={isRegisterPending}>
-                {isRegisterPending ? <Loader2 size={18} className="animate-spin" /> : <>Register Node <ArrowRight size={16} /></>}
-              </button>
-            </form>
+                    {/* Dynamic Fields */}
+                    {watchedRole === 'DONOR' && (
+                      <div className="space-y-5 pt-2">
+                        <div>
+                          <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Facility name</label>
+                          <input {...registerForm.register('organisation_name')} className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="e.g. Green Kitchen Restaurant" />
+                        </div>
+                        <div>
+                          <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Pickup address</label>
+                          <div className="bg-surface-container border border-outline-variant rounded focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden">
+                            <LocationAutocomplete
+                              value={registerForm.watch('address') || ''}
+                              onChange={(val) => registerForm.setValue('address', val)}
+                              onSelect={(addr, lat, lng) => {
+                                registerForm.setValue('address', addr);
+                                registerForm.setValue('latitude', lat);
+                                registerForm.setValue('longitude', lng);
+                              }}
+                              placeholder="Full pickup address"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {watchedRole === 'NGO' && (
+                      <div className="space-y-5 pt-2">
+                        <div>
+                          <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Facility name</label>
+                          <input {...registerForm.register('organisation_name')} className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="e.g. City Food Bank" />
+                        </div>
+                        <div>
+                          <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Delivery address</label>
+                          <div className="bg-surface-container border border-outline-variant rounded focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden">
+                            <LocationAutocomplete
+                              value={registerForm.watch('address') || ''}
+                              onChange={(val) => registerForm.setValue('address', val)}
+                              onSelect={(addr, lat, lng) => {
+                                registerForm.setValue('address', addr);
+                                registerForm.setValue('latitude', lat);
+                                registerForm.setValue('longitude', lng);
+                              }}
+                              placeholder="Full delivery address"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Total storage capacity (kg)</label>
+                          <input {...registerForm.register('storage_capacity_kg')} type="number" min="1" className="w-full h-10 px-3 rounded text-[0.875rem] font-mono-data bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="e.g. 500" />
+                          {registerForm.formState.errors.storage_capacity_kg && (
+                            <p className="text-[0.75rem] text-error mt-1.5">{registerForm.formState.errors.storage_capacity_kg.message}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {watchedRole === 'DRIVER' && (
+                      <div className="space-y-5 pt-2">
+                        <div>
+                          <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Transit capacity (kg)</label>
+                          <input {...registerForm.register('vehicle_capacity_kg')} type="number" min="1" className="w-full h-10 px-3 rounded text-[0.875rem] font-mono-data bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="e.g. 100" />
+                          {registerForm.formState.errors.vehicle_capacity_kg && (
+                            <p className="text-[0.75rem] text-error mt-1.5">{registerForm.formState.errors.vehicle_capacity_kg.message}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full h-11 mt-4 rounded bg-primary text-on-primary text-[0.9375rem] font-medium hover:bg-primary/90 transition-colors flex items-center justify-center" disabled={isRegisterPending}>
+                  {isRegisterPending ? <Loader2 size={16} className="animate-spin" /> : <>Register node</>}
+                </button>
+              </form>
+
+              <div className="mt-10 pt-6 border-t border-outline-variant/30 text-center">
+                <span className="text-[0.875rem] text-on-surface-variant">Already registered? </span>
+                <button onClick={() => { setMode('login'); setError(null); }} className="text-[0.875rem] font-medium text-primary hover:underline">
+                  Sign in
+                </button>
+              </div>
+            </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
-

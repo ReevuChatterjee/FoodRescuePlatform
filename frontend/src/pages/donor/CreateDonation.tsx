@@ -1,14 +1,10 @@
-/**
- * CreateDonation — multi-step donation form with allergen chips and validation.
- */
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { Package, MapPin, Shield, ArrowLeft, ArrowRight, Loader2, X, Info } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { DonorLayout } from '../../components/layout/DonorLayout';
 import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
@@ -16,7 +12,7 @@ import { LocationAutocomplete } from '../../components/common/LocationAutocomple
 const ALLERGENS = ['Gluten', 'Dairy', 'Eggs', 'Nuts', 'Soy', 'Fish', 'Shellfish', 'Sesame'];
 
 const schema = z.object({
-  food_name: z.string().min(1, 'Food name is required'),
+  food_name: z.string().min(1, 'Food description is required'),
   food_category: z.enum(['RAW_PRODUCE', 'COOKED', 'PACKAGED', 'BAKED_GOODS', 'DAIRY', 'MIXED']),
   quantity_kg: z.number().positive('Must be greater than 0'),
   prepared_at: z.string().min(1, 'Required'),
@@ -36,7 +32,7 @@ const schema = z.object({
 }).refine(
   (data) => new Date(data.expiry_time) > new Date(data.available_from),
   {
-    message: "Expiry time must be after ready time",
+    message: "Use by time must be after ready time",
     path: ["expiry_time"],
   }
 );
@@ -44,25 +40,25 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const STEPS = [
-  { id: 1, label: 'Payload Manifest', icon: <Package size={16} /> },
-  { id: 2, label: 'Origin Coordinates', icon: <MapPin size={16} /> },
-  { id: 3, label: 'Handling & Safety', icon: <Shield size={16} /> },
+  { id: 1, label: 'Payload' },
+  { id: 2, label: 'Origin' },
+  { id: 3, label: 'Handling & safety' },
 ];
 
 const CATEGORY_OPTIONS = [
-  { value: 'COOKED', label: 'Cooked Food' },
-  { value: 'RAW_PRODUCE', label: 'Raw Produce' },
+  { value: 'COOKED', label: 'Cooked food' },
+  { value: 'RAW_PRODUCE', label: 'Raw produce' },
   { value: 'PACKAGED', label: 'Packaged / Sealed' },
-  { value: 'BAKED_GOODS', label: 'Baked Goods' },
-  { value: 'DAIRY', label: 'Dairy Products' },
+  { value: 'BAKED_GOODS', label: 'Baked goods' },
+  { value: 'DAIRY', label: 'Dairy products' },
   { value: 'MIXED', label: 'Mixed / Other' },
 ];
 
 const TEMP_OPTIONS = [
-  { value: 'ROOM_TEMP', label: 'Ambient (Room Temp)' },
-  { value: 'COLD', label: 'Cold Storage (Refrigerated)' },
-  { value: 'HOT', label: 'Thermal Retention (Keep Hot)' },
-  { value: 'FROZEN', label: 'Deep Freeze' },
+  { value: 'ROOM_TEMP', label: 'Ambient (Room temp)' },
+  { value: 'COLD', label: 'Cold storage (Refrigerated)' },
+  { value: 'HOT', label: 'Thermal retention (Keep hot)' },
+  { value: 'FROZEN', label: 'Deep freeze' },
 ];
 
 const getLocalISOString = (ms: number) => {
@@ -148,44 +144,27 @@ export function CreateDonation() {
 
   return (
     <DonorLayout>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold font-display tracking-tight text-on-surface mb-1">Generate Dispatch Payload</h1>
-          <p className="text-sm font-medium text-on-surface-variant">Submit surplus food specifications to the routing network.</p>
+      <div className="max-w-[640px] mx-auto w-full">
+        {/* Header */}
+        <div className="mb-10 pb-6 border-b border-outline-variant/30">
+          <h1 className="text-[1.75rem] font-semibold tracking-tight text-on-surface mb-2">Create donation</h1>
+          <p className="text-[0.9375rem] text-on-surface-variant">Add the food details, pickup location and handling information needed for matching.</p>
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2 bg-surface-container text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-md font-semibold text-sm transition-colors border border-outline-variant" onClick={() => navigate('/donor')}>
-          <ArrowLeft size={16} /> Abort Entry
-        </button>
-      </div>
 
-      <div className="max-w-3xl mx-auto w-full mt-6">
-        {/* Tracker */}
-        <div className="mb-10 bg-surface-container-lowest border border-outline-variant rounded-lg p-5 flex items-center justify-between relative shadow-sm">
-          {/* Connecting line */}
-          <div className="absolute top-1/2 left-8 right-8 h-px bg-outline-variant -translate-y-1/2 z-0 hidden sm:block"></div>
-          
-          {STEPS.map((s) => {
+        {/* Stepper */}
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-4 mb-12">
+          {STEPS.map((s, idx) => {
             const isCompleted = step > s.id;
             const isCurrent = step === s.id;
             
             return (
-              <div key={s.id} className="relative z-10 flex flex-col items-center gap-3 bg-surface-container-lowest px-4">
-                <div 
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors border-2 ${
-                    isCurrent ? 'bg-primary-container text-on-primary-container border-primary-container shadow-sm' 
-                    : isCompleted ? 'bg-success text-on-primary border-success shadow-sm' 
-                    : 'bg-surface text-outline-variant border-outline-variant'
-                  }`}
-                >
-                  {s.icon}
-                </div>
-                <div className="flex flex-col items-center">
-                   <span className="text-[0.625rem] font-bold tracking-wider uppercase font-mono-data text-outline">STEP 0{s.id}</span>
-                   <span className={`text-xs font-bold tracking-tight mt-0.5 ${isCurrent ? 'text-on-surface' : 'text-on-surface-variant'}`}>
-                     {s.label}
-                   </span>
-                </div>
+              <div key={s.id} className="flex items-center gap-2">
+                <span className={`text-[0.875rem] font-mono-data font-semibold ${isCompleted ? 'text-primary' : isCurrent ? 'text-primary underline underline-offset-4' : 'text-on-surface-variant'}`}>
+                  0{s.id} — {s.label}
+                </span>
+                {idx < STEPS.length - 1 && (
+                  <span className="text-outline-variant/30 ml-4 hidden sm:inline-block">/</span>
+                )}
               </div>
             );
           })}
@@ -193,79 +172,91 @@ export function CreateDonation() {
 
         {/* Error banner */}
         {mutation.isError && (
-          <div className="mb-6 px-4 py-3 rounded-md border border-error/30 bg-error/5 text-error text-sm font-bold tracking-wide flex items-center gap-2">
-             <Info size={16} /> Transaction failed. Review input constraints.
+          <div className="mb-8 px-4 py-3 rounded border border-error/30 bg-error/10 text-error text-[0.875rem] font-medium">
+             Failed to create donation. Please check your inputs.
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="bg-surface-container-lowest p-8 border border-outline-variant rounded-xl shadow-sm">
-            {/* ── Step 1: Food Details ── */}
+          <div className="space-y-12">
+            
+            {/* ── Step 1: Payload ── */}
             {step === 1 && (
-              <div className="space-y-6">
+              <>
                 <div>
-                  <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Payload Designation</label>
-                  <input {...register('food_name')} className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-medium text-on-surface placeholder:text-outline-variant focus:border-primary focus:ring-1 focus:ring-primary transition-shadow outline-none" placeholder="e.g. 50x Assorted Sandwiches" />
-                  {errors.food_name && <p className="text-xs font-semibold text-error mt-1.5">{errors.food_name.message}</p>}
+                  <h3 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/30">Donation details</h3>
+                  <div className="space-y-5">
+                    <div>
+                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Food description</label>
+                      <input {...register('food_name')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="e.g. 50x Assorted sandwiches" />
+                      {errors.food_name && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.food_name.message}</p>}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div>
+                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Food type</label>
+                        <select {...register('food_category')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+                          {CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Quantity (kg)</label>
+                        <input {...register('quantity_kg', { valueAsNumber: true })} type="number" step="0.1" min="0.1"
+                          className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data font-medium text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="e.g. 15.5" />
+                        {errors.quantity_kg && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.quantity_kg.message}</p>}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Classification</label>
-                    <select {...register('food_category')} className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
-                      {CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Net Mass (kg)</label>
-                    <input {...register('quantity_kg', { valueAsNumber: true })} type="number" step="0.1" min="0.1"
-                      className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-bold font-mono-data text-on-surface placeholder:text-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="e.g. 15.5" />
-                    {errors.quantity_kg && <p className="text-xs font-semibold text-error mt-1.5">{errors.quantity_kg.message}</p>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 border-t border-outline-variant pt-6 mt-2">
-                  <div>
-                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Preparation Time</label>
-                    <input {...register('prepared_at')} type="datetime-local" className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-[0.8125rem] font-bold font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
-                    {errors.prepared_at && <p className="text-xs font-semibold text-error mt-1.5">{errors.prepared_at.message}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Ready for Transit</label>
-                    <input {...register('available_from')} type="datetime-local" className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-[0.8125rem] font-bold font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
-                    {errors.available_from && <p className="text-xs font-semibold text-error mt-1.5">{errors.available_from.message}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Critical Expiration</label>
-                    <input {...register('expiry_time')} type="datetime-local" className="w-full h-11 px-3 bg-error/5 border border-error/30 rounded-md text-[0.8125rem] font-bold font-mono-data text-error focus:border-error focus:ring-1 focus:ring-error outline-none" />
-                    {errors.expiry_time && <p className="text-xs font-semibold text-error mt-1.5">{errors.expiry_time.message}</p>}
+                <div>
+                  <h3 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/30">Timing</h3>
+                  <div className="space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div>
+                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Prepared</label>
+                        <input {...register('prepared_at')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                        {errors.prepared_at && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.prepared_at.message}</p>}
+                      </div>
+                      <div>
+                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Ready for pickup</label>
+                        <input {...register('available_from')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                        {errors.available_from && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.available_from.message}</p>}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Use by</label>
+                      <input {...register('expiry_time')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                      {errors.expiry_time && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.expiry_time.message}</p>}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </>
             )}
 
             {/* ── Step 2: Pickup Location ── */}
             {step === 2 && (
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Facility Address</label>
-                  <LocationAutocomplete
-                    value={watch('pickup_location.address')}
-                    onChange={(val) => setValue('pickup_location.address', val)}
-                    onSelect={(addr, lat, lng) => {
-                      setValue('pickup_location.address', addr);
-                      setValue('pickup_location.latitude', lat);
-                      setValue('pickup_location.longitude', lng);
-                      trigger('pickup_location');
-                    }}
-                    placeholder="e.g. Loading Bay 3, 42 MG Road, Bengaluru"
-                  />
-                  {errors.pickup_location?.address && <p className="text-xs font-semibold text-error mt-1.5">{errors.pickup_location.address.message}</p>}
-                </div>
-                <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 flex items-start gap-3 mt-4">
-                  <MapPin size={16} className="text-primary mt-0.5 flex-shrink-0" />
-                  <p className="text-sm font-medium text-primary leading-relaxed">
-                     Provide exact geographic coordinates. The algorithmic dispatch engine relies on this precision to minimize transit times.
+              <div>
+                <h3 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/30">Pickup location</h3>
+                <div className="space-y-3">
+                  <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Facility address</label>
+                  <div className="bg-surface-container-lowest border border-outline-variant rounded focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden">
+                    <LocationAutocomplete
+                      value={watch('pickup_location.address')}
+                      onChange={(val) => setValue('pickup_location.address', val)}
+                      onSelect={(addr, lat, lng) => {
+                        setValue('pickup_location.address', addr);
+                        setValue('pickup_location.latitude', lat);
+                        setValue('pickup_location.longitude', lng);
+                        trigger('pickup_location');
+                      }}
+                      placeholder="e.g. Loading bay 3, 42 MG Road, Bengaluru"
+                    />
+                  </div>
+                  {errors.pickup_location?.address && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.pickup_location.address.message}</p>}
+                  
+                  <p className="text-[0.8125rem] text-on-surface-variant mt-2">
+                    Exact coordinates improve route matching and transit-time estimates.
                   </p>
                 </div>
               </div>
@@ -273,76 +264,71 @@ export function CreateDonation() {
 
             {/* ── Step 3: Safety & Handling ── */}
             {step === 3 && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div>
-                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Thermal Constraints</label>
-                    <select {...register('food_safety_info.storage_temp_required')} className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-medium text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
-                      {TEMP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Enclosure Specs</label>
-                    <input {...register('food_safety_info.packaging_type')} className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-medium text-on-surface placeholder:text-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                      placeholder="e.g. Vacuum-sealed GN pans" />
-                  </div>
-                </div>
-
-                <div className="border-t border-outline-variant pt-6 mt-2">
-                  <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-2">Handling Directives (Optional)</label>
-                  <input {...register('special_handling')} className="w-full h-11 px-3 bg-surface border border-outline-variant rounded-md text-sm font-medium text-on-surface placeholder:text-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none"
-                    placeholder="e.g. DO NOT STACK. Keep horizontal." />
-                </div>
-
-                {/* Allergen chips */}
-                <div className="bg-surface-container border border-outline-variant p-5 rounded-lg mt-6 shadow-sm">
-                  <label className="block text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface-variant mb-4">Identify Contaminants / Allergens</label>
-                  <div className="flex flex-wrap gap-2.5">
-                    {ALLERGENS.map((a) => {
-                      const selected = allergens.includes(a);
-                      return (
-                        <button
-                          key={a}
-                          type="button"
-                          onClick={() => setAllergens((prev) => selected ? prev.filter((x) => x !== a) : [...prev, a])}
-                          className={`px-3.5 py-2 rounded-full text-[0.8125rem] font-bold tracking-tight border transition-all flex items-center gap-1.5 shadow-sm
-                            ${selected ? 'bg-error text-white border-error' : 'bg-surface-container-lowest border-outline-variant text-on-surface hover:border-outline hover:bg-surface'}`}
-                        >
-                          {selected && <X size={14} />}
-                          {a}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {allergens.length > 0 && (
-                    <div className="mt-5 p-3 bg-error/10 border border-error/20 rounded-md">
-                       <p className="text-xs font-bold tracking-wider uppercase text-error flex items-center gap-2">
-                         <Shield size={16} /> IDENTIFIED: {allergens.join(', ')}
-                       </p>
+              <div>
+                <h3 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/30">Handling requirements</h3>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div>
+                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Storage condition</label>
+                      <select {...register('food_safety_info.storage_temp_required')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+                        {TEMP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
                     </div>
-                  )}
+                    <div>
+                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Packaging</label>
+                      <input {...register('food_safety_info.packaging_type')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                        placeholder="e.g. Vacuum-sealed GN pans" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Special handling (Optional)</label>
+                    <input {...register('special_handling')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                      placeholder="e.g. Keep horizontal, do not stack" />
+                  </div>
+
+                  {/* Allergen chips */}
+                  <div className="pt-4 border-t border-outline-variant/30">
+                    <label className="text-[0.8125rem] font-semibold text-on-surface mb-3 block">Safety / allergen information</label>
+                    <div className="flex flex-wrap gap-2">
+                      {ALLERGENS.map((a) => {
+                        const selected = allergens.includes(a);
+                        return (
+                          <button
+                            key={a}
+                            type="button"
+                            onClick={() => setAllergens((prev) => selected ? prev.filter((x) => x !== a) : [...prev, a])}
+                            className={`px-3 py-1.5 rounded-full text-[0.8125rem] font-medium border transition-colors
+                              ${selected ? 'bg-error text-white border-error' : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant/50 hover:border-outline-variant hover:text-on-surface'}`}
+                          >
+                            {a}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
           {/* Navigation buttons */}
-          <div className="flex justify-between items-center mt-8">
+          <div className="flex justify-between items-center mt-12 pt-6 border-t border-outline-variant/30">
             <button
               type="button"
-              className="px-6 py-2.5 rounded-md text-sm font-bold text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-2 hover:bg-surface-container"
+              className="px-4 py-2 text-[0.875rem] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors"
               onClick={() => step === 1 ? navigate('/donor') : setStep((s) => s - 1)}
             >
-              <ArrowLeft size={16} /> {step === 1 ? 'Cancel Entry' : 'Previous Step'}
+              {step === 1 ? 'Cancel' : 'Back'}
             </button>
 
             {step < 3 ? (
-              <button type="button" className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-on-primary rounded-md font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm" onClick={nextStep}>
-                Next Phase <ArrowRight size={16} />
+              <button type="button" className="h-10 px-6 bg-primary text-on-primary rounded text-[0.875rem] font-medium hover:bg-primary/90 transition-colors" onClick={nextStep}>
+                Continue
               </button>
             ) : (
-              <button type="submit" className="inline-flex items-center gap-2 px-8 py-3 bg-primary text-on-primary rounded-md font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm" disabled={mutation.isPending}>
-                {mutation.isPending ? <><Loader2 size={16} className="animate-spin" /> Processing…</> : <>Transmit Payload <Package size={16} /></>}
+              <button type="submit" className="h-10 px-6 bg-primary text-on-primary rounded text-[0.875rem] font-medium hover:bg-primary/90 transition-colors flex items-center justify-center min-w-[140px]" disabled={mutation.isPending}>
+                {mutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Create donation'}
               </button>
             )}
           </div>
@@ -351,4 +337,3 @@ export function CreateDonation() {
     </DonorLayout>
   );
 }
-

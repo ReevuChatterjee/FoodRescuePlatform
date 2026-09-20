@@ -9,16 +9,41 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart2, CheckSquare, Users, LogOut, Menu, X, Activity, ChevronRight,
+  Building2, Truck, Radio, MapPin, FileText, Settings
 } from 'lucide-react';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { useAnalyticsOverview } from '../../hooks/useAnalytics';
 import { ThemeToggle } from '../common/ThemeToggle';
 
-const NAV = [
-  { label: 'Network Overview', href: '/admin', icon: <BarChart2 size={16} />, short: 'Overview' },
-  { label: 'Verification Queue', href: '/admin/ngos/verify', icon: <CheckSquare size={16} />, short: 'Verify' },
-  { label: 'NGO Registry', href: '/admin/ngos', icon: <Users size={16} />, short: 'Registry' },
+const NAV_GROUPS = [
+  {
+    group: 'OPERATIONS',
+    items: [
+      { label: 'Network Overview', href: '/admin', icon: <BarChart2 size={16} />, short: 'Overview' },
+      { label: 'Verification Queue', href: '/admin/ngos/verify', icon: <CheckSquare size={16} />, short: 'Verify' },
+      { label: 'NGO Registry', href: '/admin/ngos', icon: <Building2 size={16} />, short: 'NGOs' },
+      { label: 'Donor Registry', href: '/admin/donors', icon: <Users size={16} />, short: 'Donors' },
+      { label: 'Driver Registry', href: '/admin/drivers', icon: <Truck size={16} />, short: 'Drivers' },
+    ]
+  },
+  {
+    group: 'NETWORK',
+    items: [
+      { label: 'Active Deliveries', href: '/admin/deliveries', icon: <Activity size={16} />, short: 'Deliveries' },
+      { label: 'Live Network', href: '/admin/network', icon: <Radio size={16} />, short: 'Live' },
+      { label: 'Traceability', href: '/admin/traceability', icon: <MapPin size={16} />, short: 'Trace' },
+    ]
+  },
+  {
+    group: 'SYSTEM',
+    items: [
+      { label: 'Reports', href: '/admin/reports', icon: <FileText size={16} />, short: 'Reports' },
+      { label: 'Settings', href: '/admin/settings', icon: <Settings size={16} />, short: 'Settings' },
+    ]
+  }
 ];
+
+const ALL_NAV = NAV_GROUPS.flatMap(g => g.items);
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -62,32 +87,42 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 flex flex-col gap-1 p-2 pt-4">
-          {NAV.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                title={!sidebarExpanded ? item.label : undefined}
-                className={`flex items-center rounded-lg transition-colors overflow-hidden ${
-                  active 
-                    ? 'bg-primary-container text-on-primary-container' 
-                    : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
-                }`}
-                style={{ height: '40px' }}
-              >
-                <div className="w-9 h-full flex items-center justify-center flex-shrink-0">
-                  {item.icon}
+        <nav className="flex-1 overflow-y-auto flex flex-col p-2 pt-6 no-scrollbar">
+          {NAV_GROUPS.map((g) => (
+            <div key={g.group} className="flex flex-col gap-1 mb-6 last:mb-0">
+              {sidebarExpanded && (
+                <div className="px-3 pb-2 text-[0.65rem] font-bold text-on-surface-variant/60 tracking-widest uppercase">
+                  {g.group}
                 </div>
-                {sidebarExpanded && (
-                  <span className="text-sm font-semibold whitespace-nowrap pl-1 pr-3">
-                    {item.label}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+              )}
+              {g.items.map((item) => {
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    title={!sidebarExpanded ? item.label : undefined}
+                    className={`flex items-center rounded-r-lg transition-colors overflow-hidden ${
+                      active 
+                        ? 'bg-primary-container border-l-[3px] border-primary text-on-primary-container' 
+                        : 'border-l-[3px] border-transparent text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                    }`}
+                    style={{ height: '36px' }}
+                  >
+                    <div className="w-9 h-full flex items-center justify-center flex-shrink-0 ml-[1px]">
+                      {/* Enforce consistent icon rendering via cloning or standard props. Since we pass the element, we can clone it to ensure consistent stroke width, but lucide already uses consistent defaults. */}
+                      {item.icon}
+                    </div>
+                    {sidebarExpanded && (
+                      <span className="text-[0.875rem] font-medium whitespace-nowrap pl-1 pr-3">
+                        {item.label}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* User */}
@@ -122,18 +157,25 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </div>
               <button onClick={() => setMobileOpen(false)} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-md"><X size={20} /></button>
             </div>
-            <nav className="flex-1 p-3 flex flex-col gap-1">
-              {NAV.map((item) => (
-                <Link key={item.href} to={item.href} 
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-                    isActive(item.href)
-                      ? 'bg-primary-container text-on-primary-container'
-                      : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
-                  }`}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {item.icon}{item.label}
-                </Link>
+            <nav className="flex-1 overflow-y-auto p-3 flex flex-col gap-4">
+              {NAV_GROUPS.map((g) => (
+                <div key={g.group} className="flex flex-col gap-0.5">
+                  <div className="px-3 pb-1 text-[0.65rem] font-bold text-on-surface-variant/70 tracking-widest uppercase">
+                    {g.group}
+                  </div>
+                  {g.items.map((item) => (
+                    <Link key={item.href} to={item.href} 
+                      className={`flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm font-medium transition-colors ${
+                        isActive(item.href)
+                          ? 'bg-primary-container border-l-[3px] border-primary text-on-primary-container'
+                          : 'border-l-[3px] border-transparent text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                      }`}
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      {item.icon}{item.label}
+                    </Link>
+                  ))}
+                </div>
               ))}
             </nav>
             <div className="p-4 border-t border-outline-variant">
@@ -159,7 +201,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <span className="text-[0.6875rem] font-bold text-on-surface-variant tracking-wider uppercase hidden sm:inline">Admin Node</span>
             <ChevronRight size={12} className="text-outline hidden sm:block" />
             <span className="text-sm font-bold text-on-surface tracking-tight">
-              {NAV.find((n) => isActive(n.href))?.short ?? 'Dashboard'}
+              {ALL_NAV.find((n) => isActive(n.href))?.short ?? 'Dashboard'}
             </span>
           </div>
 
@@ -172,7 +214,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 { label: 'Available Drivers', value: overview.available_drivers },
               ].map((t) => (
                 <div key={t.label} className="flex items-center gap-2">
-                  <span className="text-[0.6875rem] font-semibold text-on-surface-variant tracking-wider uppercase">{t.label}</span>
+                  <span className="text-[0.6875rem] font-bold text-on-surface-variant tracking-wider uppercase">{t.label}</span>
                   <span className="text-sm font-bold font-mono-data text-primary">
                     {t.value}
                   </span>
@@ -184,11 +226,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {/* Theme toggle + user chip */}
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <div className="flex items-center gap-2 bg-surface-container py-1 px-2.5 rounded-full border border-outline-variant">
-              <div className="w-5 h-5 flex items-center justify-center text-[10px] font-bold bg-surface-container-highest rounded-full text-on-surface">
+            <div className="flex items-center gap-2 border-l border-outline-variant pl-4 ml-1">
+              <span className="hidden lg:block text-xs font-semibold text-on-surface-variant pr-1">Platform Admin</span>
+              <div className="w-6 h-6 flex items-center justify-center text-[10px] font-bold bg-primary rounded-full text-on-primary shadow-sm">
                 {user?.name?.charAt(0)?.toUpperCase() || 'A'}
               </div>
-              <span className="hidden lg:block text-xs font-semibold text-on-surface-variant pr-1">{user?.name}</span>
             </div>
           </div>
         </header>

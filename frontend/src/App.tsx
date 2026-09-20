@@ -27,6 +27,13 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { NGOVerificationQueue } from './pages/admin/NGOVerificationQueue';
 import { NGOList } from './pages/admin/NGOList';
+import { AdminDonors } from './pages/admin/AdminDonors';
+import { AdminDrivers } from './pages/admin/AdminDrivers';
+import { AdminDeliveries } from './pages/admin/AdminDeliveries';
+import { AdminNetwork } from './pages/admin/AdminNetwork';
+import { AdminTraceability } from './pages/admin/AdminTraceability';
+import { AdminReports } from './pages/admin/AdminReports';
+import { AdminSettings } from './pages/admin/AdminSettings';
 
 // Donor
 import { DonorDashboard } from './pages/donor/DonorDashboard';
@@ -40,6 +47,9 @@ import { NGOSettings } from './pages/ngo/NGOSettings';
 
 // Driver
 import { DriverDashboard } from './pages/driver/DriverDashboard';
+import { DriverDeliveries } from './pages/driver/DriverDeliveries';
+import { DriverHistory } from './pages/driver/DriverHistory';
+import { DriverProfile } from './pages/driver/DriverProfile';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -88,6 +98,34 @@ function App() {
             path="/admin/ngos"
             element={<ProtectedRoute requiredRole="ADMIN"><NGOList /></ProtectedRoute>}
           />
+          <Route
+            path="/admin/donors"
+            element={<ProtectedRoute requiredRole="ADMIN"><AdminDonors /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/drivers"
+            element={<ProtectedRoute requiredRole="ADMIN"><AdminDrivers /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/deliveries"
+            element={<ProtectedRoute requiredRole="ADMIN"><AdminDeliveries /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/network"
+            element={<ProtectedRoute requiredRole="ADMIN"><AdminNetwork /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/traceability"
+            element={<ProtectedRoute requiredRole="ADMIN"><AdminTraceability /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/reports"
+            element={<ProtectedRoute requiredRole="ADMIN"><AdminReports /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/settings"
+            element={<ProtectedRoute requiredRole="ADMIN"><AdminSettings /></ProtectedRoute>}
+          />
 
           {/* Donor */}
           <Route
@@ -121,6 +159,18 @@ function App() {
           <Route
             path="/driver"
             element={<ProtectedRoute requiredRole="DRIVER"><DriverDashboard /></ProtectedRoute>}
+          />
+          <Route
+            path="/driver/deliveries"
+            element={<ProtectedRoute requiredRole="DRIVER"><DriverDeliveries /></ProtectedRoute>}
+          />
+          <Route
+            path="/driver/history"
+            element={<ProtectedRoute requiredRole="DRIVER"><DriverHistory /></ProtectedRoute>}
+          />
+          <Route
+            path="/driver/profile"
+            element={<ProtectedRoute requiredRole="DRIVER"><DriverProfile /></ProtectedRoute>}
           />
 
           {/* Fallback */}

@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Settings, Weight, TrendingUp, Save, Loader2, Plus, Terminal } from 'lucide-react';
+import { Loader2, Check } from 'lucide-react';
 import { useMyNGOProfile, useUpdateNGOCapacity, useUpdateNGODemand, useUpdateNGOProfile } from '../../hooks/useNGO';
 import { NGOLayout } from '../../components/layout/NGOLayout';
 import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
@@ -42,26 +42,24 @@ type CapacityForm = z.infer<typeof capacitySchema>;
 type DemandForm = z.infer<typeof demandSchema>;
 type ProfileForm = z.infer<typeof profileSchema>;
 
-function SectionCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function SectionCard({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
   return (
-    <div className="panel p-6 border-[var(--border-strong)] bg-[var(--bg-page)] relative overflow-hidden">
-      <div className="absolute top-0 right-0 p-4 opacity-5">
-        <Terminal size={120} />
+    <section className="bg-surface-container-lowest border border-outline-variant/50 rounded-md p-6">
+      <div className="mb-6 pb-4 border-b border-outline-variant/30">
+        <h2 className="text-[1rem] font-semibold text-on-surface mb-1">{title}</h2>
+        <p className="text-[0.875rem] text-on-surface-variant leading-relaxed">{desc}</p>
       </div>
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-[var(--text-secondary)] mb-6 flex items-center gap-2 relative z-10">
-        <span className="text-[var(--brand)]">{icon}</span> {title}
-      </h2>
-      <div className="relative z-10">
+      <div>
          {children}
       </div>
-    </div>
+    </section>
   );
 }
 
 function Toast({ msg, type }: { msg: string; type: 'success' | 'error' }) {
   return (
-    <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-md text-sm font-semibold tracking-wide shadow-lg border ${
-      type === 'success' ? 'bg-[var(--success)]/10 border-[var(--success)]/20 text-[var(--success)]' : 'bg-[var(--error)]/10 border-[var(--error)]/20 text-[var(--error)]'
+    <div className={`fixed top-6 right-6 z-50 px-4 py-3 rounded-md text-[0.875rem] font-medium shadow-lg border ${
+      type === 'success' ? 'bg-success/10 border-success/20 text-success' : 'bg-error/10 border-error/20 text-error'
     }`}>
       {msg}
     </div>
@@ -138,49 +136,41 @@ export function NGOSettings() {
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
       {/* Header */}
-      <div className="page-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="mb-10 pb-6 border-b border-outline-variant/30 flex justify-between items-end">
         <div>
-          <h1 className="page-title">Node Configuration</h1>
-          <p className="page-subtitle">Adjust operational parameters and capacity constraints.</p>
+          <h1 className="text-[1.375rem] font-semibold text-on-surface mb-1.5 tracking-tight">Node Configuration</h1>
+          <p className="text-[0.875rem] text-on-surface-variant max-w-[50ch] leading-relaxed">Adjust operational parameters and capacity constraints.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full max-w-none">
         {/* ── Capacity ── */}
-        <SectionCard title="Active Storage Capacity" icon={<Weight size={14} />}>
-          <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
-            Specify current available volume. The dispatch algorithm relies on this metric to route appropriate payloads. Maximum facility capacity: <strong className="text-[var(--text-primary)] font-mono-data bg-[var(--bg-panel)] px-2 py-0.5 rounded-sm border border-[var(--border-subtle)]">{profile?.storage_capacity_kg} kg</strong>.
-          </p>
-
+        <SectionCard title="Storage capacity" desc="Specify current available volume. The dispatch algorithm relies on this metric to route appropriate payloads.">
           {/* Spatial Capacity Indicator */}
-          <div className="mb-8 p-4 border border-[var(--border-strong)] bg-[var(--bg-panel)] rounded-sm relative overflow-hidden">
-             <div className="flex justify-between items-end mb-3 relative z-10">
+          <div className="mb-8">
+             <div className="flex justify-between items-end mb-2">
                <div>
-                 <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-1">Available Bandwidth</p>
-                 <p className="text-2xl font-bold font-mono-data text-[var(--brand)]">{profile?.available_capacity_kg} <span className="text-sm text-[var(--text-muted)] font-normal">kg</span></p>
+                 <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Current available capacity</p>
+                 <p className="text-[2.5rem] font-medium font-mono-data text-on-surface leading-none tracking-tighter">{profile?.available_capacity_kg} <span className="text-[1rem] text-on-surface-variant font-sans font-normal tracking-normal lowercase">kg</span></p>
                </div>
                <div className="text-right">
-                 <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-1">Utilization</p>
-                 <p className="text-sm font-mono-data text-[var(--text-primary)]">
-                   {profile?.storage_capacity_kg ? (((profile.storage_capacity_kg - profile.available_capacity_kg) / profile.storage_capacity_kg) * 100).toFixed(1) : 0}%
+                 <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Utilization</p>
+                 <p className="text-[0.875rem] font-mono-data text-on-surface-variant">
+                   {profile?.storage_capacity_kg ? (((profile.storage_capacity_kg - profile.available_capacity_kg) / profile.storage_capacity_kg) * 100).toFixed(0) : 0}%
                  </p>
                </div>
              </div>
              
              {/* Visual Bar */}
-             <div className="h-4 w-full bg-[var(--bg-page)] rounded-none overflow-hidden flex border border-[var(--border-subtle)] relative z-10">
-               {/* Used capacity (gray) */}
+             <div className="h-[2px] w-full bg-outline-variant/30 rounded-none overflow-hidden flex relative z-10 mb-2">
                <div 
-                 className="h-full bg-[var(--border-strong)] transition-all duration-500" 
+                 className="h-full bg-primary transition-all duration-300" 
                  style={{ width: `${profile?.storage_capacity_kg ? ((profile.storage_capacity_kg - profile.available_capacity_kg) / profile.storage_capacity_kg) * 100 : 0}%` }} 
                />
-               {/* Available capacity (brand) */}
-               <div 
-                 className="h-full bg-[var(--brand)] transition-all duration-500 relative overflow-hidden" 
-                 style={{ width: `${profile?.storage_capacity_kg ? (profile.available_capacity_kg / profile.storage_capacity_kg) * 100 : 0}%` }}
-               >
-                 <div className="absolute inset-0 w-full h-full opacity-20" style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, #000 10px, #000 20px)' }}></div>
-               </div>
+             </div>
+             <div className="flex justify-between text-[0.8125rem]">
+               <span className="text-on-surface-variant">Used</span>
+               <span className="text-on-surface-variant font-mono-data">{profile?.storage_capacity_kg} kg capacity limit</span>
              </div>
           </div>
 
@@ -191,49 +181,52 @@ export function NGOSettings() {
             } catch (e: any) {
               showToast(e.response?.data?.error?.message || 'Failed to update capacity.', 'error');
             }
-          })} className="flex flex-col sm:flex-row gap-4 items-start sm:items-end p-4 border border-[var(--brand)]/30 bg-[var(--brand)]/5 rounded-sm">
-            <div className="flex-1 w-full">
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
-                Update Available Mass (kg)
+          })} className="pt-6 border-t border-outline-variant/30 flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+            <div className="w-full sm:w-[200px]">
+              <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">
+                Update available mass (kg)
               </label>
               <input
                 {...capForm.register('available_capacity_kg', { valueAsNumber: true })}
                 type="number" step="1" min="0" max={profile?.storage_capacity_kg}
-                className="input-base font-mono-data text-lg border-[var(--border-strong)] focus:border-[var(--brand)]"
-                placeholder="e.g. 250"
+                className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors"
               />
               {capForm.formState.errors.available_capacity_kg && (
-                <p className="form-error mt-2">{capForm.formState.errors.available_capacity_kg.message}</p>
+                <p className="text-error text-[0.8125rem] mt-1">{capForm.formState.errors.available_capacity_kg.message}</p>
               )}
             </div>
-            <button type="submit" className="btn-primary flex-shrink-0 w-full sm:w-auto px-6 py-3 flex items-center justify-center gap-2 bg-[var(--brand)] text-black" disabled={capMutation.isPending}>
-              {capMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <><Save size={16} /> COMMIT</>}
+            <button type="submit" className="h-10 px-5 rounded-md text-[0.875rem] font-medium flex items-center justify-center gap-2 bg-primary text-on-primary hover:bg-primary/90 transition-colors w-full sm:w-auto" disabled={capMutation.isPending}>
+              {capMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save'}
             </button>
           </form>
         </SectionCard>
 
         {/* ── Accepted food categories ── */}
-        <SectionCard title="Payload Classifications" icon={<TrendingUp size={14} />}>
-          <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
-            Toggle accepted categories. Mismatched payloads will not be routed to your node.
-          </p>
-          <div className="flex flex-wrap gap-2 mb-6 p-4 bg-[var(--bg-panel)] border border-[var(--border-subtle)] rounded-sm">
+        <SectionCard title="Payload classifications" desc="Select the food categories this node accepts. Mismatched payloads will not be routed here.">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-8">
             {FOOD_CATEGORIES.map((cat) => {
               const sel = selectedCategories.includes(cat);
               return (
-                <button
+                <label
                   key={cat}
-                  type="button"
-                  onClick={() => toggleCategory(cat)}
-                  className={`px-4 py-2 rounded-sm text-xs font-semibold tracking-wide uppercase border transition-all ${sel ? 'bg-[var(--brand)]/10 border-[var(--brand)] text-[var(--brand)] shadow-[0_0_10px_rgba(16,185,129,0.1)]' : 'bg-[var(--bg-page)] border-[var(--border-strong)] text-[var(--text-muted)] hover:border-[var(--text-secondary)] hover:text-[var(--text-secondary)]'}`}
+                  className={`flex items-center gap-3 p-3 rounded-md border transition-all cursor-pointer select-none ${sel ? 'bg-primary/5 border-primary text-primary' : 'bg-surface-container-low border-outline-variant text-on-surface hover:border-outline hover:bg-surface-container'}`}
                 >
-                  {CATEGORY_LABELS[cat]}
-                </button>
+                  <input
+                    type="checkbox"
+                    checked={sel}
+                    onChange={() => toggleCategory(cat)}
+                    className="hidden"
+                  />
+                  <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-colors flex-shrink-0 ${sel ? 'bg-primary border-primary' : 'border-outline-variant bg-surface'}`}>
+                     {sel && <Check size={12} className="text-on-primary" strokeWidth={3} />}
+                  </div>
+                  <span className={`text-[0.875rem] font-medium ${sel ? 'text-on-surface' : 'text-on-surface-variant'}`}>{CATEGORY_LABELS[cat]}</span>
+                </label>
               );
             })}
           </div>
           <button
-            className="px-6 py-2.5 rounded-sm text-sm font-semibold tracking-wide flex items-center justify-center gap-2 bg-[var(--bg-panel)] border border-[var(--border-strong)] text-[var(--text-primary)] hover:border-[var(--brand)] transition-colors"
+            className="h-10 px-5 rounded-md text-[0.875rem] font-medium flex items-center justify-center gap-2 bg-surface-container border border-outline-variant text-on-surface hover:bg-surface-container-high transition-colors"
             disabled={profileMutation.isPending}
             onClick={async () => {
               try {
@@ -243,15 +236,12 @@ export function NGOSettings() {
                 showToast(e.response?.data?.error?.message || 'Failed to update.', 'error');
               }
             }}>
-            {profileMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <><Save size={16} /> Update Filters</>}
+            {profileMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save categories'}
           </button>
         </SectionCard>
 
         {/* ── Add demand entry ── */}
-        <SectionCard title="Urgent Demand Request" icon={<Plus size={14} />}>
-          <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
-            Broadcast urgent requirements to the network. The matching algorithm heavily prioritizes explicit demands.
-          </p>
+        <SectionCard title="Urgent demand request" desc="Broadcast urgent requirements to the network. The matching algorithm heavily prioritizes explicit demands.">
           <form onSubmit={demandForm.handleSubmit(async (d) => {
             try {
               await demandMutation.mutateAsync({
@@ -264,28 +254,26 @@ export function NGOSettings() {
               showToast(e.response?.data?.error?.message || 'Failed to broadcast demand.', 'error');
             }
           })} className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Classification</label>
-                <select {...demandForm.register('food_category')} className="select-base">
+                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Classification</label>
+                <select {...demandForm.register('food_category')} className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] text-on-surface focus:outline-none focus:border-primary transition-colors">
                   {FOOD_CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Required Mass (kg)</label>
+                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Required mass (kg)</label>
                 <input {...demandForm.register('required_quantity_kg', { valueAsNumber: true })}
-                  type="number" step="1" className="input-base font-mono-data" />
+                  type="number" step="1" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
                 {demandForm.formState.errors.required_quantity_kg && (
-                  <p className="form-error mt-1">{demandForm.formState.errors.required_quantity_kg.message}</p>
+                  <p className="text-error text-[0.8125rem] mt-1">{demandForm.formState.errors.required_quantity_kg.message}</p>
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-[var(--border-subtle)] pt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block flex items-center justify-between">
-                   <span>Priority Level</span>
-                </label>
-                <select {...demandForm.register('priority')} className="select-base">
+                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Priority level</label>
+                <select {...demandForm.register('priority')} className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] text-on-surface focus:outline-none focus:border-primary transition-colors">
                   <option value="LOW">Low</option>
                   <option value="MEDIUM">Medium</option>
                   <option value="HIGH">High</option>
@@ -293,21 +281,23 @@ export function NGOSettings() {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Expiration Window</label>
-                <input {...demandForm.register('valid_until')} type="datetime-local" className="input-base font-mono-data text-sm" />
+                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Expiration window</label>
+                <input {...demandForm.register('valid_until')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
                 {demandForm.formState.errors.valid_until && (
-                  <p className="form-error mt-1">{demandForm.formState.errors.valid_until.message}</p>
+                  <p className="text-error text-[0.8125rem] mt-1">{demandForm.formState.errors.valid_until.message}</p>
                 )}
               </div>
             </div>
-            <button type="submit" className="px-6 py-2.5 rounded-sm text-sm font-semibold tracking-wide flex items-center justify-center gap-2 bg-[var(--bg-panel)] border border-[var(--border-strong)] text-[var(--text-primary)] hover:border-[var(--brand)] transition-colors w-full sm:w-auto" disabled={demandMutation.isPending}>
-              {demandMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <><Plus size={16} /> Broadcast Request</>}
-            </button>
+            <div className="pt-4">
+              <button type="submit" className="h-10 px-5 rounded-md text-[0.875rem] font-medium flex items-center justify-center gap-2 bg-primary text-on-primary hover:bg-primary/90 transition-colors w-full sm:w-auto" disabled={demandMutation.isPending}>
+                {demandMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Broadcast request'}
+              </button>
+            </div>
           </form>
         </SectionCard>
 
         {/* ── Profile info ── */}
-        <SectionCard title="Node Telemetry" icon={<Settings size={14} />}>
+        <SectionCard title="Node information" desc="Configure facility designation and operational parameters.">
           <form onSubmit={profileForm.handleSubmit(async (d) => {
             try {
               await profileMutation.mutateAsync({
@@ -318,17 +308,17 @@ export function NGOSettings() {
                 operating_start: d.operating_start,
                 operating_end: d.operating_end,
               });
-              showToast('Telemetry updated.', 'success');
+              showToast('Node information updated.', 'success');
             } catch (e: any) {
-              showToast(e.response?.data?.error?.message || 'Failed to update telemetry.', 'error');
+              showToast(e.response?.data?.error?.message || 'Failed to update information.', 'error');
             }
-          })} className="space-y-6">
+          })} className="space-y-5">
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Node Designation</label>
-              <input {...profileForm.register('organisation_name')} className="input-base font-semibold" />
+              <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Node designation</label>
+              <input {...profileForm.register('organisation_name')} className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] text-on-surface focus:outline-none focus:border-primary transition-colors" />
             </div>
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Facility Coordinates</label>
+              <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Facility location</label>
               <LocationAutocomplete
                 value={profileForm.watch('address') || ''}
                 onChange={(val) => profileForm.setValue('address', val)}
@@ -339,19 +329,21 @@ export function NGOSettings() {
                 }}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4 border-t border-[var(--border-subtle)] pt-6">
+            <div className="grid grid-cols-2 gap-5 pt-2">
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Operational Start</label>
-                <input {...profileForm.register('operating_start')} type="time" className="input-base font-mono-data" />
+                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Operational start</label>
+                <input {...profileForm.register('operating_start')} type="time" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
               </div>
               <div>
-                <label className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Operational End</label>
-                <input {...profileForm.register('operating_end')} type="time" className="input-base font-mono-data" />
+                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Operational end</label>
+                <input {...profileForm.register('operating_end')} type="time" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
               </div>
             </div>
-            <button type="submit" className="px-6 py-2.5 rounded-sm text-sm font-semibold tracking-wide flex items-center justify-center gap-2 bg-[var(--bg-panel)] border border-[var(--border-strong)] text-[var(--text-primary)] hover:border-[var(--brand)] transition-colors" disabled={profileMutation.isPending}>
-              {profileMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <><Save size={16} /> Sync Telemetry</>}
-            </button>
+            <div className="pt-4">
+              <button type="submit" className="h-10 px-5 rounded-md text-[0.875rem] font-medium flex items-center justify-center gap-2 bg-surface-container border border-outline-variant text-on-surface hover:bg-surface-container-high transition-colors" disabled={profileMutation.isPending}>
+                {profileMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Save changes'}
+              </button>
+            </div>
           </form>
         </SectionCard>
       </div>

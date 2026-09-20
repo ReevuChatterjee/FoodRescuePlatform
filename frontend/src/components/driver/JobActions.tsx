@@ -1,11 +1,5 @@
-/**
- * Delivery actions for the driver (Person 5): start trip, confirm pickup, confirm
- * delivery, report an issue (before pickup only). Big tap targets; each form
- * holds one idempotency key so "Try again" re-sends the same action.
- */
-
 import { useState } from 'react';
-import { AlertOctagon, CheckCircle2, Loader2, Navigation, PackageCheck, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   PRE_PICKUP_STATUSES,
   apiErrorMessage,
@@ -17,45 +11,62 @@ import {
   type DriverJob,
 } from '../../hooks/useDriver';
 
-const BIG_PRIMARY = 'btn-primary w-full py-4 text-base font-semibold flex items-center justify-center gap-2 bg-[var(--brand)] text-black';
-const BIG_SECONDARY = 'btn-secondary w-full py-4 text-base flex items-center justify-center gap-2';
-
 export const DELIVERY_CONDITIONS = ['GOOD', 'FAIR', 'POOR'] as const;
 
-type Panel = 'pickup' | 'deliver' | 'issue' | null;
-
 export function JobActions({ job, vehicleCapacityKg }: { job: DriverJob; vehicleCapacityKg: number }) {
-  const [panel, setPanel] = useState<Panel>(null);
+  const [showIssue, setShowIssue] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+
+  // Determine which action is currently required
+  const isAssigned = job.status === 'DRIVER_ASSIGNED';
+  const isPickup = job.status === 'PICKUP_STARTED';
+  const isDeliver = job.status === 'PICKED_UP';
   const prePickup = PRE_PICKUP_STATUSES.includes(job.status);
 
+  // If reporting an issue, we hide the primary flow
+  if (showIssue) {
+    return (
+      <section className="pt-6 border-t border-outline-variant/30 mt-6" aria-label="Report Issue">
+        <ReportIssueForm job={job} onClose={() => setShowIssue(false)} />
+      </section>
+    );
+  }
+
   return (
-    <section className="space-y-3" aria-label="Job actions">
-      {job.status === 'DRIVER_ASSIGNED' && panel === null && <StartTripButton deliveryId={job.delivery_id} />}
+    <section className="pt-6 border-t border-outline-variant/30 mt-6" aria-label="Job actions">
+      
+      {/* State 1: Accept Delivery */}
+      {isAssigned && <StartTripButton deliveryId={job.delivery_id} />}
 
-      {prePickup && (panel === 'pickup'
-        ? <PickupForm job={job} capacityKg={vehicleCapacityKg} onClose={() => setPanel(null)} />
-        : panel === null && (
-          <button type="button" className={job.status === 'PICKUP_STARTED' ? BIG_PRIMARY : BIG_SECONDARY} onClick={() => setPanel('pickup')}>
-            <PackageCheck size={20} /> Confirm pickup
+      {/* State 2: Confirm Pickup */}
+      {isPickup && (
+        showForm ? (
+          <PickupForm job={job} capacityKg={vehicleCapacityKg} onClose={() => setShowForm(false)} />
+        ) : (
+          <button type="button" className="h-12 px-8 bg-primary text-on-primary rounded text-[1rem] font-medium hover:bg-primary/90 transition-colors w-full" onClick={() => setShowForm(true)}>
+            Confirm pickup
           </button>
-        ))}
+        )
+      )}
 
-      {!prePickup && (panel === 'deliver'
-        ? <DeliverForm job={job} onClose={() => setPanel(null)} />
-        : panel === null && (
-          <button type="button" className={BIG_PRIMARY} onClick={() => setPanel('deliver')}>
-            <CheckCircle2 size={20} /> Confirm delivery
+      {/* State 3: Confirm Delivery */}
+      {isDeliver && (
+        showForm ? (
+          <DeliverForm job={job} onClose={() => setShowForm(false)} />
+        ) : (
+          <button type="button" className="h-12 px-8 bg-primary text-on-primary rounded text-[1rem] font-medium hover:bg-primary/90 transition-colors w-full" onClick={() => setShowForm(true)}>
+            Confirm handoff
           </button>
-        ))}
+        )
+      )}
 
-      {prePickup && (panel === 'issue'
-        ? <ReportIssueForm job={job} onClose={() => setPanel(null)} />
-        : panel === null && (
-          <button type="button" className="btn-ghost w-full py-3 text-sm flex items-center justify-center gap-2 text-[var(--error)]"
-            onClick={() => setPanel('issue')}>
-            <AlertOctagon size={16} /> Can't make it? Report an issue
-          </button>
-        ))}
+      {/* Issue reporting is always a secondary action while pre-pickup */}
+      {prePickup && !showForm && (
+        <button type="button" className="mt-4 w-full text-center text-[0.8125rem] font-medium text-error hover:underline"
+          onClick={() => setShowIssue(true)}>
+          Report an issue
+        </button>
+      )}
     </section>
   );
 }
@@ -64,28 +75,14 @@ function StartTripButton({ deliveryId }: { deliveryId: string }) {
   const { key, reset } = useActionKey();
   const start = useStartTrip();
   return (
-    <div className="space-y-2">
-      <button type="button" className={BIG_PRIMARY} disabled={start.isPending}
+    <div>
+      <button type="button" className="h-12 px-8 bg-primary text-on-primary rounded text-[1rem] font-medium hover:bg-primary/90 transition-colors w-full flex items-center justify-center gap-2 disabled:opacity-50" disabled={start.isPending}
         onClick={() => start.mutate({ deliveryId, idempotencyKey: key }, { onSuccess: reset })}>
-        {start.isPending ? <Loader2 size={20} className="animate-spin" /> : <Navigation size={20} />}
-        {start.isError ? 'Try again: start trip to pickup' : 'Start trip to pickup'}
+        {start.isPending && <Loader2 size={16} className="animate-spin" />}
+        {start.isError ? 'Try again' : 'Accept delivery'}
       </button>
       {start.isError && <ErrorText error={start.error} />}
     </div>
-  );
-}
-
-function FormShell({ title, onClose, children, onSubmit }: {
-  title: string; onClose: () => void; children: React.ReactNode; onSubmit: (e: React.FormEvent) => void;
-}) {
-  return (
-    <form onSubmit={onSubmit} className="panel p-5 space-y-4 bg-[var(--bg-page)] border-[var(--border-strong)]" aria-label={title}>
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--text-secondary)]">{title}</h3>
-        <button type="button" onClick={onClose} className="btn-ghost p-2" aria-label="Close"><X size={20} /></button>
-      </div>
-      {children}
-    </form>
   );
 }
 
@@ -107,18 +104,28 @@ function PickupForm({ job, capacityKg, onClose }: { job: DriverJob; capacityKg: 
   };
 
   return (
-    <FormShell title="Confirm pickup" onClose={close} onSubmit={submit}>
-      <label className="block">
-        <span className="form-label">Quantity loaded (kg)</span>
-        <input className="input-base text-lg py-3" type="number" inputMode="decimal" step="0.1" min="0.1"
+    <form onSubmit={submit} className="bg-surface-container-lowest border border-outline-variant p-5 rounded" aria-label="Confirm pickup">
+      <h3 className="text-[1rem] font-semibold text-on-surface tracking-tight mb-4">Confirm pickup</h3>
+      
+      <div className="mb-6">
+        <label className="block text-[0.8125rem] font-semibold text-on-surface mb-1.5">Quantity loaded (kg)</label>
+        <input className="w-full sm:w-1/2 h-10 px-3 bg-surface border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" type="number" inputMode="decimal" step="0.1" min="0.1"
           value={kg} onChange={(e) => setKg(e.target.value)} />
-      </label>
-      {invalid && (
-        <p className="form-error">Enter more than 0 kg{capacityKg > 0 ? `, up to your vehicle's ${capacityKg.toFixed(1)} kg` : ''}.</p>
-      )}
-      <SubmitButton pending={pickup.isPending} failed={pickup.isError} disabled={invalid} label="Confirm pickup" />
+        {invalid && (
+          <p className="text-[0.75rem] font-medium text-error mt-1.5">Enter more than 0 kg{capacityKg > 0 ? `, up to your vehicle's ${capacityKg.toFixed(1)} kg` : ''}.</p>
+        )}
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-outline-variant/30">
+        <button type="button" onClick={onClose} className="w-full sm:w-auto h-10 px-5 text-[0.875rem] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors">
+          Cancel
+        </button>
+        <button type="submit" disabled={invalid || pickup.isPending} className="w-full sm:w-auto h-10 px-6 bg-primary text-on-primary rounded text-[0.875rem] font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+          {pickup.isPending && <Loader2 size={16} className="animate-spin" />} Submit
+        </button>
+      </div>
       {pickup.isError && <ErrorText error={pickup.error} />}
-    </FormShell>
+    </form>
   );
 }
 
@@ -145,35 +152,49 @@ function DeliverForm({ job, onClose }: { job: DriverJob; onClose: () => void }) 
   };
 
   return (
-    <FormShell title="Confirm delivery" onClose={close} onSubmit={submit}>
-      <label className="block">
-        <span className="form-label">Quantity handed over (kg)</span>
-        <input className="input-base text-lg py-3" type="number" inputMode="decimal" step="0.1" min="0"
-          value={kg} onChange={(e) => setKg(e.target.value)} />
-      </label>
-      {value < job.quantity_kg && value >= 0 && (
-        <p className="text-xs text-[var(--text-muted)]">Less than the {job.quantity_kg.toFixed(1)} kg picked up: this is recorded as a partial delivery.</p>
-      )}
-      <fieldset>
-        <legend className="form-label">Condition</legend>
-        <div className="grid grid-cols-3 gap-2">
-          {DELIVERY_CONDITIONS.map((c) => (
-            <button key={c} type="button" onClick={() => setCondition(c)} aria-pressed={condition === c}
-              className={`py-3 rounded-sm border text-sm font-semibold ${condition === c
-                ? 'border-[var(--brand)] bg-[var(--brand)]/10 text-[var(--brand)]'
-                : 'border-[var(--border-strong)] text-[var(--text-secondary)]'}`}>
-              {c}
-            </button>
-          ))}
+    <form onSubmit={submit} className="bg-surface-container-lowest border border-outline-variant p-5 rounded" aria-label="Confirm handoff">
+      <h3 className="text-[1rem] font-semibold text-on-surface tracking-tight mb-4">Confirm handoff</h3>
+      
+      <div className="space-y-6">
+        <div>
+          <label className="block text-[0.8125rem] font-semibold text-on-surface mb-1.5">Quantity handed over (kg)</label>
+          <input className="w-full sm:w-1/2 h-10 px-3 bg-surface border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" type="number" inputMode="decimal" step="0.1" min="0"
+            value={kg} onChange={(e) => setKg(e.target.value)} />
+          {value < job.quantity_kg && value >= 0 && (
+            <p className="text-[0.75rem] text-on-surface-variant mt-1.5">Less than the {job.quantity_kg.toFixed(1)} kg picked up: this is recorded as a partial delivery.</p>
+          )}
         </div>
-      </fieldset>
-      <label className="flex items-center gap-3 py-2 text-base text-[var(--text-primary)]">
-        <input type="checkbox" className="w-6 h-6 accent-[var(--brand)]" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-        The NGO received the food
-      </label>
-      <SubmitButton pending={deliver.isPending} failed={deliver.isError} disabled={invalid} label="Confirm delivery" />
+        
+        <fieldset>
+          <legend className="block text-[0.8125rem] font-semibold text-on-surface mb-1.5">Condition</legend>
+          <div className="grid grid-cols-3 gap-2">
+            {DELIVERY_CONDITIONS.map((c) => (
+              <button key={c} type="button" onClick={() => setCondition(c)} aria-pressed={condition === c}
+                className={`h-10 rounded border text-[0.8125rem] font-semibold transition-colors ${condition === c
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-outline-variant/50 text-on-surface-variant hover:text-on-surface hover:border-outline-variant'}`}>
+                {c.charAt(0) + c.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        
+        <label className="flex items-center gap-3 py-2 text-[0.875rem] font-medium text-on-surface cursor-pointer select-none">
+          <input type="checkbox" className="w-4 h-4 text-primary bg-surface border-outline-variant rounded focus:ring-primary focus:ring-2" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+          The NGO received the food
+        </label>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-6 mt-6 border-t border-outline-variant/30">
+        <button type="button" onClick={onClose} className="w-full sm:w-auto h-10 px-5 text-[0.875rem] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors">
+          Cancel
+        </button>
+        <button type="submit" disabled={invalid || deliver.isPending} className="w-full sm:w-auto h-10 px-6 bg-primary text-on-primary rounded text-[0.875rem] font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+          {deliver.isPending && <Loader2 size={16} className="animate-spin" />} Submit
+        </button>
+      </div>
       {deliver.isError && <ErrorText error={deliver.error} />}
-    </FormShell>
+    </form>
   );
 }
 
@@ -191,34 +212,31 @@ function ReportIssueForm({ job, onClose }: { job: DriverJob; onClose: () => void
   };
 
   return (
-    <FormShell title="Report an issue" onClose={close} onSubmit={submit}>
-      <p className="text-sm text-[var(--text-secondary)]">
-        The job is handed to another driver for the same NGO and you are set offline.
+    <form onSubmit={submit} className="bg-surface-container-lowest border border-error/30 p-5 rounded" aria-label="Report an issue">
+      <h3 className="text-[1rem] font-semibold text-error tracking-tight mb-2">Report an issue</h3>
+      <p className="text-[0.875rem] text-on-surface-variant mb-6">
+        The job will be handed to another driver for the same NGO and you will be set offline.
       </p>
-      <label className="block">
-        <span className="form-label">What happened?</span>
-        <textarea className="input-base text-base" rows={3} maxLength={200} value={reason}
-          onChange={(e) => setReason(e.target.value)} placeholder="e.g. Flat tyre" />
-      </label>
-      <button type="submit" className="btn-danger w-full py-4 text-base font-semibold flex items-center justify-center gap-2"
-        disabled={invalid || report.isPending}>
-        {report.isPending && <Loader2 size={20} className="animate-spin" />}
-        {report.isError ? 'Try again: report issue' : 'Report issue'}
-      </button>
-      {report.isError && <ErrorText error={report.error} />}
-    </FormShell>
-  );
-}
+      
+      <div className="mb-6">
+        <label className="block text-[0.8125rem] font-semibold text-on-surface mb-1.5">What happened?</label>
+        <textarea className="w-full p-3 bg-surface border border-outline-variant rounded text-[0.875rem] text-on-surface focus:border-error focus:ring-1 focus:ring-error outline-none transition-shadow resize-none" rows={3} maxLength={200} value={reason}
+          onChange={(e) => setReason(e.target.value)} placeholder="e.g. Flat tyre, vehicle breakdown" />
+      </div>
 
-function SubmitButton({ pending, failed, disabled, label }: { pending: boolean; failed: boolean; disabled: boolean; label: string }) {
-  return (
-    <button type="submit" className={BIG_PRIMARY} disabled={disabled || pending}>
-      {pending && <Loader2 size={20} className="animate-spin" />}
-      {failed ? `Try again: ${label.toLowerCase()}` : label}
-    </button>
+      <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4 border-t border-outline-variant/30">
+        <button type="button" onClick={onClose} className="w-full sm:w-auto h-10 px-5 text-[0.875rem] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded transition-colors">
+          Cancel
+        </button>
+        <button type="submit" disabled={invalid || report.isPending} className="w-full sm:w-auto h-10 px-6 bg-error text-white rounded text-[0.875rem] font-medium hover:bg-error/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+          {report.isPending && <Loader2 size={16} className="animate-spin" />} Submit
+        </button>
+      </div>
+      {report.isError && <ErrorText error={report.error} />}
+    </form>
   );
 }
 
 function ErrorText({ error }: { error: unknown }) {
-  return <p role="alert" className="form-error">{apiErrorMessage(error)}</p>;
+  return <p role="alert" className="text-[0.75rem] font-medium text-error mt-2">{apiErrorMessage(error)}</p>;
 }
