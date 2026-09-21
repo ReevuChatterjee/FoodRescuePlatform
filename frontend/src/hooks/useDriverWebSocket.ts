@@ -12,7 +12,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from './useAuthStore';
 import { CURRENT_JOB_KEY } from './useDriver';
 
-const API_WS_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
+// In production, set VITE_WS_BASE_URL to the backend origin.
+// In local dev, empty string or window.location.host lets the Vite proxy handle it.
+const API_WS_URL = import.meta.env.VITE_WS_BASE_URL || (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
 const CHANNELS = ['deliveries', 'drivers'] as const;
 const RECONNECT_MS = 3_000;
 

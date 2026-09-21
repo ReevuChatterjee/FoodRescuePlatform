@@ -1,0 +1,59 @@
+databases:
+  - name: cpi_db
+    databaseName: cpi_db
+    user: cpi_user
+    plan: starter
+
+services:
+  - type: redis
+    name: cpi_redis
+    plan: free
+    ipAllowList: [] # only allow internal connections
+
+  - type: web
+    name: cpi_backend
+    env: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cpi_db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: cpi_redis
+          property: connectionString
+      - key: APP_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false # Must be set manually in Render Dashboard
+      - key: JWT_REFRESH_SECRET
+        sync: false # Must be set manually in Render Dashboard
+      - key: ALLOWED_ORIGINS
+        sync: false # Must be set manually in Render Dashboard (e.g. https://your-frontend.vercel.app)
+
+  - type: worker
+    name: cpi_worker
+    env: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    dockerCommand: celery -A app.worker worker --loglevel=info
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cpi_db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: cpi_redis
+          property: connectionString
+      - key: APP_ENV
+        value: production
