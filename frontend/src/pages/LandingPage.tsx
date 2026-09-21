@@ -12,7 +12,6 @@ export function LandingPage() {
   const heroRef = useRef<HTMLDivElement>(null);
   const heroInView = useInView(heroRef, { margin: "0px 0px -200px 0px" });
   const { scrollY } = useScroll();
-  const heroOpacity = useTransform(scrollY, [0, 400], [1, 0.4]);
   const heroY = useTransform(scrollY, [0, 400], [0, 15]);
 
   // ── Process Section Scroll Tracking ──
@@ -132,7 +131,7 @@ export function LandingPage() {
           <HeroBackgroundMap scrollY={scrollY} />
 
           <motion.div 
-            style={{ opacity: disableMotion ? 1 : heroOpacity, y: disableMotion ? 0 : heroY }}
+            style={{ y: disableMotion ? 0 : heroY }}
             className="max-w-7xl mx-auto px-4 lg:px-8 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center"
           >
             
@@ -254,12 +253,12 @@ export function LandingPage() {
             
             <div className="relative">
               {/* Background structural track */}
-              <div className="absolute left-[2.25rem] md:left-[3.75rem] top-3 bottom-0 w-px bg-outline-variant/30 z-0" />
+              <div className="absolute left-[3.5rem] md:left-[5rem] top-3 bottom-0 w-px bg-outline-variant/30 z-0" />
               
               {/* Foreground progress track */}
               {!disableMotion && (
                 <motion.div 
-                  className="absolute left-[2.25rem] md:left-[3.75rem] top-3 bottom-0 w-px bg-primary z-0 origin-top" 
+                  className="absolute left-[3.5rem] md:left-[5rem] top-3 bottom-0 w-px bg-primary z-0 origin-top" 
                   style={{ scaleY: processScroll }}
                 />
               )}
@@ -437,9 +436,9 @@ export function LandingPage() {
               </div>
 
               {/* Mobile/Tablet Fallback Layout (Vertical Sequence) */}
-              <div className="lg:hidden flex flex-col gap-10 relative pl-10 z-10">
+              <div className="lg:hidden flex flex-col gap-10 relative z-10">
                 {/* Dynamic Vertical Path Drawing */}
-                <div className="absolute left-[0.6rem] top-6 bottom-6 w-0.5 z-0 flex flex-col justify-between overflow-hidden">
+                <div className="absolute left-6 -ml-[1px] top-6 bottom-6 w-[2px] z-0 flex flex-col justify-between overflow-hidden">
                   <motion.div 
                     className="w-full h-full border-l-[2px] border-dashed border-[#2f6f52] opacity-45 origin-top"
                     initial={{ height: "0%" }}
@@ -450,7 +449,7 @@ export function LandingPage() {
                 
                 {/* Moving signal dot locked to vertical track */}
                 {networkState === 'loop' && (
-                  <div className="absolute left-[0.45rem] top-6 bottom-6 z-10 pointer-events-none">
+                  <div className="absolute left-6 -ml-[4px] top-6 bottom-6 z-10 pointer-events-none">
                      <motion.div 
                         className="w-2 h-2 bg-[#0b5d3b] rounded-full absolute"
                         style={{ top: mobileSignalTop, opacity: dotOpacity }}
@@ -677,11 +676,11 @@ function ProcessStep({ num, title, desc, progress, start, mid, end, disableMotio
 
   if (disableMotion) {
     return (
-      <div className="flex gap-4 md:gap-10 relative z-10 pb-10">
-        <div className="w-5 md:w-10 shrink-0 text-right font-mono-data pt-1 text-primary">
+      <div className="flex relative z-10 pb-10 last:pb-0">
+        <div className="w-8 md:w-12 shrink-0 text-right font-mono-data pt-1 text-primary">
           <span>{num}</span>
         </div>
-        <div className="flex flex-col items-center pt-[10px]">
+        <div className="w-12 md:w-16 shrink-0 flex flex-col items-center pt-[10px]">
           <div className="w-2.5 h-2.5 rounded-full border border-primary bg-primary" />
         </div>
         <div className="flex-1 pt-0">
@@ -697,13 +696,13 @@ function ProcessStep({ num, title, desc, progress, start, mid, end, disableMotio
   }
 
   return (
-    <div className="flex gap-4 md:gap-10 relative z-10 pb-10 last:pb-0">
-      <div className="w-5 md:w-10 shrink-0 text-right font-mono-data pt-1">
+    <div className="flex relative z-10 pb-10 last:pb-0">
+      <div className="w-8 md:w-12 shrink-0 text-right font-mono-data pt-1">
         <motion.span style={{ color: numColor }} className="transition-colors duration-300">
           {num}
         </motion.span>
       </div>
-      <div className="flex flex-col items-center pt-[10px]">
+      <div className="w-12 md:w-16 shrink-0 flex flex-col items-center pt-[10px]">
         <motion.div 
           style={{ backgroundColor: dotBgColor, borderColor: dotBorderColor }} 
           className="w-2.5 h-2.5 rounded-full border transition-colors duration-300 z-10 bg-base" 
@@ -809,9 +808,11 @@ function NetworkRoleNodeMobile({ title, desc, progress, activeRange, state, disa
 
   if (disableMotion) {
     return (
-      <div className="flex items-start gap-6 relative z-10">
-        <div className="w-3.5 h-3.5 rounded-full mt-2 shrink-0 border-[2px] bg-[#0b5d3b] border-[#0b5d3b]" />
-        <div>
+      <div className="flex items-start relative z-10">
+        <div className="w-12 shrink-0 flex justify-center pt-2">
+          <div className="w-3 h-3 rounded-full border-[2px] bg-[#0b5d3b] border-[#0b5d3b]" />
+        </div>
+        <div className="flex-1 pr-4">
           <h3 className="text-[1.125rem] font-semibold text-on-surface mb-2">{title}</h3>
           <p className="text-[0.9375rem] text-on-surface-variant leading-relaxed">
             {desc}
@@ -828,13 +829,15 @@ function NetworkRoleNodeMobile({ title, desc, progress, activeRange, state, disa
       initial={{ opacity: 0, x: -10 }}
       animate={isVisible ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
       transition={{ duration: 0.4 }}
-      className="flex items-start gap-6 relative z-10"
+      className="flex items-start relative z-10"
     >
-      <motion.div 
-        style={state === 'loop' ? { backgroundColor: iconColor, borderColor: iconBorderColor } : { borderColor: "#2f6f52", backgroundColor: "transparent" }} 
-        className="w-3 h-3 rounded-full mt-2 shrink-0 border-[2px] bg-base" 
-      />
-      <div>
+      <div className="w-12 shrink-0 flex justify-center pt-2">
+        <motion.div 
+          style={state === 'loop' ? { backgroundColor: iconColor, borderColor: iconBorderColor } : { borderColor: "#2f6f52", backgroundColor: "transparent" }} 
+          className="w-3 h-3 rounded-full border-[2px] bg-base" 
+        />
+      </div>
+      <div className="flex-1 pr-4">
         <motion.h3 style={state === 'loop' ? { color: textColor } : { color: "var(--on-surface-variant)" }} className="text-[1.125rem] font-semibold mb-2 transition-colors duration-150">
           {title}
         </motion.h3>
