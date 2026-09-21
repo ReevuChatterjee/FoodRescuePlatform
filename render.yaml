@@ -2,7 +2,7 @@ databases:
   - name: cpi_db
     databaseName: cpi_db
     user: cpi_user
-    plan: starter
+    plan: free
 
 services:
   - type: redis
@@ -14,7 +14,7 @@ services:
     name: cpi_backend
     env: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /health
@@ -41,7 +41,7 @@ services:
     name: cpi_worker
     env: docker
     region: oregon
-    plan: starter
+    plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     dockerCommand: celery -A app.worker worker --loglevel=info
