@@ -54,7 +54,7 @@ export function DriverDashboard() {
       setTimeout(() => setBroadcastSuccess(false), 4000);
     },
     onError: (e: any) =>
-      showToast(e.response?.data?.error?.message || 'Transmission failed.', 'error'),
+      showToast(e.response?.data?.detail?.error?.message || e.response?.data?.error?.message || 'Transmission failed.', 'error'),
   });
 
   const useGPS = () => {

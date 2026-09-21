@@ -20,7 +20,7 @@ export function JobActions({ job, vehicleCapacityKg }: { job: DriverJob; vehicle
   // Determine which action is currently required
   const isAssigned = job.status === 'DRIVER_ASSIGNED';
   const isPickup = job.status === 'PICKUP_STARTED';
-  const isDeliver = job.status === 'PICKED_UP';
+  const isDeliver = job.status === 'PICKED_UP' || job.status === 'IN_TRANSIT';
   const prePickup = PRE_PICKUP_STATUSES.includes(job.status);
 
   // If reporting an issue, we hide the primary flow
