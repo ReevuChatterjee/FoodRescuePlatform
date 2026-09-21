@@ -70,6 +70,7 @@ export function DriverDashboard() {
         setAddress('Current GPS Location');
         setGpsLoading(false);
         showToast('GPS lock acquired', 'success');
+        location.setOverridePosition(null);
         locationMutation.mutate({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
       },
       () => {
@@ -88,6 +89,7 @@ export function DriverDashboard() {
       showToast('Enter valid coordinates.', 'error');
       return;
     }
+    location.setOverridePosition({ latitude, longitude });
     locationMutation.mutate({ latitude, longitude });
   };
 
@@ -203,7 +205,7 @@ export function DriverDashboard() {
               )}
               
               <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <div className="flex-1 w-full bg-surface-container-lowest border border-outline-variant rounded overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                <div className="flex-1 w-full">
                   <LocationAutocomplete
                     value={address}
                     onChange={setAddress}

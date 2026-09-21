@@ -253,7 +253,7 @@ export function CreateDonation() {
                 <h3 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/30">Pickup location</h3>
                 <div className="space-y-3">
                   <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Facility address</label>
-                  <div className="bg-surface-container-lowest border border-outline-variant rounded focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden">
+                  <div className="w-full">
                     <LocationAutocomplete
                       value={watch('pickup_location.address')}
                       onChange={(val) => setValue('pickup_location.address', val)}

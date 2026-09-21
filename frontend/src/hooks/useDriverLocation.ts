@@ -22,6 +22,7 @@ export interface DriverLocationState {
   position: GeoPoint | null;
   lastSentAt: number | null;
   lastError: string | null;
+  setOverridePosition: (point: GeoPoint | null) => void;
 }
 
 /** True when enough time has passed since the last accepted send. */
@@ -37,19 +38,31 @@ export function useDriverLocation(enabled: boolean): DriverLocationState {
     lastError: null,
   }));
   const latest = useRef<GeoPoint | null>(null);
+  const manualOverride = useRef<GeoPoint | null>(null);
   const lastSentAt = useRef<number | null>(null);
   const inFlight = useRef(false);
+
+  // Allow external manual override
+  const setOverridePosition = (point: GeoPoint | null) => {
+    manualOverride.current = point;
+    if (point) {
+      latest.current = point;
+      setState((s) => ({ ...s, position: point }));
+    }
+  };
 
   // Watch position whenever the page is open, so going online can include a fix.
   useEffect(() => {
     if (!navigator.geolocation) return;
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
+        if (manualOverride.current) return; // Ignore hardware GPS if manually overridden
         const point = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
         latest.current = point;
         setState((s) => ({ ...s, permission: 'granted', position: point }));
       },
       (err) => {
+        if (manualOverride.current) return;
         const denied = err.code === err.PERMISSION_DENIED;
         setState((s) => ({
           ...s,
@@ -89,5 +102,5 @@ export function useDriverLocation(enabled: boolean): DriverLocationState {
     return () => clearInterval(timer);
   }, [enabled]);
 
-  return state;
+  return { ...state, setOverridePosition };
 }
