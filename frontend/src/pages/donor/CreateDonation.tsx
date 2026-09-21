@@ -177,7 +177,14 @@ export function CreateDonation() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form onSubmit={handleSubmit(onSubmit)} onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (step < 3) {
+              nextStep();
+            }
+          }
+        }}>
           <div className="space-y-12">
             
             {/* ── Step 1: Payload ── */}

@@ -109,6 +109,14 @@ export function LocationAutocomplete({
           onFocus={() => {
             if (results.length > 0) setIsOpen(true);
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (isOpen && results.length > 0) {
+                handleSelect(results[0]);
+              }
+            }
+          }}
           placeholder={placeholder}
           className={`${className} pr-10`}
           autoComplete="off"
