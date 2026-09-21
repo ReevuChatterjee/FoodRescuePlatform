@@ -830,3 +830,42 @@ async def build_current_job(
         "planned": delivery_view(delivery),
     }
     return data
+
+async def list_driver_deliveries(db: AsyncSession, driver_id: str, category: str) -> list[dict[str, Any]]:
+    from app.models import Delivery, Donation, NGO
+    from sqlalchemy import select
+    from app.core.envelope import iso_z
+    from app.dispatch.service import ACTIVE_DELIVERY_STATUSES
+    
+    query = (
+        select(Delivery, Donation, NGO)
+        .join(Donation, Delivery.donation_id == Donation.id)
+        .join(NGO, Delivery.ngo_id == NGO.id, isouter=True)
+        .where(Delivery.driver_id == driver_id)
+        .order_by(Delivery.created_at.desc() if hasattr(Delivery, 'created_at') else Delivery.id.desc())
+    )
+    
+    if category == "active":
+        query = query.where(Delivery.status.in_(ACTIVE_DELIVERY_STATUSES))
+    else:
+        query = query.where(Delivery.status.notin_(ACTIVE_DELIVERY_STATUSES))
+        
+    result = await db.execute(query)
+    rows = result.all()
+    
+    out = []
+    for delivery, donation, ngo in rows:
+        out.append({
+            "delivery_id": delivery.id,
+            "status": delivery.status.value,
+            "food_name": donation.food_name,
+            "food_category": donation.food_category,
+            "quantity_kg": donation.quantity_kg,
+            "ngo_name": ngo.organisation_name if ngo else None,
+            "pickup_address": donation.pickup_location.get("address") if isinstance(donation.pickup_location, dict) else None,
+            "dropoff_address": ngo.address if ngo else None,
+            "actual_delivery_time": iso_z(delivery.actual_delivery_time) if delivery.actual_delivery_time else None,
+            "pickup_time": iso_z(delivery.actual_pickup_time) if delivery.actual_pickup_time else None,
+            "estimated_delivery_time": iso_z(delivery.estimated_delivery_time) if delivery.estimated_delivery_time else None,
+        })
+    return out

@@ -215,3 +215,27 @@ export function useReportIssue() {
     onSuccess: invalidate,
   });
 }
+
+export interface DriverDelivery {
+  delivery_id: string;
+  status: string;
+  food_name: string;
+  food_category: string;
+  quantity_kg: number;
+  ngo_name: string | null;
+  pickup_address: string | null;
+  dropoff_address: string | null;
+  actual_delivery_time: string | null;
+  pickup_time: string | null;
+  estimated_delivery_time: string | null;
+}
+
+export function useDriverDeliveries(category: 'active' | 'history') {
+  return useQuery({
+    queryKey: ['driver', 'deliveries', category],
+    queryFn: async () => {
+      const res = await apiClient.get<SuccessEnvelope<DriverDelivery[]>>(`/api/v1/drivers/me/deliveries?category=${category}`);
+      return res.data.data;
+    },
+  });
+}

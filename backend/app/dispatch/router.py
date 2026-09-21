@@ -68,6 +68,16 @@ async def current_job(
     return envelope(await build_current_job(db, driver_user.id))
 
 
+@drivers_me_router.get("/deliveries")
+async def get_deliveries(
+    driver_user: Annotated[User, Depends(require_role("DRIVER"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    category: str = "active",
+):
+    from app.dispatch.service import list_driver_deliveries
+    return envelope(await list_driver_deliveries(db, driver_user.id, category))
+
+
 @delivery_actions_router.post("/{delivery_id}/start")
 async def start_trip(
     delivery_id: str,

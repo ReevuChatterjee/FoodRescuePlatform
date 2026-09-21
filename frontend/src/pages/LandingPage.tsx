@@ -144,7 +144,7 @@ export function LandingPage() {
                 transition={{ duration: 0.5, ease: "easeOut", delay: disableMotion ? 0 : 0 }}
                 className="text-[2.5rem] md:text-[3.5rem] font-semibold text-on-surface leading-[1.1] tracking-tight mb-4"
               >
-                Move surplus food where it is needed.
+                Move surplus food where it is <span className="text-primary">NEEDED</span>.
               </motion.h1>
               
               <motion.div 
