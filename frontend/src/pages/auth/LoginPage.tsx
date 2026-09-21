@@ -266,7 +266,7 @@ export function LoginPage() {
                         </div>
                         <div>
                           <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Pickup address</label>
-                          <div className="bg-surface-container border border-outline-variant rounded focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden">
+                          <div className="bg-surface-container border border-outline-variant rounded focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                             <LocationAutocomplete
                               value={registerForm.watch('address') || ''}
                               onChange={(val) => registerForm.setValue('address', val)}
@@ -290,7 +290,7 @@ export function LoginPage() {
                         </div>
                         <div>
                           <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Delivery address</label>
-                          <div className="bg-surface-container border border-outline-variant rounded focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden">
+                          <div className="bg-surface-container border border-outline-variant rounded focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                             <LocationAutocomplete
                               value={registerForm.watch('address') || ''}
                               onChange={(val) => registerForm.setValue('address', val)}
