@@ -1,17 +1,17 @@
 databases:
-  - name: cpi_db
-    databaseName: cpi_db
-    user: cpi_user
+  - name: replate_db
+    databaseName: replate_db
+    user: replate_user
     plan: free
 
 services:
   - type: redis
-    name: cpi_redis
+    name: replate_redis
     plan: free
     ipAllowList: [] # only allow internal connections
 
   - type: web
-    name: cpi_backend
+    name: replate_backend
     env: docker
     region: oregon
     plan: free
@@ -21,12 +21,12 @@ services:
     envVars:
       - key: DATABASE_URL
         fromDatabase:
-          name: cpi_db
+          name: replate_db
           property: connectionString
       - key: REDIS_URL
         fromService:
           type: redis
-          name: cpi_redis
+          name: replate_redis
           property: connectionString
       - key: APP_ENV
         value: production
@@ -36,24 +36,3 @@ services:
         sync: false # Must be set manually in Render Dashboard
       - key: ALLOWED_ORIGINS
         sync: false # Must be set manually in Render Dashboard (e.g. https://your-frontend.vercel.app)
-
-  - type: worker
-    name: cpi_worker
-    env: docker
-    region: oregon
-    plan: free
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    dockerCommand: celery -A app.worker worker --loglevel=info
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: cpi_db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: cpi_redis
-          property: connectionString
-      - key: APP_ENV
-        value: production

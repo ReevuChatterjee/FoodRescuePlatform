@@ -16,7 +16,7 @@ from app.main import app
 
 
 # Test database URL - override in CI
-TEST_DATABASE_URL = settings.DATABASE_URL.replace("/cpi_db", "/cpi_test")
+TEST_DATABASE_URL = settings.DATABASE_URL.replace("/replate_db", "/replate_test")
 
 
 @pytest.fixture(scope="session")

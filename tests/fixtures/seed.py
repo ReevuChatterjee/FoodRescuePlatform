@@ -20,7 +20,7 @@ from passlib.context import CryptContext
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Test database URL — override in CI
-TEST_DATABASE_URL = settings.DATABASE_URL.replace("/cpi_db", "/cpi_test")
+TEST_DATABASE_URL = settings.DATABASE_URL.replace("/replate_db", "/replate_test")
 
 engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSessionLocal = async_sessionmaker(engine, expire_on_commit=False)

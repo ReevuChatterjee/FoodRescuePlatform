@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file="../.env", env_file_encoding="utf-8", extra="ignore")
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://cpi_user:cpi_pass@db:5432/cpi_db"
-    DATABASE_URL_SYNC: str = "postgresql://cpi_user:cpi_pass@db:5432/cpi_db"
+    DATABASE_URL: str = "postgresql+asyncpg://replate_user:replate_pass@db:5432/replate_db"
+    DATABASE_URL_SYNC: str = "postgresql://replate_user:replate_pass@db:5432/replate_db"
 
     # Redis
     REDIS_URL: str = "redis://redis:6379/0"

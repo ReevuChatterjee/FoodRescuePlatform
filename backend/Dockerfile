@@ -20,5 +20,5 @@ COPY . .
 # Install the project itself
 RUN poetry install --only-root
 
-# Run migrations on startup (production should use separate init container)
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Run migrations, background worker, and web server via start script
+CMD ["./start.sh"]

@@ -5,10 +5,10 @@ set -e
 
 echo "Running backend tests..."
 docker run --rm \
-  --network cpi_cpi_net \
-  -e DATABASE_URL="postgresql+asyncpg://cpi_user:cpi_pass@cpi_db:5432/cpi_db" \
-  -e DATABASE_URL_SYNC="postgresql://cpi_user:cpi_pass@cpi_db:5432/cpi_db" \
-  -e REDIS_URL="redis://cpi_redis:6379/0" \
+  --network cpi_replate_net \
+  -e DATABASE_URL="postgresql+asyncpg://replate_user:replate_pass@replate_db:5432/replate_db" \
+  -e DATABASE_URL_SYNC="postgresql://replate_user:replate_pass@replate_db:5432/replate_db" \
+  -e REDIS_URL="redis://replate_redis:6379/0" \
   -e JWT_SECRET="test_secret_key_for_testing_only" \
   -e JWT_REFRESH_SECRET="test_refresh_secret_key_for_testing" \
   -v "$(pwd)/backend:/app" \

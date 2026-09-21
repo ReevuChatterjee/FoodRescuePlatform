@@ -3,30 +3,30 @@ version: '3.9'
 services:
   db:
     image: postgis/postgis:16-3.4
-    container_name: cpi_db
+    container_name: replate_db
     environment:
-      POSTGRES_USER: cpi_user
-      POSTGRES_PASSWORD: cpi_pass
-      POSTGRES_DB: cpi_db
+      POSTGRES_USER: replate_user
+      POSTGRES_PASSWORD: replate_pass
+      POSTGRES_DB: replate_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - cpi_net
+      - replate_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cpi_user -d cpi_db"]
+      test: ["CMD-SHELL", "pg_isready -U replate_user -d replate_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: cpi_redis
+    container_name: replate_redis
     ports:
       - "6379:6379"
     networks:
-      - cpi_net
+      - replate_net
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -37,7 +37,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: cpi_backend
+    container_name: replate_backend
     env_file:
       - .env
     ports:
@@ -48,7 +48,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - cpi_net
+      - replate_net
     volumes:
       - ./backend:/app
       - ./tests:/tests
@@ -64,7 +64,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: cpi_worker
+    container_name: replate_worker
     env_file:
       - .env
     depends_on:
@@ -73,7 +73,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - cpi_net
+      - replate_net
     volumes:
       - ./backend:/app
     command: celery -A app.worker worker --loglevel=info
@@ -83,13 +83,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: cpi_frontend
+    container_name: replate_frontend
     ports:
       - "5173:5173"
     depends_on:
       - backend
     networks:
-      - cpi_net
+      - replate_net
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -101,5 +101,5 @@ volumes:
   postgres_data:
 
 networks:
-  cpi_net:
+  replate_net:
     driver: bridge
