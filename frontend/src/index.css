@@ -7,6 +7,51 @@
 @layer base {
   :root {
     color-scheme: light;
+    /* M3 Tokens */
+    --color-surface: #f6fbf5;
+    --color-surface-dim: #d7dbd6;
+    --color-surface-bright: #f6fbf5;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #f0f5f0;
+    --color-surface-container: #ebefea;
+    --color-surface-container-high: #e5e9e4;
+    --color-surface-container-highest: #dfe4df;
+    --color-on-surface: #181d1a;
+    --color-on-surface-variant: #404942;
+    --color-inverse-surface: #2c322e;
+    --color-inverse-on-surface: #edf2ed;
+    --color-outline: #707971;
+    --color-outline-variant: #bfc9bf;
+    --color-surface-tint: #296a46;
+    --color-primary: #004527;
+    --color-on-primary: #ffffff;
+    --color-primary-container: #1b5e3b;
+    --color-on-primary-container: #92d5a9;
+    --color-inverse-primary: #92d5a9;
+    --color-secondary: #a23e18;
+    --color-on-secondary: #ffffff;
+    --color-secondary-container: #fe8357;
+    --color-on-secondary-container: #6f2000;
+    --color-tertiary: #353e38;
+    --color-on-tertiary: #ffffff;
+    --color-tertiary-container: #4c554e;
+    --color-on-tertiary-container: #c0c9c0;
+    --color-error: #ba1a1a;
+    --color-on-error: #ffffff;
+    --color-error-container: #ffdad6;
+    --color-on-error-container: #93000a;
+    --color-primary-fixed: #aef2c4;
+    --color-primary-fixed-dim: #92d5a9;
+    --color-on-primary-fixed: #002110;
+    --color-on-primary-fixed-variant: #085230;
+    --color-secondary-fixed: #ffdbcf;
+    --color-secondary-fixed-dim: #ffb59c;
+    --color-on-secondary-fixed: #390c00;
+    --color-on-secondary-fixed-variant: #822801;
+    --color-background-cv: #f6fbf5;
+    --color-on-background: #181d1a;
+    --color-surface-variant: #dfe4df;
+
     /* ── Civic Vitality — Parchment + Forest Green ─────────────────────── */
     /* Canvas & Surfaces */
     --bg-base:           #f6fbf5;   /* warm parchment canvas */
@@ -77,6 +122,51 @@
   /* Light mode is the default — dark mode overrides kept minimal */
   html.dark {
     color-scheme: dark;
+    /* M3 Tokens Dark */
+    --color-secondary: #a23e18;
+    --color-on-secondary: #ffffff;
+    --color-secondary-container: #fe8357;
+    --color-on-secondary-container: #6f2000;
+    --color-tertiary: #353e38;
+    --color-on-tertiary: #ffffff;
+    --color-tertiary-container: #4c554e;
+    --color-on-tertiary-container: #c0c9c0;
+    --color-primary-fixed: #aef2c4;
+    --color-primary-fixed-dim: #92d5a9;
+    --color-on-primary-fixed: #002110;
+    --color-on-primary-fixed-variant: #085230;
+    --color-secondary-fixed: #ffdbcf;
+    --color-secondary-fixed-dim: #ffb59c;
+    --color-on-secondary-fixed: #390c00;
+    --color-on-secondary-fixed-variant: #822801;
+    --color-background-cv: #f6fbf5;
+    --color-on-background: #181d1a;
+    --color-surface-variant: #dfe4df;
+    --color-surface: #1a1f1c;
+    --color-surface-dim: #141715;
+    --color-surface-bright: #222820;
+    --color-surface-container-lowest: #0f1210;
+    --color-surface-container-low: #161a18;
+    --color-surface-container: #1a1f1c;
+    --color-surface-container-high: #222820;
+    --color-surface-container-highest: #2c332e;
+    --color-on-surface: #e8f0e9;
+    --color-on-surface-variant: #9ab09b;
+    --color-inverse-surface: #e8f0e9;
+    --color-inverse-on-surface: #1a1f1c;
+    --color-outline: #8b998c;
+    --color-outline-variant: #404942;
+    --color-surface-tint: #4a9e70;
+    --color-primary: #92d5a9;
+    --color-on-primary: #00381f;
+    --color-primary-container: #00522f;
+    --color-on-primary-container: #aef2c4;
+    --color-inverse-primary: #1b5e3b;
+    --color-error: #ffb4ab;
+    --color-on-error: #690005;
+    --color-error-container: #93000a;
+    --color-on-error-container: #ffdad6;
+
     --bg-base:           #1a1f1c;
     --bg-panel:          #222820;
     --bg-inset:          #181d1a;
