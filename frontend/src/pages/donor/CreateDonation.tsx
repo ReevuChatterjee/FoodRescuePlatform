@@ -140,7 +140,13 @@ export function CreateDonation() {
     if (ok) setStep((s) => Math.min(s + 1, 3));
   };
 
-  const onSubmit = (data: FormValues) => mutation.mutate(data);
+  const onSubmit = (data: FormValues) => {
+    if (step < 3) {
+      nextStep();
+      return;
+    }
+    mutation.mutate(data);
+  };
 
   return (
     <DonorLayout>
