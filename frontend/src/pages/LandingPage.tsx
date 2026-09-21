@@ -253,12 +253,12 @@ export function LandingPage() {
             
             <div className="relative">
               {/* Background structural track */}
-              <div className="absolute left-[3.5rem] md:left-[5rem] top-3 bottom-0 w-px bg-outline-variant/30 z-0" />
+              <div className="absolute left-[3.5rem] md:left-[5rem] top-3 bottom-0 w-[2px] -ml-[1px] bg-outline-variant/30 z-0" />
               
               {/* Foreground progress track */}
               {!disableMotion && (
                 <motion.div 
-                  className="absolute left-[3.5rem] md:left-[5rem] top-3 bottom-0 w-px bg-primary z-0 origin-top" 
+                  className="absolute left-[3.5rem] md:left-[5rem] top-3 bottom-0 w-[2px] -ml-[1px] bg-primary z-0 origin-top" 
                   style={{ scaleY: processScroll }}
                 />
               )}
