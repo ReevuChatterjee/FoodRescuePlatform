@@ -70,7 +70,7 @@ app.include_router(analytics_router)
 app.include_router(admin_router)
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
     return {
         "service": "CPI Food Rescue Platform",

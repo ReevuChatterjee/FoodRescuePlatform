@@ -17,7 +17,7 @@ from app.core.config import settings
 router = APIRouter(tags=["health"])
 
 
-@router.get("/health")
+@router.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     """
     Liveness probe: returns 200 if the process is running.
@@ -26,7 +26,7 @@ async def health():
     return {"status": "ok"}
 
 
-@router.get("/ready")
+@router.api_route("/ready", methods=["GET", "HEAD"])
 async def readiness():
     """
     Readiness probe: returns 200 only if DB and Redis are reachable.
