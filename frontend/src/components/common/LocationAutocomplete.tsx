@@ -59,12 +59,7 @@ export function LocationAutocomplete({
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
             query
-          )}&format=json&addressdetails=1&limit=5`,
-          {
-            headers: {
-              'User-Agent': 'FoodRescuePlatform/1.0',
-            },
-          }
+          )}&format=json&addressdetails=1&limit=5&email=contact@replate.org`
         );
         if (res.ok) {
           const data = await res.json();
