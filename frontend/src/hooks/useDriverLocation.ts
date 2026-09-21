@@ -22,6 +22,9 @@ export interface DriverLocationState {
   position: GeoPoint | null;
   lastSentAt: number | null;
   lastError: string | null;
+}
+
+export interface DriverLocationReturn extends DriverLocationState {
   setOverridePosition: (point: GeoPoint | null) => void;
 }
 
@@ -30,7 +33,7 @@ export function shouldSend(lastSentAt: number | null, now: number, intervalMs = 
   return lastSentAt === null || now - lastSentAt >= intervalMs;
 }
 
-export function useDriverLocation(enabled: boolean): DriverLocationState {
+export function useDriverLocation(enabled: boolean): DriverLocationReturn {
   const [state, setState] = useState<DriverLocationState>(() => ({
     permission: typeof navigator !== 'undefined' && navigator.geolocation ? 'unknown' : 'unsupported',
     position: null,
