@@ -12,6 +12,7 @@ We detect the pooler automatically by checking if port 6543 is used.
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import NullPool
 
 from app.core.config import settings
 
@@ -19,16 +20,12 @@ from app.core.config import settings
 # We apply this universally on Vercel to avoid connection errors regardless of URL format.
 _connect_args = {
     "statement_cache_size": 0,
-    "prepared_statement_cache_size": 0,
 }
 
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,          # set True in dev via env override if needed
-    pool_pre_ping=True,
-    # On Vercel serverless, each invocation is ephemeral — keep pool small.
-    pool_size=2,
-    max_overflow=5,
+    poolclass=NullPool,
     connect_args=_connect_args,
 )
 
