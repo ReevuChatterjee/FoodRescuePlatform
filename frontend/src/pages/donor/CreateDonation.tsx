@@ -190,9 +190,8 @@ export function CreateDonation() {
           }
           void handleSubmit(onSubmit)(e);
         }} onKeyDown={(e) => {
-          // If the user presses enter in an input field, NEVER submit the form automatically.
-          // This prevents accidental submissions on Step 3 before they finish filling optional fields.
-          if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+          // Unconditionally block Enter key from submitting the form ANYWHERE
+          if (e.key === 'Enter') {
             e.preventDefault();
             if (step < 3) {
               nextStep();
