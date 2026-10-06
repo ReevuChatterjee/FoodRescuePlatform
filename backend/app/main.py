@@ -21,6 +21,7 @@ from app.matching.router import router as matching_router
 from app.routing.router import router as routing_router
 from app.dispatch.router import delivery_actions_router, dispatch_router, drivers_me_router
 from app.ws.router import router as ws_router
+from app.cron.router import router as cron_router
 
 app = FastAPI(
     title="CPI Food Rescue Platform",
@@ -68,6 +69,9 @@ app.include_router(analytics_router)
 
 # Admin operations (ADMIN role required)
 app.include_router(admin_router)
+
+# Cron jobs (called by Vercel Cron)
+app.include_router(cron_router)
 
 
 @app.api_route("/", methods=["GET", "HEAD"])
