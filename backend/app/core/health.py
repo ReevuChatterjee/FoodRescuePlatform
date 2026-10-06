@@ -1,15 +1,14 @@
 """
-Health check endpoints for Docker Compose healthcheck / k8s probes.
+Health check endpoints for Docker Compose healthcheck / k8s probes / Vercel.
 
 Per Section I:
   - GET /health — liveness (process is up)
-  - GET /ready — readiness (DB + Redis reachable)
+  - GET /ready — readiness (DB reachable; Redis checked only when REDIS_URL is set)
 """
 
 from app.core.time import IST
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
-from redis import asyncio as aioredis
 
 from app.core.database import engine
 from app.core.config import settings
@@ -29,8 +28,7 @@ async def health():
 @router.api_route("/ready", methods=["GET", "HEAD"])
 async def readiness():
     """
-    Readiness probe: returns 200 only if DB and Redis are reachable.
-    Use this in Docker Compose healthcheck so dependent services wait.
+    Readiness probe: returns 200 only if DB (and Redis, when configured) are reachable.
     """
     checks = {}
 
@@ -42,17 +40,24 @@ async def readiness():
     except Exception as e:
         checks["database"] = f"error: {str(e)}"
 
-    # Check Redis
-    try:
-        redis = await aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-        await redis.ping()
-        await redis.close()
-        checks["redis"] = "ok"
-    except Exception as e:
-        checks["redis"] = f"error: {str(e)}"
+    # Check Redis — only when REDIS_URL is configured
+    if settings.redis_enabled:
+        try:
+            from redis import asyncio as aioredis
+            redis = await aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+            await redis.ping()
+            await redis.close()
+            checks["redis"] = "ok"
+        except Exception as e:
+            checks["redis"] = f"error: {str(e)}"
+    else:
+        checks["redis"] = "disabled (no REDIS_URL)"
 
-    # Fail if any check failed
-    if any(v != "ok" for v in checks.values()):
+    # Fail if any critical check failed
+    critical_failed = any(
+        v.startswith("error:") for k, v in checks.items() if isinstance(v, str)
+    )
+    if critical_failed:
         raise HTTPException(status_code=503, detail={"status": "not_ready", "checks": checks})
 
     return {"status": "ready", "checks": checks}
