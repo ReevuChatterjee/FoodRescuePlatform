@@ -116,9 +116,9 @@ async def create_donation(
         "status": donation.status.value,
     })
 
-    # Trigger matching algorithm in the background
+    # Trigger matching algorithm synchronously (Vercel Serverless kills background tasks)
     from app.matching.service import run_matching
-    background_tasks.add_task(run_matching, donation.id)
+    await run_matching(donation.id)
 
 
     # Response is deliberately the compact dashboard shape from §3, not the full object.

@@ -183,8 +183,16 @@ export function CreateDonation() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+        <form onSubmit={(e) => {
+          if (step !== 3) {
+            e.preventDefault();
+            return;
+          }
+          handleSubmit(onSubmit)(e);
+        }} onKeyDown={(e) => {
+          // If the user presses enter in an input field, just go to next step
+          // if we aren't on the final step, rather than submitting.
+          if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
             e.preventDefault();
             if (step < 3) {
               nextStep();
