@@ -183,22 +183,7 @@ export function CreateDonation() {
           </div>
         )}
 
-        <form onSubmit={(e) => {
-          if (step !== 3) {
-            e.preventDefault();
-            return;
-          }
-          void handleSubmit(onSubmit)(e);
-        }} onKeyDown={(e) => {
-          // Unconditionally block Enter key from submitting the form ANYWHERE
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            if (step < 3) {
-              nextStep();
-            }
-          }
-        }}>
-          <div className="space-y-12">
+        <div className="space-y-12">
             
             {/* ── Step 1: Payload ── */}
             {step === 1 && (
@@ -347,12 +332,12 @@ export function CreateDonation() {
                 Continue
               </button>
             ) : (
-              <button type="submit" className="h-10 px-6 bg-primary text-on-primary rounded text-[0.875rem] font-medium hover:bg-primary/90 transition-colors flex items-center justify-center min-w-[140px]" disabled={mutation.isPending}>
+              <button type="button" className="h-10 px-6 bg-primary text-on-primary rounded text-[0.875rem] font-medium hover:bg-primary/90 transition-colors flex items-center justify-center min-w-[140px]" disabled={mutation.isPending} onClick={handleSubmit(onSubmit)}>
                 {mutation.isPending ? <Loader2 size={16} className="animate-spin" /> : 'Create donation'}
               </button>
             )}
           </div>
-        </form>
+        </div>
       </div>
     </DonorLayout>
   );
