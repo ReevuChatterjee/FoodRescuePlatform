@@ -22,6 +22,7 @@ _is_pooler = ":6543" in settings.DATABASE_URL
 _connect_args = {}
 if _is_pooler:
     _connect_args["statement_cache_size"] = 0
+    _connect_args["prepared_statement_cache_size"] = 0
 
 engine = create_async_engine(
     settings.DATABASE_URL,
