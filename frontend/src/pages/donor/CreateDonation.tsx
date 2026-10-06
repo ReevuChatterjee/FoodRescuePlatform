@@ -190,8 +190,8 @@ export function CreateDonation() {
           }
           handleSubmit(onSubmit)(e);
         }} onKeyDown={(e) => {
-          // If the user presses enter in an input field, just go to next step
-          // if we aren't on the final step, rather than submitting.
+          // If the user presses enter in an input field, NEVER submit the form automatically.
+          // This prevents accidental submissions on Step 3 before they finish filling optional fields.
           if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
             e.preventDefault();
             if (step < 3) {
