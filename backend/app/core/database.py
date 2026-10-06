@@ -15,14 +15,12 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
 
-# Supabase connection pooler (pgbouncer, port 6543) requires disabling
-# statement cache. Direct Supabase connections (port 5432) work normally.
-_is_pooler = ":6543" in settings.DATABASE_URL
-
-_connect_args = {}
-if _is_pooler:
-    _connect_args["statement_cache_size"] = 0
-    _connect_args["prepared_statement_cache_size"] = 0
+# Supabase connection pooler (pgbouncer) requires disabling statement cache.
+# We apply this universally on Vercel to avoid connection errors regardless of URL format.
+_connect_args = {
+    "statement_cache_size": 0,
+    "prepared_statement_cache_size": 0,
+}
 
 engine = create_async_engine(
     settings.DATABASE_URL,
