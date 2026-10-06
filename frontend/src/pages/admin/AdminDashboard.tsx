@@ -150,43 +150,8 @@ export function AdminDashboard() {
             </thead>
             <tbody className="divide-y divide-outline-variant/40 font-mono-data text-[0.75rem]">
               <tr className="hover:bg-surface-container transition-colors group">
-                <td className="px-4 h-11 text-on-surface-variant">22:37</td>
-                <td className="px-4 h-11 text-on-surface">Donation matched</td>
-                <td className="px-4 h-11 text-on-surface-variant">ngo_3218</td>
-                <td className="px-4 h-11 text-right">
-                  <span className="inline-flex items-center justify-end gap-1.5 text-primary font-bold text-[0.6875rem] uppercase tracking-wider">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary" /> MATCHED
-                  </span>
-                </td>
-              </tr>
-              <tr className="hover:bg-surface-container transition-colors group">
-                <td className="px-4 h-11 text-on-surface-variant">22:31</td>
-                <td className="px-4 h-11 text-on-surface">Delivery completed</td>
-                <td className="px-4 h-11 text-on-surface-variant">driver_04F3</td>
-                <td className="px-4 h-11 text-right">
-                  <span className="inline-flex items-center justify-end gap-1.5 text-primary font-bold text-[0.6875rem] uppercase tracking-wider">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary" /> COMPLETED
-                  </span>
-                </td>
-              </tr>
-              <tr className="hover:bg-surface-container transition-colors group">
-                <td className="px-4 h-11 text-on-surface-variant">22:18</td>
-                <td className="px-4 h-11 text-on-surface">Donation registered</td>
-                <td className="px-4 h-11 text-on-surface-variant">donor_02</td>
-                <td className="px-4 h-11 text-right">
-                  <span className="inline-flex items-center justify-end gap-1.5 text-warning font-bold text-[0.6875rem] uppercase tracking-wider">
-                    <div className="w-1.5 h-1.5 rounded-full bg-warning" /> PENDING
-                  </span>
-                </td>
-              </tr>
-              <tr className="hover:bg-surface-container transition-colors group">
-                <td className="px-4 h-11 text-on-surface-variant">22:04</td>
-                <td className="px-4 h-11 text-on-surface">Driver location updated</td>
-                <td className="px-4 h-11 text-on-surface-variant">driver_04F3</td>
-                <td className="px-4 h-11 text-right">
-                  <span className="inline-flex items-center justify-end gap-1.5 text-primary font-bold text-[0.6875rem] uppercase tracking-wider">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary" /> ONLINE
-                  </span>
+                <td colSpan={4} className="px-4 py-8 text-center text-on-surface-variant text-[0.75rem]">
+                  No recent network activity in the last 24 hours.
                 </td>
               </tr>
             </tbody>
