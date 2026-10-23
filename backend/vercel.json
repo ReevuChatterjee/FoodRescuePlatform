@@ -43,7 +43,7 @@
   "crons": [
     {
       "path": "/api/v1/cron/rematch",
-      "schedule": "*/5 * * * *"
+      "schedule": "30 0 * * *"
     }
   ]
 }
