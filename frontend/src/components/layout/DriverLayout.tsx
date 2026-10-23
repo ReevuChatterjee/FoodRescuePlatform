@@ -29,7 +29,7 @@ export function DriverLayout({ children }: DriverLayoutProps) {
 
   const handleLogout = () => { clearAuth(); navigate('/login'); };
 
-  const online = driver?.availability_status !== 'OFFLINE';
+  const online = hasJob || driver?.availability_status !== 'OFFLINE';
 
   const toggleDuty = () => {
     if (!driver || hasJob || setAvailability.isPending) return;
@@ -137,7 +137,7 @@ export function DriverLayout({ children }: DriverLayoutProps) {
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
                 {setAvailability.isPending ? <Loader2 size={12} className="inline animate-spin mr-1" /> : null}
-                {online ? 'On Duty' : 'Off Duty'}
+                {hasJob ? 'In Delivery' : online ? 'On Duty' : 'Off Duty'}
               </button>
             )}
 

@@ -886,6 +886,11 @@ async def build_current_job(
                         await db.commit()
                         await db.refresh(delivery)
 
+    if delivery is not None and vehicle.availability_status != BUSY:
+        vehicle.availability_status = BUSY
+        await db.commit()
+        await db.refresh(vehicle)
+
     data: dict[str, Any] = {"driver": driver_profile_view(vehicle), "job": None}
     if delivery is None:
         return data

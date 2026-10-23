@@ -26,7 +26,7 @@ export function DriverDashboard() {
   const driver = data?.driver;
   const job = data?.job ?? null;
 
-  const streaming = !!job || driver?.availability_status === 'AVAILABLE';
+  const streaming = !!job || driver?.availability_status !== 'OFFLINE';
   const location = useDriverLocation(streaming);
   useDriverWebSocket(job?.delivery_id);
   const setAvailability = useSetAvailability();
@@ -201,12 +201,12 @@ export function DriverDashboard() {
                 driver ? (
                   <div className="p-6 border border-outline-variant/50 rounded">
                     <p className="text-[1.125rem] font-semibold text-on-surface mb-2">
-                      {driver.availability_status === 'AVAILABLE' ? 'Waiting for assignment' : 'No active delivery'}
+                      {driver.availability_status !== 'OFFLINE' ? 'Waiting for assignment' : 'No active delivery'}
                     </p>
                     <p className="text-[0.875rem] text-on-surface-variant">
-                      {driver.availability_status === 'AVAILABLE' 
-                        ? 'No delivery has been assigned yet.' 
-                        : 'No delivery has been assigned.'}
+                      {driver.availability_status !== 'OFFLINE' 
+                        ? 'No delivery has been assigned yet. You will be alerted when an assignment arrives.' 
+                        : 'Go on duty to receive delivery assignments.'}
                     </p>
                   </div>
                 ) : null
@@ -298,27 +298,33 @@ export function DriverDashboard() {
             {/* Driver Status */}
             <section>
               <h2 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-4 pb-2 border-b border-outline-variant/30">Driver status</h2>
-              {driver ? (
-                <div>
-                  <p className={`text-[1.125rem] font-semibold mb-1 ${driver.availability_status === 'AVAILABLE' ? 'text-primary' : 'text-on-surface-variant'}`}>
-                    {driver.availability_status === 'AVAILABLE' ? 'On duty' : 'Offline'}
-                  </p>
-                  <p className="text-[0.8125rem] text-on-surface-variant mb-5">
-                    {driver.availability_status === 'AVAILABLE' 
-                      ? 'Accepting delivery assignments.' 
-                      : 'Not currently accepting assignments.'}
-                  </p>
-                  <button
-                    onClick={toggleDuty}
-                    disabled={!!job || setAvailability.isPending}
-                    className="h-10 px-5 bg-surface-container border border-outline-variant text-[0.875rem] font-medium rounded hover:bg-surface-container-high transition-colors w-full disabled:opacity-50 inline-flex items-center justify-center gap-2"
-                  >
-                    {setAvailability.isPending && <Loader2 size={14} className="animate-spin" />}
-                    {driver.availability_status === 'AVAILABLE' ? 'Go off duty' : 'Go on duty'}
-                  </button>
-                  {!!job && <p className="text-[0.75rem] text-warning mt-2 text-center">Complete active job to change status.</p>}
-                </div>
-              ) : (
+              {driver ? (() => {
+                const hasActiveJob = !!job;
+                const isOnDuty = hasActiveJob || driver.availability_status !== 'OFFLINE';
+                return (
+                  <div>
+                    <p className={`text-[1.125rem] font-semibold mb-1 ${isOnDuty ? 'text-primary' : 'text-on-surface-variant'}`}>
+                      {hasActiveJob ? 'On duty (In delivery)' : isOnDuty ? 'On duty' : 'Offline'}
+                    </p>
+                    <p className="text-[0.8125rem] text-on-surface-variant mb-5">
+                      {hasActiveJob
+                        ? 'Currently completing an active delivery assignment.'
+                        : isOnDuty 
+                        ? 'Accepting delivery assignments.' 
+                        : 'Not currently accepting assignments.'}
+                    </p>
+                    <button
+                      onClick={toggleDuty}
+                      disabled={hasActiveJob || setAvailability.isPending}
+                      className="h-10 px-5 bg-surface-container border border-outline-variant text-[0.875rem] font-medium rounded hover:bg-surface-container-high transition-colors w-full disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    >
+                      {setAvailability.isPending && <Loader2 size={14} className="animate-spin" />}
+                      {hasActiveJob ? 'In active delivery' : isOnDuty ? 'Go off duty' : 'Go on duty'}
+                    </button>
+                    {hasActiveJob && <p className="text-[0.75rem] text-warning mt-2 text-center">Complete active job to change status.</p>}
+                  </div>
+                );
+              })() : (
                  <p className="text-[0.8125rem] text-on-surface-variant">Loading...</p>
               )}
             </section>
