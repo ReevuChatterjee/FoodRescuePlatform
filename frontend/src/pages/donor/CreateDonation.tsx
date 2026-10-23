@@ -338,7 +338,6 @@ export function CreateDonation() {
             )}
           </div>
         </div>
-      </div>
-    </DonorLayout>
-  );
-}
+      </DonorLayout>
+    );
+  }
