@@ -22,13 +22,22 @@ from app.auth.dependencies import get_current_user, require_role
 from app.core.database import get_db
 from app.core.envelope import api_error, envelope, iso_z, list_envelope
 from app.core.ids import new_id
+from app.core.time import IST
 from app.dispatch.service import (  # Person 5: release the driver on cancel
     publish,
     release_for_cancelled_donation,
     run_dispatch_pending,
 )
 from app.donations.schemas import CancelDonationRequest, CreateDonationRequest, UpdateDonationRequest
+from app.matching_engine import match
 from app.models import AuditLog, Delivery, Donation, DonationStatus, Donor, User, UserRole
+from app.services.matching_service import (
+    load_donation,
+    load_active_ngos,
+    load_routes,
+    load_active_weights,
+    get_excluded_ngo_ids,
+)
 from app.ws.manager import manager
 
 router = APIRouter(prefix="/api/v1/donations", tags=["donations"])
@@ -116,16 +125,85 @@ async def create_donation(
         "status": donation.status.value,
     })
 
-    # Trigger matching algorithm synchronously (Vercel Serverless kills background tasks)
-    from app.matching.service import run_matching
-    await run_matching(donation.id)
+    # ── Inline matching (Vercel Serverless / NullPool-safe) ──────────────────
+    # Do NOT call run_matching() here — it opens a second AsyncSessionLocal()
+    # which deadlocks on Vercel with NullPool + Supabase pgbouncer.
+    # Instead run the full pipeline using the existing `db` session.
+    matched_ngo_id: str | None = None
+    final_status = donation.status.value
+    try:
+        donation.status = DonationStatus.MATCHING
+        donation.updated_at = ist_now()
+        # Don't commit yet — we'll do one commit after matching resolves.
 
+        engine_donation = await load_donation(donation.id, db)
+        if engine_donation:
+            ngos = await load_active_ngos(db)
+            routes = load_routes(engine_donation, ngos)
+            weights = await load_active_weights(engine_donation, db)
+            excluded = await get_excluded_ngo_ids(donation.id, db)
 
-    # Response is deliberately the compact dashboard shape from §3, not the full object.
+            match_result = match(
+                donation=engine_donation,
+                ngos=ngos,
+                routes=routes,
+                weights=weights,
+                reference_time=datetime.now(IST),
+                excluded_ngo_ids=excluded if excluded else None,
+            )
+
+            if not match_result.matches:
+                donation.status = DonationStatus.NO_MATCH_FOUND
+                donation.updated_at = ist_now()
+                await db.commit()
+                await manager.broadcast("donations", {
+                    "event": "donation.no_match_found",
+                    "donation_id": donation.id,
+                })
+            else:
+                best = match_result.matches[0]
+                donation.status = DonationStatus.MATCHED
+                donation.matched_ngo_id = best.ngo_id
+                donation.match_score = best.score
+                donation.match_breakdown = {
+                    "capacity_score": best.capacity_score,
+                    "shelf_life_score": best.shelf_life_score,
+                    "transit_score": best.transit_score,
+                    "demand_score": best.demand_score,
+                    "route_score": best.route_score,
+                    "eta_minutes": best.eta_minutes,
+                }
+                donation.weights_version_id = match_result.weights_version_id
+                donation.updated_at = ist_now()
+                matched_ngo_id = best.ngo_id
+                await db.commit()
+                await manager.broadcast("donations", {
+                    "event": "donation.matched",
+                    "donation_id": donation.id,
+                    "ngo_id": best.ngo_id,
+                })
+        else:
+            # Donation couldn't be re-loaded (e.g. corrupt location) —
+            # leave as AVAILABLE so the cron can retry tonight.
+            donation.status = DonationStatus.AVAILABLE
+            await db.commit()
+    except Exception:
+        import logging as _log
+        _log.getLogger(__name__).exception(
+            "Matching failed for donation %s; leaving as AVAILABLE.", donation.id
+        )
+        donation.status = DonationStatus.AVAILABLE
+        await db.commit()
+
+    await db.refresh(donation)
+    final_status = donation.status.value
+    matched_ngo_id = donation.matched_ngo_id
+    # ────────────────────────────────────────────────────────────────────────
+
     return envelope({
         "id": donation.id,
-        "status": donation.status.value,
-        "matched_ngo_id": None,
+        "status": final_status,
+        "matched_ngo_id": matched_ngo_id,
         "driver_id": None,
         "eta_minutes": None,
         "created_at": iso_z(donation.created_at),
