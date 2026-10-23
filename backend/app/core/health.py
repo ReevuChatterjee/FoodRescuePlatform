@@ -294,3 +294,60 @@ async def debug_dispatch(auto_assign: bool = False, driver_email: str | None = N
             }
         except Exception as e:
             return {"error": str(e), "traceback": traceback.format_exc()}
+
+
+@router.get("/health/reset_to_matched")
+async def reset_to_matched(donation_id: str | None = None):
+    """
+    Resets a donation back to MATCHED (removes any prematurely auto-created deliveries),
+    so the matched NGO can view it in /ngo/incoming and manually accept/reject it.
+    """
+    import traceback
+    from app.core.database import AsyncSessionLocal
+    from app.models import Donation, DonationStatus, Delivery, NGO, User
+    from sqlalchemy import select
+
+    async with AsyncSessionLocal() as db:
+        try:
+            if not donation_id:
+                don_res = await db.execute(select(Donation).order_by(Donation.created_at.desc()).limit(1))
+                don = don_res.scalar_one_or_none()
+            else:
+                don = await db.get(Donation, donation_id)
+
+            if not don:
+                return {"status": "error", "message": "Donation not found"}
+
+            # Delete any delivery linked to this donation
+            deliv_res = await db.execute(select(Delivery).where(Delivery.donation_id == don.id))
+            delivs = deliv_res.scalars().all()
+            for d in delivs:
+                await db.delete(d)
+
+            don.status = DonationStatus.MATCHED
+            await db.commit()
+            await db.refresh(don)
+
+            ngo_name = None
+            ngo_user_email = None
+            if don.matched_ngo_id:
+                ngo_obj = await db.get(NGO, don.matched_ngo_id)
+                if ngo_obj:
+                    ngo_name = ngo_obj.organisation_name
+                    if ngo_obj.user_id:
+                        u_obj = await db.get(User, ngo_obj.user_id)
+                        if u_obj:
+                            ngo_user_email = u_obj.email
+
+            return {
+                "status": "success",
+                "message": f"Donation {don.id} reset to MATCHED. Delivery assignments deleted.",
+                "donation_id": don.id,
+                "current_status": don.status.value,
+                "matched_ngo_id": don.matched_ngo_id,
+                "matched_ngo_name": ngo_name,
+                "matched_ngo_email": ngo_user_email,
+            }
+        except Exception as e:
+            return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+

@@ -73,7 +73,7 @@ ACTIVE_DELIVERY_STATUSES = (
     DeliveryStatus.PICKED_UP,
     DeliveryStatus.IN_TRANSIT,
 )
-DISPATCHABLE_DONATION_STATUSES = (DonationStatus.ACCEPTED, DonationStatus.MATCHED, DonationStatus.DRIVER_ISSUE)
+DISPATCHABLE_DONATION_STATUSES = (DonationStatus.ACCEPTED, DonationStatus.DRIVER_ISSUE)
 PICKUP_ALLOWED_FROM = frozenset({DeliveryStatus.DRIVER_ASSIGNED, DeliveryStatus.PICKUP_STARTED})
 DELIVER_ALLOWED_FROM = frozenset({DeliveryStatus.PICKED_UP, DeliveryStatus.IN_TRANSIT})
 ISSUE_ALLOWED_FROM = PICKUP_ALLOWED_FROM  # after pickup the food is on board: handled manually
@@ -864,12 +864,12 @@ async def build_current_job(
             await db.commit()
             await db.refresh(delivery)
 
-    # 2. If still no delivery, check if there is a MATCHED or ACCEPTED donation waiting for a driver
+    # 2. If still no delivery, check if there is an ACCEPTED donation waiting for a driver
     if delivery is None:
         don_res = await db.execute(
             select(Donation)
             .where(
-                Donation.status.in_((DonationStatus.MATCHED, DonationStatus.ACCEPTED)),
+                Donation.status.in_((DonationStatus.ACCEPTED, DonationStatus.DRIVER_ISSUE)),
                 Donation.matched_ngo_id.isnot(None),
             )
             .order_by(Donation.created_at.desc())

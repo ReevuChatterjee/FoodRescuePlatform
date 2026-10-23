@@ -155,7 +155,9 @@ export interface Donation {
   pickup_location: { latitude: number; longitude: number; address: string };
   status: DonationStatus;
   matched_ngo_id: string | null;
+  matched_ngo_name?: string | null;
   driver_id: string | null;
+  driver_name?: string | null;
   eta_minutes: number | null;
   match_score?: number | null;
   match_breakdown?: {

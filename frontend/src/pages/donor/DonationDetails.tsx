@@ -194,12 +194,30 @@ export function DonationDetails() {
                 <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Destination</p>
-                    <p className="text-[0.875rem] text-on-surface font-mono-data">{donation.matched_ngo_id}</p>
+                    <div className="text-[0.875rem] text-on-surface">
+                      {donation.matched_ngo_name ? (
+                        <>
+                          <span className="font-semibold text-on-surface block">{donation.matched_ngo_name}</span>
+                          <span className="text-[0.75rem] text-on-surface-variant font-mono-data">{donation.matched_ngo_id}</span>
+                        </>
+                      ) : (
+                        <span className="font-mono-data">{donation.matched_ngo_id}</span>
+                      )}
+                    </div>
                   </div>
                   {donation.driver_id && (
                     <div>
                       <p className="text-[0.75rem] font-semibold text-on-surface-variant uppercase tracking-widest mb-1">Assigned logistics</p>
-                      <p className="text-[0.875rem] text-on-surface font-mono-data">{donation.driver_id}</p>
+                      <div className="text-[0.875rem] text-on-surface">
+                        {donation.driver_name ? (
+                          <>
+                            <span className="font-semibold text-on-surface block">{donation.driver_name}</span>
+                            <span className="text-[0.75rem] text-on-surface-variant font-mono-data">{donation.driver_id}</span>
+                          </>
+                        ) : (
+                          <span className="font-mono-data">{donation.driver_id}</span>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

@@ -30,7 +30,7 @@ from app.dispatch.service import (  # Person 5: release the driver on cancel
 )
 from app.donations.schemas import CancelDonationRequest, CreateDonationRequest, UpdateDonationRequest
 from app.matching_engine import match
-from app.models import AuditLog, Delivery, Donation, DonationStatus, Donor, User, UserRole
+from app.models import AuditLog, Delivery, Donation, DonationStatus, Donor, NGO, User, UserRole
 from app.services.matching_service import (
     load_donation,
     load_active_ngos,
@@ -65,6 +65,18 @@ async def _to_dict(donation: Donation, db: AsyncSession) -> dict:
         if delivery.estimated_duration_min is not None:
             eta_minutes = delivery.estimated_duration_min
 
+    matched_ngo_name = None
+    if donation.matched_ngo_id:
+        ngo_row = await db.get(NGO, donation.matched_ngo_id)
+        if ngo_row:
+            matched_ngo_name = ngo_row.organisation_name
+
+    driver_name = None
+    if driver_id:
+        driver_row = await db.get(User, driver_id)
+        if driver_row:
+            driver_name = driver_row.name or driver_row.email
+
     return {
         "id": donation.id,
         "donor_id": donation.donor_id,
@@ -79,10 +91,12 @@ async def _to_dict(donation: Donation, db: AsyncSession) -> dict:
         "food_safety_info": donation.food_safety_info,
         "status": donation.status.value,
         "matched_ngo_id": donation.matched_ngo_id,
+        "matched_ngo_name": matched_ngo_name,
+        "driver_id": driver_id,
+        "driver_name": driver_name,
         "match_score": donation.match_score,
         "match_breakdown": donation.match_breakdown,
         "weights_version_id": donation.weights_version_id,
-        "driver_id": driver_id,
         "eta_minutes": eta_minutes,
         "created_at": iso_z(donation.created_at),
         "updated_at": iso_z(donation.updated_at),
@@ -183,16 +197,7 @@ async def create_donation(
                     "ngo_id": best.ngo_id,
                 })
 
-                # Auto-dispatch driver right away so driver immediately gets the delivery
-                try:
-                    from app.dispatch.service import dispatch_donation
-                    outcome = await dispatch_donation(db, donation.id)
-                    if outcome and outcome.delivery:
-                        matched_driver_id = outcome.delivery.get("driver_id")
-                        assigned_eta = outcome.eta_to_pickup_minutes
-                except Exception as _e:
-                    import logging as _log
-                    _log.getLogger(__name__).warning("Auto-dispatch on creation failed: %s", _e)
+
         else:
             # Donation couldn't be re-loaded (e.g. corrupt location) —
             # leave as AVAILABLE so the cron can retry tonight.
