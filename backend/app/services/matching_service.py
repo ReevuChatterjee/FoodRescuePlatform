@@ -74,19 +74,31 @@ async def load_donation(donation_id: str, db: AsyncSession) -> Optional[me.Donat
     lat = loc.get("latitude") or 0.0
     lng = loc.get("longitude") or 0.0
 
-    # Ensure timezone-aware datetimes — DB stores naive UTC datetimes.
-    def _utc(dt: datetime) -> datetime:
+    # Ensure timezone-aware datetimes — DB stores naive IST datetimes (from ist_now()).
+    # Raises ValueError if a required timestamp is NULL in the DB so the caller gets
+    # a clear error instead of a cryptic Pydantic tz-aware validation failure.
+    def _to_aware_ist(dt: Optional[datetime], field_name: str) -> datetime:
         if dt is None:
-            return dt
+            raise ValueError(
+                f"Donation {donation_id}: required timestamp '{field_name}' is NULL in the database."
+            )
+        # DB stores naive IST — attach the timezone so the engine can compare properly.
         return dt.replace(tzinfo=IST) if dt.tzinfo is None else dt
+
+    try:
+        available_from = _to_aware_ist(row.available_from, "available_from")
+        expiry_time = _to_aware_ist(row.expiry_time, "expiry_time")
+    except ValueError:
+        # Donation is corrupt — treat as not found so matching doesn't crash.
+        return None
 
     return me.Donation(
         id=row.id,
         food_category=me.FoodCategory(row.food_category),
         quantity_kg=row.quantity_kg,
         pickup_location=me.Location(latitude=lat, longitude=lng),
-        available_from=_utc(row.available_from),
-        expiry_time=_utc(row.expiry_time),
+        available_from=available_from,
+        expiry_time=expiry_time,
     )
 
 
@@ -132,9 +144,10 @@ async def load_active_ngos(db: AsyncSession) -> list[me.NGOCandidate]:
     for d in demand_result.scalars().all():
         demand_map.setdefault(d.ngo_id, d)  # first = most recent
 
-    def _utc(dt: datetime) -> datetime:
+    def _to_aware_ist(dt: Optional[datetime]) -> Optional[datetime]:
+        """Make a naive IST datetime tz-aware; pass through None safely."""
         if dt is None:
-            return dt
+            return None
         return dt.replace(tzinfo=IST) if dt.tzinfo is None else dt
 
     candidates: list[me.NGOCandidate] = []
@@ -157,7 +170,7 @@ async def load_active_ngos(db: AsyncSession) -> list[me.NGOCandidate]:
                     food_category=me.FoodCategory(orm_demand.food_category),
                     required_quantity_kg=orm_demand.required_quantity_kg,
                     priority=me.Priority(orm_demand.priority) if orm_demand.priority else me.Priority.MEDIUM,
-                    valid_until=_utc(orm_demand.valid_until) if orm_demand.valid_until else None,
+                    valid_until=_to_aware_ist(orm_demand.valid_until),
                 )
             except (ValueError, Exception):
                 demand = None
@@ -211,6 +224,47 @@ def load_routes(
     }
 
 
+def _normalize_weights(
+    w_capacity: float,
+    w_shelf_life: float,
+    w_transit: float,
+    w_demand: float,
+    w_route: float,
+    weights_version_id: str,
+) -> tuple[float, float, float, float, float]:
+    """Re-normalize weights read from Supabase if they are close to 1.0 but
+    drifted due to floating-point storage (e.g. 0.9999999 or 1.0000001).
+
+    The engine's MatchingWeights validator requires |sum - 1.0| <= 1e-6, which
+    is tight. If the sum is within 1% of 1.0 we rescale all weights so the
+    sum is exactly 1.0; otherwise we raise so the admin knows the row is bad.
+    """
+    total = w_capacity + w_shelf_life + w_transit + w_demand + w_route
+    if abs(total - 1.0) <= 1e-6:
+        # Already within the engine's tolerance — no adjustment needed.
+        return w_capacity, w_shelf_life, w_transit, w_demand, w_route
+    if abs(total - 1.0) <= 0.01:
+        # Float storage drift: rescale to exactly 1.0.
+        import logging as _logging
+        _logging.getLogger(__name__).warning(
+            "Weights %r sum to %.8f (expected 1.0); rescaling. "
+            "Fix the matching_weights_history row to silence this.",
+            weights_version_id, total,
+        )
+        factor = 1.0 / total
+        return (
+            w_capacity * factor,
+            w_shelf_life * factor,
+            w_transit * factor,
+            w_demand * factor,
+            w_route * factor,
+        )
+    raise ValueError(
+        f"Weights {weights_version_id!r} sum to {total:.6f}, expected 1.0. "
+        "Update the matching_weights_history row."
+    )
+
+
 async def load_active_weights(
     donation: me.Donation,
     db: AsyncSession,
@@ -237,14 +291,22 @@ async def load_active_weights(
         )
         row: Optional[OrmWeights] = result.scalar_one_or_none()
         if row is not None:
-            return me.MatchingWeights(
-                weights_version_id=row.weights_version_id,
-                w_capacity=row.w_capacity,
-                w_shelf_life=row.w_shelf_life,
-                w_transit=row.w_transit,
-                w_demand=row.w_demand,
-                w_route=row.w_route,
-            )
+            try:
+                wc, ws, wt, wd, wr = _normalize_weights(
+                    row.w_capacity, row.w_shelf_life, row.w_transit,
+                    row.w_demand, row.w_route, row.weights_version_id,
+                )
+                return me.MatchingWeights(
+                    weights_version_id=row.weights_version_id,
+                    w_capacity=wc,
+                    w_shelf_life=ws,
+                    w_transit=wt,
+                    w_demand=wd,
+                    w_route=wr,
+                )
+            except ValueError:
+                # Bad weights row — fall through to the next category filter.
+                continue
 
     # Hard-coded ultimate fallback — should never be reached after migration 003.
     return me.MatchingWeights(
