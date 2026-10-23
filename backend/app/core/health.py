@@ -187,17 +187,33 @@ async def debug_match(approve_all: bool = False, match_latest: bool = False):
 
 
 @router.get("/debug_dispatch")
-async def debug_dispatch(auto_assign: bool = False):
+async def debug_dispatch(auto_assign: bool = False, driver_email: str | None = None):
     from app.core.database import AsyncSessionLocal
     from sqlalchemy import select
-    from app.models import Donation, Vehicle, Delivery, User
+    from app.models import Donation, Vehicle, Delivery, User, NGO, DonationStatus, UserRole
     from app.dispatch.service import dispatch_donation
     from app.core.envelope import iso_z
     import traceback
 
     async with AsyncSessionLocal() as db:
         try:
-            # Query all vehicles & drivers
+            # Query all driver users & vehicles
+            u_res = await db.execute(select(User).where(User.role == UserRole.DRIVER))
+            all_drivers = list(u_res.scalars().all())
+
+            # Ensure every driver has a Vehicle row
+            for u in all_drivers:
+                v_check = await db.execute(select(Vehicle).where(Vehicle.driver_id == u.id))
+                if not v_check.scalar_one_or_none():
+                    db.add(Vehicle(
+                        id=f"veh_{u.id[-8:]}",
+                        driver_id=u.id,
+                        capacity_kg=100.0,
+                        current_location="28.6273,77.2190",
+                        availability_status="AVAILABLE",
+                    ))
+            await db.commit()
+
             veh_res = await db.execute(select(Vehicle))
             vehicles = list(veh_res.scalars().all())
             drivers_info = []
@@ -215,7 +231,7 @@ async def debug_dispatch(auto_assign: bool = False):
                 })
 
             # Query recent deliveries
-            deliv_res = await db.execute(select(Delivery).order_by(Delivery.pickup_time.desc()).limit(10))
+            deliv_res = await db.execute(select(Delivery).order_by(Delivery.id.desc()).limit(10))
             deliveries = [
                 {
                     "id": d.id,
@@ -233,8 +249,27 @@ async def debug_dispatch(auto_assign: bool = False):
             donation = don_res.scalar_one_or_none()
 
             dispatch_result = None
-            if auto_assign and donation and donation.matched_ngo_id:
-                # Ensure at least one vehicle is marked AVAILABLE with valid location & capacity
+            if auto_assign and donation:
+                # Ensure donation has a matched NGO
+                if not donation.matched_ngo_id:
+                    ngo_res = await db.execute(select(NGO).order_by(NGO.created_at.desc()))
+                    first_ngo = ngo_res.scalars().first()
+                    if first_ngo:
+                        donation.matched_ngo_id = first_ngo.id
+                        donation.status = DonationStatus.MATCHED
+                        donation.match_score = 0.95
+                        await db.commit()
+                        await db.refresh(donation)
+
+                # Find preferred driver if driver_email given
+                preferred_driver_id = None
+                if driver_email:
+                    target_u = await db.execute(select(User).where(User.email == driver_email))
+                    u_obj = target_u.scalar_one_or_none()
+                    if u_obj:
+                        preferred_driver_id = u_obj.id
+
+                # Ensure vehicles are AVAILABLE
                 for v in vehicles:
                     v.availability_status = "AVAILABLE"
                     if not v.current_location or "," not in v.current_location:
@@ -244,7 +279,7 @@ async def debug_dispatch(auto_assign: bool = False):
                 await db.commit()
 
                 # Dispatch
-                outcome = await dispatch_donation(db, donation.id)
+                outcome = await dispatch_donation(db, donation.id, preferred_driver_id=preferred_driver_id)
                 dispatch_result = outcome.to_dict() if outcome else None
 
             return {

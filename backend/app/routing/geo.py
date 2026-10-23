@@ -38,28 +38,46 @@ def parse_latlng(value: Any) -> LatLng | None:
     """Normalise every location shape currently stored in this codebase.
 
     - "lat,lng" strings: NGO.location, Donor.location, Vehicle.current_location
-    - {"latitude": .., "longitude": ..} dicts: Donation.pickup_location
+    - {"latitude": .., "longitude": ..} or {"lat": .., "lng": ..} dicts: Donation.pickup_location
+    - JSON-encoded strings of the above dicts
     - (lat, lng) tuples/lists
 
     Returns None for empty, malformed or out-of-range input rather than raising,
     because a missing location should make a candidate ineligible, not crash a
     dispatch run.
     """
-    lat: Any
-    lng: Any
     if value is None:
         return None
+
+    # If it's a string that looks like JSON, attempt to parse it first
+    if isinstance(value, str):
+        trimmed = value.strip()
+        if trimmed.startswith("{") and trimmed.endswith("}"):
+            try:
+                import json
+                parsed = json.loads(trimmed)
+                if isinstance(parsed, dict):
+                    value = parsed
+            except Exception:
+                pass
+
+    lat: Any = None
+    lng: Any = None
+
     if isinstance(value, str):
         parts = value.split(",")
-        if len(parts) != 2:
+        if len(parts) == 2:
+            lat, lng = parts[0].strip(), parts[1].strip()
+        else:
             return None
-        lat, lng = parts[0].strip(), parts[1].strip()
     elif isinstance(value, dict):
-        lat, lng = value.get("latitude"), value.get("longitude")
+        lat = value.get("latitude") if value.get("latitude") is not None else value.get("lat")
+        lng = value.get("longitude") if value.get("longitude") is not None else value.get("lng")
     elif isinstance(value, (tuple, list)) and len(value) == 2:
         lat, lng = value
     else:
         return None
+
     try:
         lat_f, lng_f = float(lat), float(lng)
     except (TypeError, ValueError):
