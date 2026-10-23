@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, Navigation, Radio, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { apiClient } from '../../api/client';
 import { DriverLayout } from '../../components/layout/DriverLayout';
 import { DriverRouteMap } from '../../components/driver/DriverRouteMap';
 import { JobActions } from '../../components/driver/JobActions';
 import { JobCard } from '../../components/driver/JobCard';
-import { apiErrorMessage, useCurrentJob, useSetAvailability } from '../../hooks/useDriver';
+import { apiErrorMessage, useCurrentJob, useSetAvailability, CURRENT_JOB_KEY, type GeoPoint } from '../../hooks/useDriver';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { useDriverWebSocket } from '../../hooks/useDriverWebSocket';
 import { useAuthStore } from '../../hooks/useAuthStore';
@@ -21,6 +21,7 @@ const SOPS = [
 
 export function DriverDashboard() {
   const { user } = useAuthStore();
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, error, refetch } = useCurrentJob();
   const driver = data?.driver;
   const job = data?.job ?? null;
@@ -33,6 +34,7 @@ export function DriverDashboard() {
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [address, setAddress] = useState('');
+  const [manualPos, setManualPos] = useState<GeoPoint | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
   const [sopOpen, setSopOpen] = useState(false);
@@ -51,6 +53,8 @@ export function DriverDashboard() {
     onSuccess: () => {
       showToast('Location transmitted.', 'success');
       setBroadcastSuccess(true);
+      queryClient.invalidateQueries({ queryKey: CURRENT_JOB_KEY });
+      refetch();
       setTimeout(() => setBroadcastSuccess(false), 4000);
     },
     onError: (e: any) =>
@@ -65,13 +69,17 @@ export function DriverDashboard() {
     setGpsLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLat(pos.coords.latitude.toFixed(6));
-        setLng(pos.coords.longitude.toFixed(6));
+        const latitude = pos.coords.latitude;
+        const longitude = pos.coords.longitude;
+        setLat(latitude.toFixed(6));
+        setLng(longitude.toFixed(6));
         setAddress('Current GPS Location');
         setGpsLoading(false);
         showToast('GPS lock acquired', 'success');
-        location.setOverridePosition(null);
-        locationMutation.mutate({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        const point = { latitude, longitude };
+        setManualPos(point);
+        location.setOverridePosition(point);
+        locationMutation.mutate(point);
       },
       () => {
         showToast('Could not acquire GPS fix. Enter manually.', 'error');
@@ -83,14 +91,32 @@ export function DriverDashboard() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const latitude  = parseFloat(lat);
-    const longitude = parseFloat(lng);
+    let latitude = parseFloat(lat);
+    let longitude = parseFloat(lng);
+
+    // If lat/lng empty, check if address input contains coordinates "lat, lng"
+    if ((isNaN(latitude) || isNaN(longitude)) && address) {
+      const parts = address.split(',');
+      if (parts.length === 2) {
+        const pLat = parseFloat(parts[0].trim());
+        const pLng = parseFloat(parts[1].trim());
+        if (!isNaN(pLat) && !isNaN(pLng)) {
+          latitude = pLat;
+          longitude = pLng;
+          setLat(pLat.toFixed(6));
+          setLng(pLng.toFixed(6));
+        }
+      }
+    }
+
     if (isNaN(latitude) || isNaN(longitude)) {
-      showToast('Enter valid coordinates.', 'error');
+      showToast('Enter valid coordinates (e.g. 28.6273, 77.2190) or select an address.', 'error');
       return;
     }
-    location.setOverridePosition({ latitude, longitude });
-    locationMutation.mutate({ latitude, longitude });
+    const point = { latitude, longitude };
+    setManualPos(point);
+    location.setOverridePosition(point);
+    locationMutation.mutate(point);
   };
 
   const toggleDuty = () => {
@@ -98,7 +124,7 @@ export function DriverDashboard() {
     const online = driver.availability_status !== 'OFFLINE';
     setAvailability.mutate({
       availability_status: online ? 'OFFLINE' : 'AVAILABLE',
-      location: online ? null : driver.current_location,
+      location: online ? null : (manualPos ?? driver.current_location),
     });
   };
 
@@ -167,7 +193,7 @@ export function DriverDashboard() {
                 <div className="space-y-6">
                   <JobCard job={job} />
                   <div className="border border-outline-variant/50 rounded overflow-hidden">
-                     <DriverRouteMap job={job} driverPosition={location.position ?? driver.current_location} />
+                     <DriverRouteMap job={job} driverPosition={manualPos ?? location.position ?? driver.current_location} />
                   </div>
                   <JobActions job={job} vehicleCapacityKg={driver.capacity_kg} />
                 </div>
@@ -208,22 +234,36 @@ export function DriverDashboard() {
                 <div className="flex-1 w-full">
                   <LocationAutocomplete
                     value={address}
-                    onChange={setAddress}
+                    onChange={(val) => {
+                      setAddress(val);
+                      const parts = val.split(',');
+                      if (parts.length === 2) {
+                        const pLat = parseFloat(parts[0].trim());
+                        const pLng = parseFloat(parts[1].trim());
+                        if (!isNaN(pLat) && !isNaN(pLng)) {
+                          setLat(pLat.toFixed(6));
+                          setLng(pLng.toFixed(6));
+                        }
+                      }
+                    }}
                     onSelect={(addr, latVal, lngVal) => {
                       setAddress(addr);
                       setLat(latVal.toFixed(6));
                       setLng(lngVal.toFixed(6));
-                      locationMutation.mutate({ latitude: latVal, longitude: lngVal });
+                      const point = { latitude: latVal, longitude: lngVal };
+                      setManualPos(point);
+                      location.setOverridePosition(point);
+                      locationMutation.mutate(point);
                     }}
                     placeholder="Search address or enter coordinates"
                   />
                 </div>
                 
                 <div className="flex w-full sm:w-auto gap-3">
-                  <button type="button" onClick={useGPS} disabled={gpsLoading} className="h-10 px-4 bg-surface-container border border-outline-variant text-[0.875rem] text-on-surface rounded hover:bg-surface-container-high transition-colors flex items-center justify-center">
+                  <button type="button" onClick={useGPS} disabled={gpsLoading} title="Use current GPS" className="h-10 px-4 bg-surface-container border border-outline-variant text-[0.875rem] text-on-surface rounded hover:bg-surface-container-high transition-colors flex items-center justify-center">
                     {gpsLoading ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
                   </button>
-                  <button type="submit" disabled={locationMutation.isPending || !lat || !lng} className="flex-1 sm:flex-none h-10 px-6 bg-primary text-on-primary text-[0.875rem] font-medium rounded hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 min-w-[160px] disabled:opacity-50">
+                  <button type="submit" disabled={locationMutation.isPending || (!lat && !address)} className="flex-1 sm:flex-none h-10 px-6 bg-primary text-on-primary text-[0.875rem] font-medium rounded hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 min-w-[160px] disabled:opacity-50">
                     {locationMutation.isPending ? <><Loader2 size={14} className="animate-spin" /> Transmitting</>
                      : broadcastSuccess ? <><CheckCircle size={14} /> Transmitted</>
                      : 'Broadcast location'}

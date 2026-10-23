@@ -22,10 +22,8 @@ from app.models import User, Vehicle
 
 router = APIRouter(prefix="/api/v1/drivers", tags=["drivers"])
 
-_RATE_LIMIT_SECONDS = 5
-# Person 5: the client sends every 5 s, so allow ~0.5 s of network jitter
-# instead of answering on-time pings with spurious 429s.
-_RATE_LIMIT_GRACE_SECONDS = 0.5
+_RATE_LIMIT_SECONDS = 0.5
+_RATE_LIMIT_GRACE_SECONDS = 0.0
 _clock = time.monotonic
 _last_update_at: dict[str, float] = {}  # driver user_id -> last accepted update (monotonic s)
 

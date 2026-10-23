@@ -31,14 +31,23 @@ export function isStraightLineEstimate(provider: string | undefined): boolean {
   return provider === 'heuristic';
 }
 
-function FitBounds({ points }: { points: LatLngTuple[] }) {
+function FitBounds({ points, driver }: { points: LatLngTuple[]; driver: LatLngTuple | null }) {
   const map = useMap();
   const key = points.map((p) => p.join(',')).join(';');
   useEffect(() => {
-    if (points.length === 1) map.setView(points[0], 15);
-    if (points.length > 1) map.fitBounds(L.latLngBounds(points), { padding: [32, 32] });
-    // Refit only when the set of points changes (key), not on every render.
-  }, [key, map]);
+    map.invalidateSize();
+    try {
+      if (points.length > 1) {
+        map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 16, animate: true });
+      } else if (points.length === 1) {
+        map.setView(points[0], 15, { animate: true });
+      } else if (driver) {
+        map.setView(driver, 15, { animate: true });
+      }
+    } catch (e) {
+      console.warn('Map fit bounds failed:', e);
+    }
+  }, [key, driver?.[0], driver?.[1], map]);
   return null;
 }
 
@@ -55,6 +64,7 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
   const [osrmPolyline, setOsrmPolyline] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     async function fetchRoute() {
       if (!driver || !dropoff) return;
       try {
@@ -66,7 +76,7 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
         }
         
         const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full`);
-        if (res.ok) {
+        if (!cancelled && res.ok) {
           const data = await res.json();
           if (data.routes && data.routes.length > 0) {
             setOsrmPolyline(data.routes[0].geometry);
@@ -76,11 +86,30 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
         console.error('Failed to fetch OSRM route:', error);
       }
     }
+    setOsrmPolyline(null);
     fetchRoute();
-  }, [driver?.join(','), pickup?.join(','), dropoff?.join(','), job.next_stop]);
+    return () => {
+      cancelled = true;
+    };
+  }, [driver?.[0], driver?.[1], pickup?.[0], pickup?.[1], dropoff?.[0], dropoff?.[1], job.next_stop]);
 
-  // Use the new OSRM polyline, or fallback to the backend's route line
-  const line = useMemo(() => safeDecodePolyline(osrmPolyline || route?.geometry), [osrmPolyline, route?.geometry]);
+  // Use the new OSRM polyline, or fallback to the backend's route line, or a direct line
+  const line = useMemo(() => {
+    if (osrmPolyline) {
+      const decoded = safeDecodePolyline(osrmPolyline);
+      if (decoded.length > 1) return decoded;
+    }
+    if (route?.geometry) {
+      const decoded = safeDecodePolyline(route.geometry);
+      if (decoded.length > 1) return decoded;
+    }
+    const fallback: LatLngTuple[] = [];
+    if (driver) fallback.push(driver);
+    if (job.next_stop === 'PICKUP' && pickup) fallback.push(pickup);
+    if (dropoff) fallback.push(dropoff);
+    return fallback;
+  }, [osrmPolyline, route?.geometry, driver?.[0], driver?.[1], pickup?.[0], pickup?.[1], dropoff?.[0], dropoff?.[1], job.next_stop]);
+
   const dashed = !osrmPolyline && isStraightLineEstimate(route?.provider);
 
   const fitPoints = [driver, job.next_stop === 'PICKUP' ? pickup : dropoff].filter(Boolean) as LatLngTuple[];
@@ -93,7 +122,7 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
       url += `&waypoints=${pickup[0]},${pickup[1]}`;
     }
     return url;
-  }, [driver, pickup, dropoff, job.next_stop]);
+  }, [driver?.[0], driver?.[1], pickup?.[0], pickup?.[1], dropoff?.[0], dropoff?.[1], job.next_stop]);
 
   return (
     <div className="relative h-72 sm:h-96 w-full rounded-sm overflow-hidden border border-[var(--border-strong)]">
@@ -102,7 +131,7 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
-        <FitBounds points={fitPoints} />
+        <FitBounds points={fitPoints} driver={driver} />
         {pickup && (
           <Marker position={pickup}>
             <Popup>

@@ -583,7 +583,19 @@ async def record_driver_location(
         raise api_error(422, "INVALID_LOCATION", "latitude must be -90..90 and longitude -180..180.")
     vehicle = await vehicle_for_driver(db, driver_id)
     if vehicle is None:
-        raise api_error(404, "DRIVER_PROFILE_NOT_FOUND", "No vehicle profile for this driver.")
+        driver_user = await db.get(User, driver_id)
+        if driver_user:
+            vehicle = Vehicle(
+                id=new_id("veh"),
+                driver_id=driver_id,
+                capacity_kg=100.0,
+                current_location=format_latlng(location),
+                availability_status=AVAILABLE,
+            )
+            db.add(vehicle)
+            await db.flush()
+        else:
+            raise api_error(404, "DRIVER_PROFILE_NOT_FOUND", "No vehicle profile for this driver.")
     had_location = parse_latlng(vehicle.current_location) is not None
 
     events: list[Event] = []
