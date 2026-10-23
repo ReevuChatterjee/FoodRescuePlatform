@@ -134,10 +134,12 @@ export function DriverDashboard() {
   };
 
   const setNearPickup = () => {
-    if (!job?.pickup) return;
+    if (!job?.pickup || job.pickup.latitude == null || job.pickup.longitude == null) return;
+    const lat = job.pickup.latitude;
+    const lng = job.pickup.longitude;
     const point = {
-      latitude: Number((job.pickup.latitude - 0.008).toFixed(6)),
-      longitude: Number((job.pickup.longitude - 0.008).toFixed(6)),
+      latitude: Number((lat - 0.008).toFixed(6)),
+      longitude: Number((lng - 0.008).toFixed(6)),
     };
     setLat(point.latitude.toString());
     setLng(point.longitude.toString());
@@ -292,7 +294,7 @@ export function DriverDashboard() {
                 </div>
                 
                 <div className="flex w-full sm:w-auto gap-3">
-                  {job?.pickup && (
+                  {job?.pickup && job.pickup.latitude != null && job.pickup.longitude != null && (
                     <button
                       type="button"
                       onClick={setNearPickup}
