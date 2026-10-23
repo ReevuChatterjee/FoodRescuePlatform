@@ -184,3 +184,78 @@ async def debug_match(approve_all: bool = False, match_latest: bool = False):
             }
         except Exception as e:
             return {"error": str(e), "traceback": traceback.format_exc(), "all_ngos_in_db": all_ngos_summary}
+
+
+@router.get("/debug_dispatch")
+async def debug_dispatch(auto_assign: bool = False):
+    from app.core.database import AsyncSessionLocal
+    from sqlalchemy import select
+    from app.models import Donation, Vehicle, Delivery, User
+    from app.dispatch.service import dispatch_donation
+    from app.core.envelope import iso_z
+    import traceback
+
+    async with AsyncSessionLocal() as db:
+        try:
+            # Query all vehicles & drivers
+            veh_res = await db.execute(select(Vehicle))
+            vehicles = list(veh_res.scalars().all())
+            drivers_info = []
+            for v in vehicles:
+                u_res = await db.execute(select(User).where(User.id == v.driver_id))
+                u = u_res.scalar_one_or_none()
+                drivers_info.append({
+                    "driver_id": v.driver_id,
+                    "driver_name": u.name if u else None,
+                    "driver_email": u.email if u else None,
+                    "vehicle_id": v.id,
+                    "capacity_kg": v.capacity_kg,
+                    "current_location": v.current_location,
+                    "availability_status": v.availability_status,
+                })
+
+            # Query recent deliveries
+            deliv_res = await db.execute(select(Delivery).order_by(Delivery.pickup_time.desc()).limit(10))
+            deliveries = [
+                {
+                    "id": d.id,
+                    "donation_id": d.donation_id,
+                    "driver_id": d.driver_id,
+                    "ngo_id": d.ngo_id,
+                    "status": d.status.value,
+                    "pickup_time": iso_z(d.pickup_time) if d.pickup_time else None,
+                }
+                for d in deliv_res.scalars().all()
+            ]
+
+            # Query latest donation
+            don_res = await db.execute(select(Donation).order_by(Donation.created_at.desc()).limit(1))
+            donation = don_res.scalar_one_or_none()
+
+            dispatch_result = None
+            if auto_assign and donation and donation.matched_ngo_id:
+                # Ensure at least one vehicle is marked AVAILABLE with valid location & capacity
+                for v in vehicles:
+                    v.availability_status = "AVAILABLE"
+                    if not v.current_location or "," not in v.current_location:
+                        v.current_location = "28.6273,77.2190"
+                    if not v.capacity_kg or v.capacity_kg <= 0:
+                        v.capacity_kg = 100.0
+                await db.commit()
+
+                # Dispatch
+                outcome = await dispatch_donation(db, donation.id)
+                dispatch_result = outcome.to_dict() if outcome else None
+
+            return {
+                "latest_donation": {
+                    "id": donation.id if donation else None,
+                    "status": donation.status.value if donation and donation.status else None,
+                    "matched_ngo_id": donation.matched_ngo_id if donation else None,
+                } if donation else None,
+                "all_drivers_in_db": drivers_info,
+                "recent_deliveries": deliveries,
+                "dispatch_result": dispatch_result,
+            }
+        except Exception as e:
+            return {"error": str(e), "traceback": traceback.format_exc()}

@@ -263,9 +263,14 @@ async def accept_match(
 
     await db.commit()
     await db.refresh(donation)
-    # Person 5: dispatch hook. Runs after the response in its own session:
-    # find a driver, assign, route (or leave PENDING until one frees up).
-    background_tasks.add_task(run_dispatch, donation.id)
+    # Dispatch hook — inline dispatch avoids Vercel serverless background_tasks cancellation
+    try:
+        from app.dispatch.service import dispatch_donation
+        await dispatch_donation(db, donation.id)
+        await db.refresh(donation)
+    except Exception as _e:
+        import logging as _log
+        _log.getLogger(__name__).warning("Inline dispatch on accept failed: %s", _e)
 
     await manager.broadcast("donations", {
         "event": "donation.accepted",

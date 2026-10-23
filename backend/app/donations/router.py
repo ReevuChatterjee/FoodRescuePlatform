@@ -182,6 +182,17 @@ async def create_donation(
                     "donation_id": donation.id,
                     "ngo_id": best.ngo_id,
                 })
+
+                # Auto-dispatch driver right away so driver immediately gets the delivery
+                try:
+                    from app.dispatch.service import dispatch_donation
+                    outcome = await dispatch_donation(db, donation.id)
+                    if outcome and outcome.delivery:
+                        matched_driver_id = outcome.delivery.get("driver_id")
+                        assigned_eta = outcome.eta_to_pickup_minutes
+                except Exception as _e:
+                    import logging as _log
+                    _log.getLogger(__name__).warning("Auto-dispatch on creation failed: %s", _e)
         else:
             # Donation couldn't be re-loaded (e.g. corrupt location) —
             # leave as AVAILABLE so the cron can retry tonight.
@@ -204,8 +215,8 @@ async def create_donation(
         "id": donation.id,
         "status": final_status,
         "matched_ngo_id": matched_ngo_id,
-        "driver_id": None,
-        "eta_minutes": None,
+        "driver_id": matched_driver_id if 'matched_driver_id' in locals() else None,
+        "eta_minutes": assigned_eta if 'assigned_eta' in locals() else None,
         "created_at": iso_z(donation.created_at),
     })
 

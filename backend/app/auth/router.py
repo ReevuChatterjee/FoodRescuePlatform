@@ -114,13 +114,15 @@ async def register(body: RegisterRequest, db: Annotated[AsyncSession, Depends(ge
         verification_status = "PENDING"
 
     elif body.role == "DRIVER":
+        loc = _location_str(body.latitude, body.longitude)
         db.add(Vehicle(
             id=new_id("veh"),
             driver_id=user_id,
-            capacity_kg=body.vehicle_capacity_kg or 0.0,
-            current_location="",
-            availability_status="OFFLINE",
+            capacity_kg=body.vehicle_capacity_kg if body.vehicle_capacity_kg and body.vehicle_capacity_kg > 0 else 100.0,
+            current_location=loc if loc else "28.6273,77.2190",
+            availability_status="AVAILABLE",
         ))
+        verification_status = "APPROVED"
 
     await db.commit()
 
