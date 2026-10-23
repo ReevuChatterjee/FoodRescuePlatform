@@ -151,7 +151,7 @@ async def get_candidates(
         ngos=ngos,
         routes=routes,
         weights=weights,
-        reference_time=datetime.now(IST),
+        reference_time=max(datetime.now(IST), donation.available_from),
         excluded_ngo_ids=excluded if excluded else None,
     )
 
@@ -359,7 +359,7 @@ async def reject_match(
         routes=routes,
         weights=weights,
         excluded_ngo_ids=excluded,
-        reference_time=datetime.now(IST),
+        reference_time=max(datetime.now(IST), engine_donation.available_from),
     )
 
     # Update donation status

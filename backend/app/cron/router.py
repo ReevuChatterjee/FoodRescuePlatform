@@ -84,7 +84,7 @@ async def run_rematch_cron(db: Annotated[AsyncSession, Depends(get_db)]):
                 ngos=ngos,
                 routes=routes,
                 weights=weights,
-                reference_time=datetime.now(IST),
+                reference_time=max(datetime.now(IST), engine_donation.available_from),
                 excluded_ngo_ids=excluded if excluded else None,
             )
 

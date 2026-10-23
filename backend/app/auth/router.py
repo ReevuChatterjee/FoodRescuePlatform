@@ -108,7 +108,8 @@ async def register(body: RegisterRequest, db: Annotated[AsyncSession, Depends(ge
             operating_start=body.operating_start or "08:00",
             operating_end=body.operating_end or "20:00",
         ))
-        for category in (body.accepted_categories or []):
+        categories = body.accepted_categories if body.accepted_categories else ["COOKED", "PACKAGED", "PRODUCE", "BAKERY", "DAIRY", "OTHER"]
+        for category in categories:
             db.add(NGOFoodCategory(ngo_id=ngo_id, food_category=category, accepted=True))
         verification_status = "PENDING"
 

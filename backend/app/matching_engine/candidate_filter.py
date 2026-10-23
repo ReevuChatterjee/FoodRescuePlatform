@@ -55,9 +55,19 @@ def _is_within_operating_hours(ngo: NGOCandidate, at: datetime) -> bool:
     start = _parse_hhmm(ngo.operating_hours.start)
     end = _parse_hhmm(ngo.operating_hours.end)
     
-    # reference_time (at) is already passed in the correct target timezone (IST)
-    # by the service layer, so we can directly extract its time.
-    t = at.time()
+    # 24/7 operating hours shortcut
+    if ngo.operating_hours.start in ("00:00", "0:00") and ngo.operating_hours.end in ("23:59", "24:00", "00:00"):
+        return True
+
+    # If datetime is tz-aware, convert to IST to compare with local business hours
+    if at.tzinfo is not None:
+        try:
+            from app.core.time import IST
+            t = at.astimezone(IST).time()
+        except Exception:
+            t = at.time()
+    else:
+        t = at.time()
     
     if start <= end:
         return start <= t <= end
