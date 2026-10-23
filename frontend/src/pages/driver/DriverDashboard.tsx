@@ -34,7 +34,18 @@ export function DriverDashboard() {
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [address, setAddress] = useState('');
-  const [manualPos, setManualPos] = useState<GeoPoint | null>(null);
+  const [manualPos, setManualPos] = useState<GeoPoint | null>(() => {
+    try {
+      const raw = localStorage.getItem('replate_driver_override_location');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.latitude === 'number' && typeof parsed?.longitude === 'number') {
+          return { latitude: parsed.latitude, longitude: parsed.longitude };
+        }
+      }
+    } catch {}
+    return null;
+  });
   const [gpsLoading, setGpsLoading] = useState(false);
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
   const [sopOpen, setSopOpen] = useState(false);
@@ -110,13 +121,34 @@ export function DriverDashboard() {
     }
 
     if (isNaN(latitude) || isNaN(longitude)) {
-      showToast('Enter valid coordinates (e.g. 28.6273, 77.2190) or select an address.', 'error');
+      showToast('Enter valid coordinates (e.g. 12.9716, 77.5946) or select an address.', 'error');
       return;
     }
     const point = { latitude, longitude };
+    try {
+      localStorage.setItem('replate_driver_override_location', JSON.stringify(point));
+    } catch {}
     setManualPos(point);
     location.setOverridePosition(point);
     locationMutation.mutate(point);
+  };
+
+  const setNearPickup = () => {
+    if (!job?.pickup) return;
+    const point = {
+      latitude: Number((job.pickup.latitude - 0.008).toFixed(6)),
+      longitude: Number((job.pickup.longitude - 0.008).toFixed(6)),
+    };
+    setLat(point.latitude.toString());
+    setLng(point.longitude.toString());
+    setAddress('Delivery Area');
+    try {
+      localStorage.setItem('replate_driver_override_location', JSON.stringify(point));
+    } catch {}
+    setManualPos(point);
+    location.setOverridePosition(point);
+    locationMutation.mutate(point);
+    showToast('Position set to delivery area.', 'success');
   };
 
   const toggleDuty = () => {
@@ -260,6 +292,16 @@ export function DriverDashboard() {
                 </div>
                 
                 <div className="flex w-full sm:w-auto gap-3">
+                  {job?.pickup && (
+                    <button
+                      type="button"
+                      onClick={setNearPickup}
+                      title="Set location in delivery city"
+                      className="h-10 px-3 bg-surface-container border border-outline-variant text-[0.8125rem] text-on-surface rounded hover:bg-surface-container-high transition-colors whitespace-nowrap"
+                    >
+                      Snap to City
+                    </button>
+                  )}
                   <button type="button" onClick={useGPS} disabled={gpsLoading} title="Use current GPS" className="h-10 px-4 bg-surface-container border border-outline-variant text-[0.875rem] text-on-surface rounded hover:bg-surface-container-high transition-colors flex items-center justify-center">
                     {gpsLoading ? <Loader2 size={16} className="animate-spin" /> : <Navigation size={16} />}
                   </button>

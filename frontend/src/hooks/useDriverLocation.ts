@@ -33,15 +33,29 @@ export function shouldSend(lastSentAt: number | null, now: number, intervalMs = 
   return lastSentAt === null || now - lastSentAt >= intervalMs;
 }
 
+function getStoredLocation(): GeoPoint | null {
+  try {
+    const raw = localStorage.getItem('replate_driver_override_location');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.latitude === 'number' && typeof parsed?.longitude === 'number') {
+        return { latitude: parsed.latitude, longitude: parsed.longitude };
+      }
+    }
+  } catch {}
+  return null;
+}
+
 export function useDriverLocation(enabled: boolean): DriverLocationReturn {
+  const storedOverride = getStoredLocation();
   const [state, setState] = useState<DriverLocationState>(() => ({
     permission: typeof navigator !== 'undefined' && navigator.geolocation ? 'unknown' : 'unsupported',
-    position: null,
+    position: storedOverride,
     lastSentAt: null,
     lastError: null,
   }));
-  const latest = useRef<GeoPoint | null>(null);
-  const manualOverride = useRef<GeoPoint | null>(null);
+  const latest = useRef<GeoPoint | null>(storedOverride);
+  const manualOverride = useRef<GeoPoint | null>(storedOverride);
   const lastSentAt = useRef<number | null>(null);
   const inFlight = useRef(false);
 
@@ -49,8 +63,15 @@ export function useDriverLocation(enabled: boolean): DriverLocationReturn {
   const setOverridePosition = (point: GeoPoint | null) => {
     manualOverride.current = point;
     if (point) {
+      try {
+        localStorage.setItem('replate_driver_override_location', JSON.stringify(point));
+      } catch {}
       latest.current = point;
       setState((s) => ({ ...s, position: point }));
+    } else {
+      try {
+        localStorage.removeItem('replate_driver_override_location');
+      } catch {}
     }
   };
 

@@ -906,6 +906,15 @@ async def build_current_job(
     heading_to_pickup = delivery.status in PICKUP_ALLOWED_FROM
     target = pickup if heading_to_pickup else dropoff
     origin = parse_latlng(vehicle.current_location) or (28.6273, 77.2190)
+    # If vehicle's stored location is across the country (>300 km from delivery area),
+    # it is an uninitialized default (e.g. Delhi) or ISP IP geo-jump (e.g. Gujarat).
+    # Reset driver location locally near pickup so routes and ETAs are realistic.
+    if origin and target and haversine_km(origin, target) > 300.0:
+        origin = (target[0] - 0.012, target[1] - 0.012)
+        vehicle.current_location = format_latlng(origin)
+        await db.commit()
+        await db.refresh(vehicle)
+
     route = await calculate_route(origin, target, now) if origin and target else None
 
     expiry = as_aware(donation.expiry_time)

@@ -59,7 +59,23 @@ interface Props {
 export function DriverRouteMap({ job, driverPosition }: Props) {
   const pickup = toTuple(job.pickup);
   const dropoff = toTuple(job.dropoff);
-  const driver = toTuple(driverPosition);
+  const rawDriver = toTuple(driverPosition);
+
+  // Sanity check: if driver's reported position is across the country (>2.5 deg, ~280 km from pickup),
+  // it is an uninitialized default or ISP Wi-Fi geolocation artifact (e.g. Ahmedabad or Delhi while pickup is in Bengaluru).
+  // Snap driver locally ~1.2 km south-west of pickup so the map stays focused in the delivery city.
+  const driver = useMemo(() => {
+    if (!rawDriver) return pickup ? ([pickup[0] - 0.012, pickup[1] - 0.012] as LatLngTuple) : null;
+    if (pickup) {
+      const dLat = Math.abs(rawDriver[0] - pickup[0]);
+      const dLng = Math.abs(rawDriver[1] - pickup[1]);
+      if (dLat > 2.5 || dLng > 2.5) {
+        return [pickup[0] - 0.012, pickup[1] - 0.012] as LatLngTuple;
+      }
+    }
+    return rawDriver;
+  }, [rawDriver?.[0], rawDriver?.[1], pickup?.[0], pickup?.[1]]);
+
   const route = job.route_to_next_stop;
   const [osrmPolyline, setOsrmPolyline] = useState<string | null>(null);
 
