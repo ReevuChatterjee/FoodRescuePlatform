@@ -1,0 +1,115 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 8
+skinparam shadowing false
+
+<style>
+activityDiagram {
+  BackgroundColor #F1F8E9
+  BorderColor #33691E
+  FontColor #1B5E20
+}
+diamond {
+  BackgroundColor #FFFDE7
+  BorderColor #F57F17
+}
+</style>
+
+title **Food Rescue Platform (Replate) - Algorithmic Matching Decision Flow**
+
+start
+
+:Donation Created by Donor;
+:Extract Pickup Coordinates, Food Category, Quantity (kg), and Expiry Time;
+
+:Query Database for all Approved NGOs;
+note right
+  verification_status = 'APPROVED'
+  Exclude any NGOs in 'excluded_ngo_ids' (previously rejected)
+end note
+
+partition "Candidate Hard-Filtering" {
+  :Initialize eligible_candidates = [];
+  
+  repeat
+    :Take Next Candidate NGO;
+    
+    if (Does NGO accept this food_category?) then (No)
+      :Discard NGO;
+    else (Yes)
+      if (Is current IST time within NGO operating_hours?) then (No)
+        :Discard NGO;
+      else (Yes)
+        if (NGO available_capacity_kg >= donation.quantity_kg?) then (No)
+          :Discard NGO;
+        else (Yes)
+          :Calculate Haversine Distance between Donor & NGO;
+          if (Distance <= MAX_RADIUS_KM (e.g. 25km)?) then (Yes)
+            :Add NGO to eligible_candidates;
+          else (No)
+            :Discard NGO (Out of radius);
+          endif
+        endif
+      endif
+    endif
+  repeat while (More NGOs in database?) is (Yes)
+  -> No;
+}
+
+if (eligible_candidates is empty?) then (Yes)
+  :Set Donation Status to 'NO_MATCH_FOUND';
+  :Emit alert to Operations & Queue for radius expansion retry;
+  stop
+else (No)
+  partition "Multi-Factor Composite Scoring" {
+    :Fetch Active Weights for (City, Food Category) from MatchingWeightsHistory;
+    
+    repeat
+      :Take Candidate NGO from eligible_candidates;
+      :Compute S_capacity = min(1.0, available_capacity / (2 * quantity));
+      :Compute S_shelflife = (expiry_time - now - transit_time) / total_shelf_life;
+      :Compute S_transit = max(0.0, 1.0 - (transit_time_min / 60.0));
+      :Compute S_demand = urgency_weight(ngo_demand.priority);
+      :Compute S_route = 1.0 / (1.0 + route_deviation);
+      
+      :Calculate Total Composite Score =
+      (w_cap * S_capacity) +
+      (w_shelf * S_shelflife) +
+      (w_transit * S_transit) +
+      (w_demand * S_demand) +
+      (w_route * S_route);
+    repeat while (More eligible candidates?) is (Yes)
+    -> No;
+    
+    :Sort candidates in descending order of Total Score;
+    :Select Candidate with Highest Total Score;
+  }
+
+  :UPDATE Donation:
+  status = 'MATCHED'
+  matched_ngo_id = top_candidate.id
+  match_score = top_candidate.score;
+  
+  :Transmit Match Offer to Matched NGO via WebSocket & Push Notification;
+  :Start 15-Minute Expiry Countdown Timer;
+  
+  if (NGO Response within 15 mins?) then (Accepted)
+    :UPDATE Donation status = 'ACCEPTED';
+    :Reserve NGO Capacity;
+    :Trigger Driver Dispatch Process;
+    stop
+  else (Rejected or Expired)
+    if (Action was explicit rejection?) then (Yes)
+      :Record entry in donation_rejections table;
+      :Add NGO ID to excluded_ngo_ids;
+    else (15 min expired)
+      :Flag match offer as expired;
+    endif
+    :Trigger automated rematch with remaining eligible NGOs;
+    detach
+  endif
+endif
+
+@enduml

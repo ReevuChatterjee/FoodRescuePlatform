@@ -1,0 +1,126 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 6
+skinparam shadowing false
+
+<style>
+component {
+  BackgroundColor #E8F5E9
+  BorderColor #2E7D32
+  FontColor #1B5E20
+}
+interface {
+  BackgroundColor #E1F5FE
+  BorderColor #0288D1
+}
+database {
+  BackgroundColor #EDE7F6
+  BorderColor #512DA8
+  FontColor #311B92
+}
+node {
+  BackgroundColor #FAFAFA
+  BorderColor #757575
+}
+</style>
+
+title **Food Rescue Platform (Replate) - System Component Architecture**
+
+node "Frontend Single Page Application (React / Vite / TypeScript)" as FE {
+  component [Donor Portal] as FE_Donor
+  component [NGO Portal] as FE_NGO
+  component [Driver Mobile/Web] as FE_Driver
+  component [Admin Console] as FE_Admin
+  component [State Store (Zustand)] as FE_Store
+  component [Map Rendering (Leaflet / OSM)] as FE_Map
+  component [HTTP Client (Axios / React Query)] as FE_API_Client
+  component [WebSocket Client] as FE_WS_Client
+}
+
+node "Backend Application Layer (FastAPI / Python 3.12)" as BE {
+  component [API Gateway & CORS Middleware] as BE_Gateway
+  component [Auth & RBAC Module (JWT)] as BE_Auth
+  component [Donation Service] as BE_Donation
+  component [NGO & Demand Service] as BE_NGO
+  component [Matching Engine Core] as BE_Matcher
+  component [Candidate Filter & Spatial Pruning] as BE_Filter
+  component [Scoring & Weight Tuner] as BE_Scorer
+  component [Dispatch Service & Allocator] as BE_Dispatch
+  component [Routing Engine Integration] as BE_Routing
+  component [WebSocket Broker] as BE_WS_Broker
+  component [Analytics & Carbon Accounting] as BE_Analytics
+  component [Audit Logger (SHA-256)] as BE_Audit
+  component [Cron & Lifecycle Cleanup] as BE_Cron
+}
+
+node "Data & Persistence Tier" as DATA {
+  database "PostgreSQL 15+ (with PostGIS Extension)" as DB {
+    [users & auth]
+    [donors & ngos]
+    [donations & food items]
+    [deliveries & vehicles]
+    [handover_records]
+    [matching_weights_history]
+    [audit_logs]
+  }
+}
+
+node "External Cloud & Geospatial Services" as EXT {
+  component [OSRM Routing Server] as EXT_OSRM
+  component [Nominatim OpenStreetMap Geocoder] as EXT_Nominatim
+  component [Supabase Document Storage] as EXT_Supabase
+  component [Vercel Cron Trigger] as EXT_Cron
+}
+
+' Frontend Interconnections
+FE_Donor --> FE_Store
+FE_NGO --> FE_Store
+FE_Driver --> FE_Store
+FE_Admin --> FE_Store
+FE_Driver --> FE_Map
+FE_Store --> FE_API_Client
+FE_Store --> FE_WS_Client
+
+' Client to Backend
+FE_API_Client ..> BE_Gateway : HTTPS / REST JSON
+FE_WS_Client ..> BE_WS_Broker : WSS (WebSockets)
+
+' Gateway distribution
+BE_Gateway --> BE_Auth
+BE_Gateway --> BE_Donation
+BE_Gateway --> BE_NGO
+BE_Gateway --> BE_Matcher
+BE_Gateway --> BE_Dispatch
+BE_Gateway --> BE_Routing
+BE_Gateway --> BE_Analytics
+BE_Gateway --> BE_Cron
+
+' Internal Backend Collaboration
+BE_Donation --> BE_Matcher : Trigger auto-match
+BE_Matcher --> BE_Filter
+BE_Matcher --> BE_Scorer
+BE_Matcher --> BE_Dispatch : Trigger on NGO accept
+BE_Dispatch --> BE_Routing : Compute route & ETA
+BE_Dispatch --> BE_WS_Broker : Broadcast live driver position
+BE_Matcher --> BE_WS_Broker : Broadcast offers & status
+BE_Donation --> BE_Audit : Log state mutations
+BE_Dispatch --> BE_Audit : Log delivery handovers
+
+' Backend to Data Tier
+BE_Auth --> DB : SQL (SQLAlchemy / Async)
+BE_Donation --> DB : PostGIS / Spatial queries
+BE_NGO --> DB : Queries
+BE_Matcher --> DB : Read candidates & weights
+BE_Dispatch --> DB : Driver locations & state
+BE_Analytics --> DB : Aggregate metrics
+BE_Audit --> DB : Write-only audit hashes
+
+' External Connections
+BE_Routing ..> EXT_OSRM : REST /route/v1/driving
+BE_Donation ..> EXT_Nominatim : Geocoding / Address lookup
+BE_NGO ..> EXT_Supabase : FSSAI Document upload
+EXT_Cron ..> BE_Cron : Scheduled trigger (every 5 min)
+
+@enduml

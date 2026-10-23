@@ -1,0 +1,131 @@
+@startuml
+!theme plain
+autonumber
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 6
+skinparam shadowing false
+
+<style>
+sequenceDiagram {
+  participant {
+    BackgroundColor #F5F5F5
+    BorderColor #424242
+    FontColor #212121
+  }
+  actor {
+    BackgroundColor #E1F5FE
+    BorderColor #0288D1
+    FontColor #01579B
+  }
+  arrow {
+    LineColor #1565C0
+    FontColor #0D47A1
+  }
+  box {
+    BackgroundColor #FAFAFA
+    BorderColor #BDBDBD
+  }
+}
+</style>
+
+title **Food Rescue Platform (Replate) - End-to-End Donation & Delivery Lifecycle**
+
+actor "Donor" as Donor
+box "Replate Backend Platform" #F8F9FA
+  participant "API Gateway / FastAPI" as API
+  participant "Matching Engine" as Matcher
+  participant "Dispatch Service" as Dispatch
+  participant "Routing (OSRM)" as Routing
+  participant "WebSocket Broker" as WS
+  database "PostgreSQL / PostGIS" as DB
+end box
+actor "NGO (Recipient)" as NGO
+actor "Volunteer Driver" as Driver
+
+== Phase 1: Donation Creation & Candidate Evaluation ==
+Donor -> API: POST /donations (Food details, Qty, Expiry, Pickup Lat/Lng)
+activate API
+API -> DB: INSERT into donations (Status: AVAILABLE)
+API -> Matcher: trigger_matching(donation_id)
+activate Matcher
+
+Matcher -> DB: Query eligible NGOs (Within radius, operating hours, capacity >= qty, food category allowed)
+DB --> Matcher: List<Eligible NGO candidates>
+
+Matcher -> DB: Fetch active weights from matching_weights_history(city, category)
+DB --> Matcher: Weights (w_cap, w_shelf, w_transit, w_demand, w_route)
+
+Matcher -> Matcher: Compute composite match score for each NGO
+Matcher -> DB: UPDATE donation (Status: MATCHED, matched_ngo_id, match_score)
+Matcher -> WS: Broadcast OFFER to matched NGO
+deactivate Matcher
+
+WS --> NGO: Real-time notification: "New Food Offer Available"
+API --> Donor: 201 Created (Donation ID, Status: MATCHED)
+deactivate API
+
+== Phase 2: NGO Review & Acceptance ==
+NGO -> API: POST /matching/{donation_id}/accept
+activate API
+API -> DB: UPDATE donation (Status: ACCEPTED)
+API -> DB: Reserve available_capacity_kg on NGO
+API -> Dispatch: trigger_dispatch(donation_id, ngo_id)
+activate Dispatch
+
+== Phase 3: Driver Selection & Job Assignment ==
+Dispatch -> DB: Find available drivers (status = AVAILABLE, capacity >= qty)
+DB --> Dispatch: List<Candidate Drivers with locations>
+
+Dispatch -> Dispatch: Rank drivers by distance to donation pickup
+Dispatch -> DB: INSERT into deliveries (Status: DRIVER_ASSIGNED, driver_id, donation_id, ngo_id)
+Dispatch -> DB: UPDATE vehicle (availability_status = 'BUSY')
+Dispatch -> DB: UPDATE donation (Status: DRIVER_ASSIGNED)
+
+Dispatch -> WS: Notify Driver: "Delivery Job Assigned"
+deactivate Dispatch
+API --> NGO: 200 OK (Match Confirmed, Delivery Initiated)
+deactivate API
+
+WS --> Driver: Delivery assignment payload (Pickup & Dropoff stops)
+Driver -> API: POST /deliveries/{id}/accept
+API --> Driver: 200 OK
+
+== Phase 4: Route Calculation & Pickup Handover ==
+Driver -> API: POST /deliveries/{id}/start-pickup
+activate API
+API -> Routing: calculate_route(driver_loc, pickup_loc)
+Routing --> API: Polyline coordinates, Distance km, Duration min
+API -> DB: UPDATE deliveries (Status: PICKUP_STARTED)
+API -> WS: Broadcast driver en route to Donor & NGO
+API --> Driver: 200 OK with route geometry
+deactivate API
+
+Driver -> Donor: Arrives at Pickup Location
+Driver -> API: POST /deliveries/{id}/pickup-complete (Handover confirmation, actual qty)
+activate API
+API -> DB: INSERT into handover_records (Donor confirmation, qty, timestamp)
+API -> DB: UPDATE deliveries (Status: PICKED_UP)
+API -> DB: UPDATE donation (Status: PICKED_UP)
+API -> WS: Broadcast "Food Picked Up"
+API --> Driver: 200 OK (Proceed to NGO)
+deactivate API
+
+== Phase 5: Transit & Dropoff Handover ==
+Driver -> API: POST /deliveries/{id}/start-transit
+API -> Routing: calculate_route(pickup_loc, ngo_loc)
+API -> DB: UPDATE deliveries (Status: IN_TRANSIT)
+
+Driver -> NGO: Arrives at Recipient Facility
+Driver -> API: POST /deliveries/{id}/dropoff-complete (Recipient signature, temp check)
+activate API
+API -> DB: UPDATE handover_records (NGO confirmation, recipient signature)
+API -> DB: UPDATE deliveries (Status: DELIVERED, actual_delivery_time)
+API -> DB: UPDATE donation (Status: DELIVERED)
+API -> DB: UPDATE vehicle (availability_status = 'AVAILABLE')
+API -> DB: Record audit log with SHA-256 hash
+API -> WS: Broadcast "Delivery Completed" to Donor, NGO, Admin
+API --> Driver: 200 OK (Job Completed)
+deactivate API
+
+@enduml

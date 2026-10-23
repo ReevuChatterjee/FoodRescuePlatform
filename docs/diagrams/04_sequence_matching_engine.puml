@@ -1,0 +1,104 @@
+@startuml
+!theme plain
+autonumber
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 6
+skinparam shadowing false
+
+<style>
+sequenceDiagram {
+  participant {
+    BackgroundColor #F1F8E9
+    BorderColor #558B2F
+  }
+}
+</style>
+
+title **Food Rescue Platform (Replate) - Algorithmic Matching & Scoring Engine**
+
+participant "API / Worker" as Client
+box "Matching Engine Subsystem" #FAFAFA
+  participant "Matching Router" as Router
+  participant "Candidate Filter" as Filter
+  participant "Geo Calculator" as Geo
+  participant "Scoring Engine" as Scorer
+  participant "Weights Manager" as Weights
+end box
+database "Database" as DB
+participant "Notification Broker" as Notif
+
+Client -> Router: POST /matching/{donation_id}/find-candidates
+activate Router
+
+Router -> DB: Fetch Donation Details\n(id, category, quantity, pickup_loc, expiry)
+DB --> Router: Donation Record
+
+Router -> Filter: get_candidates(donation, excluded_ngos)
+activate Filter
+
+Filter -> DB: Query Approved NGOs\n(verification_status = 'APPROVED')
+DB --> Filter: All Active NGOs
+
+loop For Each NGO Candidate
+  Filter -> DB: Check food_category acceptance
+  Filter -> Filter: Check Operating Hours vs IST Current Time
+  Filter -> Filter: Check available_capacity_kg >= donation.quantity_kg
+  Filter -> Geo: haversine_distance(pickup_loc, ngo.location)
+  Geo --> Filter: distance_km
+  Filter -> Filter: Guard distance <= MAX_RADIUS_KM (e.g. 25km)
+end
+
+Filter --> Router: Filtered List<Candidate NGOs>
+deactivate Filter
+
+Router -> Weights: get_active_weights(city, food_category)
+activate Weights
+Weights -> DB: SELECT from matching_weights_history\nWHERE city=? AND category=? AND is_active=true
+alt Specific weights found
+  DB --> Weights: Custom City/Category Weights
+else Fallback to default
+  DB --> Weights: Default Global Weights
+end
+Weights --> Router: Weights(w_cap, w_shelf, w_transit, w_demand, w_route)
+deactivate Weights
+
+Router -> Scorer: score_all(candidates, donation, weights)
+activate Scorer
+
+loop For each candidate NGO
+  Scorer -> Scorer: S_capacity = min(1.0, available_capacity / (2 * quantity))
+  Scorer -> Scorer: S_shelflife = (expiry_time - now - transit_time) / total_shelf_life
+  Scorer -> Scorer: S_transit = max(0.0, 1.0 - (transit_time_min / 60.0))
+  Scorer -> Scorer: S_demand = urgency_weight(ngo_demand.priority)
+  Scorer -> Scorer: S_route = 1.0 / (1.0 + route_deviation_factor)
+  
+  Scorer -> Scorer: Total_Score = (w_cap * S_cap) + (w_shelf * S_shelf) +\n              (w_transit * S_transit) + (w_demand * S_demand) + (w_route * S_route)
+end
+
+Scorer --> Router: Ranked List of Candidates [Highest Score First]
+deactivate Scorer
+
+alt Best Candidate Found
+  Router -> DB: UPDATE donation SET status='MATCHED', matched_ngo_id=best.ngo_id, match_score=best.score
+  Router -> Notif: Send Offer to best.ngo_id (Expires in 15 mins)
+  Router --> Client: 200 OK (Match Candidate Selected)
+else No Candidate Passed Hard Constraints
+  Router -> DB: UPDATE donation SET status='NO_MATCH_FOUND'
+  Router --> Client: 200 OK (Status: NO_MATCH_FOUND, triggers alert)
+end
+
+deactivate Router
+
+== Rejection and Rematch Branch ==
+NGO -> Router: POST /matching/{donation_id}/reject (reason)
+activate Router
+Router -> DB: INSERT into donation_rejections (donation_id, ngo_id, reason)
+Router -> DB: Query all rejected NGO IDs for this donation
+DB --> Router: Set<excluded_ngo_ids>
+Router -> Router: rematch(donation_id, excluded_ngo_ids)
+Router -> Filter: get_candidates(donation, excluded_ngos)
+Router --> NGO: 200 OK (Rejection Recorded, Rematch Triggered)
+deactivate Router
+
+@enduml

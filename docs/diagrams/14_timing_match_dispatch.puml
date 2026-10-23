@@ -1,0 +1,63 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+
+title **Food Rescue Platform (Replate) - SLA & Time-Critical Lifespan Timing Diagram**
+
+robust "Donation Listing" as Donation
+robust "Matching Offer" as Offer
+robust "Driver Assignment" as Driver
+robust "Transit & Delivery" as Transit
+
+@0
+Donation is AVAILABLE
+Offer is IDLE
+Driver is OFFLINE
+Transit is IDLE
+
+@1
+Donation is MATCHING
+Offer is PENDING
+
+@2
+Offer is PENDING
+note bottom of Offer : 15-Minute Expiry SLA Window Starts
+
+@5
+Offer is ACCEPTED
+Donation is ACCEPTED
+Driver is SEARCHING
+
+@7
+Driver is ASSIGNED
+Donation is DRIVER_ASSIGNED
+note bottom of Driver : 5-Minute Acceptance SLA
+
+@8
+Driver is ACCEPTED
+Transit is EN_ROUTE_PICKUP
+Donation is PICKUP_STARTED
+
+@12
+Transit is AT_PICKUP
+note bottom of Transit : Inspection & Handover (5 min)
+
+@14
+Transit is EN_ROUTE_DROPOFF
+Donation is IN_TRANSIT
+
+@20
+Transit is AT_DROPOFF
+note bottom of Transit : Intake Inspection & Signature (5 min)
+
+@22
+Transit is DELIVERED
+Donation is DELIVERED
+Driver is AVAILABLE
+Offer is COMPLETED
+
+@25
+Donation is ARCHIVED
+
+@enduml

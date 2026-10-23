@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "skills": {
+    "plantuml": {
+      "source": "smithery.ai",
+      "sourceUrl": "https://smithery.ai/skills/SpillwaveSolutions/plantuml",
+      "sourceType": "well-known",
+      "computedHash": "6da7849c3002ab14a3ff5d3089412752b8934120372bb2f9f6394b1b0533aa5a",
+      "wellKnownDigest": "sha256:208734413a6b9c3a4736a38f323320a2b0b768fa65d853830f3577e91e97962b"
+    }
+  }
+}

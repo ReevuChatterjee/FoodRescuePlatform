@@ -1,0 +1,60 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 8
+skinparam shadowing false
+
+<style>
+stateDiagram {
+  state {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+    FontColor #BF360C
+  }
+}
+</style>
+
+title **Food Rescue Platform (Replate) - Donation Lifecycle State Machine**
+
+[*] --> AVAILABLE : Donor creates listing\n[POST /donations]
+
+AVAILABLE --> MATCHING : Matching engine triggered\n[find_candidates]
+AVAILABLE --> CANCELLED : Donor cancels donation\n[before matching]
+AVAILABLE --> EXPIRED : Food passes expiry_time\n[Cron cleanup]
+
+MATCHING --> MATCHED : Highest scoring NGO found\n[Offer sent to NGO]
+MATCHING --> NO_MATCH_FOUND : No eligible NGOs in radius\n[or capacity/hours constraint]
+
+NO_MATCH_FOUND --> MATCHING : Automatic retry after period\n[or radius expanded]
+NO_MATCH_FOUND --> EXPIRED : Expiry time reached without match
+
+MATCHED --> ACCEPTED : NGO accepts offer within 15 min\n[POST /matching/{id}/accept]
+MATCHED --> REJECTED : NGO explicitly rejects offer\n[POST /matching/{id}/reject]
+MATCHED --> MATCHING : 15 min offer timeout expires\n[Cron auto-rematch]
+
+REJECTED --> MATCHING : Exclude rejecting NGO\nand re-run candidate search
+REJECTED --> NO_MATCH_FOUND : All candidate NGOs exhausted
+
+ACCEPTED --> DRIVER_ASSIGNED : Available driver selected\n[Dispatch service]
+ACCEPTED --> CANCELLED : Force cancellation by Admin
+
+DRIVER_ASSIGNED --> PICKUP_STARTED : Driver clicks start trip\n[POST /deliveries/{id}/start-pickup]
+DRIVER_ASSIGNED --> DRIVER_ISSUE : Driver cancels or reports vehicle issue
+DRIVER_ISSUE --> DRIVER_ASSIGNED : Re-dispatching to another driver
+
+PICKUP_STARTED --> PICKED_UP : Donor & Driver confirm pickup\n[POST /deliveries/{id}/pickup-complete]
+PICKUP_STARTED --> DRIVER_ISSUE : Breakdown en-route to pickup
+
+PICKED_UP --> IN_TRANSIT : Driver starts navigation to NGO\n[POST /deliveries/{id}/start-transit]
+
+IN_TRANSIT --> DELIVERED : Recipient NGO signs & confirms receipt\n[Full quantity received]
+IN_TRANSIT --> PARTIALLY_DELIVERED : Quantity discrepancy noted at dropoff\n[Some food damaged in transit]
+IN_TRANSIT --> DRIVER_ISSUE : Transit breakdown / spoilage detected
+
+DELIVERED --> [*]
+PARTIALLY_DELIVERED --> [*]
+EXPIRED --> [*]
+CANCELLED --> [*]
+
+@enduml

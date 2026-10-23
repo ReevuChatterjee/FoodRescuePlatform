@@ -1,0 +1,276 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam classAttributeIconSize 0
+skinparam roundCorner 6
+skinparam shadowing false
+
+<style>
+class {
+  BackgroundColor #F8F9FA
+  BorderColor #37474F
+  HeaderBackgroundColor #ECEFF1
+  FontColor #263238
+}
+enum {
+  BackgroundColor #FFF8E1
+  BorderColor #FFA000
+  HeaderBackgroundColor #FFE082
+  FontColor #7F0000
+}
+interface {
+  BackgroundColor #E8EAF6
+  BorderColor #3F51B5
+  HeaderBackgroundColor #C5CAE9
+}
+</style>
+
+title **Food Rescue Platform (Replate) - Domain Model & Service Class Diagram**
+
+package "Enumerations" {
+  enum UserRole {
+    DONOR
+    NGO
+    DRIVER
+    ADMIN
+  }
+
+  enum DonationStatus {
+    AVAILABLE
+    MATCHING
+    MATCHED
+    ACCEPTED
+    DRIVER_ASSIGNED
+    PICKUP_STARTED
+    PICKED_UP
+    IN_TRANSIT
+    DELIVERED
+    PARTIALLY_DELIVERED
+    NO_MATCH_FOUND
+    REJECTED
+    EXPIRED
+    CANCELLED
+    DRIVER_ISSUE
+  }
+
+  enum NGOVerificationStatus {
+    PENDING
+    APPROVED
+    REJECTED
+  }
+
+  enum DeliveryStatus {
+    DRIVER_ASSIGNED
+    PICKUP_STARTED
+    PICKED_UP
+    IN_TRANSIT
+    DELIVERED
+    PARTIALLY_DELIVERED
+    CANCELLED
+    DRIVER_ISSUE
+  }
+}
+
+package "Core Domain Entities" {
+  class User {
+    +id: String [PK]
+    +name: String
+    +email: String [Unique]
+    +phone: String
+    +password_hash: String
+    +role: UserRole
+    +created_at: DateTime
+  }
+
+  class Donor {
+    +id: String [PK]
+    +user_id: String [FK]
+    +organisation_name: String
+    +address: Text
+    +location: String (POINT)
+    +contact_person: String
+    +verification_status: String
+    +daily_waste_category: String
+    +created_at: DateTime
+  }
+
+  class NGO {
+    +id: String [PK]
+    +user_id: String [FK]
+    +organisation_name: String
+    +address: Text
+    +location: String (POINT)
+    +storage_capacity_kg: Float
+    +available_capacity_kg: Float
+    +operating_start: String
+    +operating_end: String
+    +verification_status: NGOVerificationStatus
+    +created_at: DateTime
+  }
+
+  class NGOFoodCategory {
+    +ngo_id: String [PK, FK]
+    +food_category: String [PK]
+    +accepted: Boolean
+  }
+
+  class NGODemand {
+    +id: Integer [PK]
+    +ngo_id: String [FK]
+    +food_category: String
+    +required_quantity_kg: Float
+    +priority: String
+    +valid_until: DateTime
+    +updated_at: DateTime
+  }
+
+  class NGOVerificationDocument {
+    +id: Integer [PK]
+    +ngo_id: String [FK]
+    +document_type: String
+    +file_url: String
+    +uploaded_at: DateTime
+  }
+
+  class Donation {
+    +id: String [PK]
+    +donor_id: String [FK]
+    +food_category: String
+    +food_name: String
+    +quantity_kg: Float
+    +prepared_at: DateTime
+    +available_from: DateTime
+    +expiry_time: DateTime
+    +pickup_location: JSON
+    +special_handling: Text
+    +food_safety_info: JSON
+    +status: DonationStatus
+    +matched_ngo_id: String [FK, Nullable]
+    +match_score: Float
+    +match_breakdown: JSON
+    +weights_version_id: String
+    +created_at: DateTime
+    +updated_at: DateTime
+  }
+
+  class Vehicle {
+    +id: String [PK]
+    +driver_id: String [FK]
+    +capacity_kg: Float
+    +current_location: String (POINT)
+    +availability_status: String
+  }
+
+  class Delivery {
+    +id: String [PK]
+    +donation_id: String [FK]
+    +ngo_id: String [FK]
+    +driver_id: String [FK]
+    +pickup_time: DateTime
+    +estimated_delivery_time: DateTime
+    +actual_pickup_time: DateTime
+    +actual_delivery_time: DateTime
+    +route_distance_km: Float
+    +estimated_duration_min: Integer
+    +status: DeliveryStatus
+  }
+
+  class HandoverRecord {
+    +id: String [PK]
+    +donation_id: String [FK]
+    +delivery_id: String [FK]
+    +donor_confirmation: Boolean
+    +ngo_confirmation: Boolean
+    +pickup_timestamp: DateTime
+    +delivery_timestamp: DateTime
+    +quantity_handed_over: Float
+    +donor_signature: String
+    +recipient_signature: String
+    +disclaimer_version: String
+    +notes: Text
+    +created_at: DateTime
+  }
+
+  class DonationRejection {
+    +id: Integer [PK]
+    +donation_id: String [FK]
+    +ngo_id: String [FK]
+    +reason: String
+    +rejected_at: DateTime
+  }
+
+  class MatchingWeightsHistory {
+    +id: Integer [PK]
+    +weights_version_id: String [Unique]
+    +city: String
+    +food_category: String
+    +w_capacity: Float
+    +w_shelf_life: Float
+    +w_transit: Float
+    +w_demand: Float
+    +w_route: Float
+    +is_active: Boolean
+    +created_at: DateTime
+  }
+
+  class AuditLog {
+    +id: Integer [PK]
+    +entity_type: String
+    +entity_id: String
+    +event_type: String
+    +payload: JSON
+    +record_hash: String
+    +previous_hash: String
+    +created_at: DateTime
+  }
+}
+
+package "Core Service Interfaces" {
+  interface IMatchingEngine {
+    +find_candidates(donation_id: String): List<ScoredCandidate>
+    +score_candidate(donation: Donation, ngo: NGO): MatchScore
+    +rematch(donation_id: String, excluded_ngos: Set): MatchResult
+    +accept_match(donation_id: String, ngo_id: String): MatchConfirmation
+    +reject_match(donation_id: String, ngo_id: String, reason: String): Void
+  }
+
+  interface IDispatchService {
+    +find_available_drivers(pickup_lat: Float, pickup_lng: Float, capacity: Float): List<Driver>
+    +assign_driver(delivery_id: String, driver_id: String): Delivery
+    +update_driver_location(driver_id: String, lat: Float, lng: Float): Void
+    +get_active_job(driver_id: String): DriverJob
+  }
+
+  interface IRoutingService {
+    +calculate_route(origin: Point, destination: Point): RouteSummary
+    +get_turn_by_turn(origin: Point, destination: Point): PolylineRoute
+    +estimate_eta(origin: Point, destination: Point): Integer
+  }
+}
+
+' Entity Relationships
+User "1" *-- "0..1" Donor : user_id
+User "1" *-- "0..1" NGO : user_id
+User "1" *-- "0..1" Vehicle : driver_id
+Donor "1" o-- "0..*" Donation : donor_id
+NGO "1" *-- "1..*" NGOFoodCategory : ngo_id
+NGO "1" *-- "0..*" NGODemand : ngo_id
+NGO "1" *-- "0..*" NGOVerificationDocument : ngo_id
+Donation "1" o-- "0..1" NGO : matched_ngo_id
+Donation "1" *-- "0..*" DonationRejection : donation_id
+Donation "1" -- "0..1" Delivery : donation_id
+NGO "1" -- "0..*" Delivery : ngo_id
+Vehicle "1" -- "0..*" Delivery : driver_id
+Delivery "1" *-- "1" HandoverRecord : delivery_id
+Donation "1" *-- "1" HandoverRecord : donation_id
+
+' Service usage
+IMatchingEngine ..> Donation : evaluates
+IMatchingEngine ..> NGO : matches
+IMatchingEngine ..> MatchingWeightsHistory : weights
+IDispatchService ..> Delivery : coordinates
+IDispatchService ..> Vehicle : tracks
+IRoutingService ..> Delivery : routes
+
+@enduml

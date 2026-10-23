@@ -1,0 +1,67 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 8
+skinparam shadowing false
+
+<style>
+stateDiagram {
+  state {
+    BackgroundColor #E8EAF6
+    BorderColor #283593
+    FontColor #1A237E
+  }
+}
+</style>
+
+title **Food Rescue Platform (Replate) - Driver Availability & Delivery State Machine**
+
+state "Driver Availability Lifecycle" as DriverState {
+  [*] --> OFFLINE : Initial State / Driver Logs In
+  
+  OFFLINE --> AVAILABLE : Driver toggles 'Go On Duty'\n[Location broadcast active]
+  AVAILABLE --> OFFLINE : Driver toggles 'Go Off Duty'\n[No active assignments]
+  
+  AVAILABLE --> BUSY : Delivery Job Assigned\n[Automatic dispatch]
+  
+  state BUSY {
+    [*] --> ASSIGNED : Job offered & accepted
+    ASSIGNED --> EN_ROUTE_PICKUP : Clicks 'Navigate to Pickup'
+    EN_ROUTE_PICKUP --> AT_PICKUP : Arrived at Donor site
+    AT_PICKUP --> EN_ROUTE_DROPOFF : Pickup handover verified
+    EN_ROUTE_DROPOFF --> AT_DROPOFF : Arrived at NGO facility
+    AT_DROPOFF --> [*] : Dropoff handover verified
+  }
+  
+  BUSY --> AVAILABLE : Job completed successfully\n[Ready for next job]
+  BUSY --> OFFLINE : Driver reports vehicle breakdown / issue
+}
+
+--
+
+state "Delivery Lifecycle" as DeliveryState {
+  [*] --> DRIVER_ASSIGNED : Dispatch matches driver with accepted donation
+  
+  DRIVER_ASSIGNED --> PICKUP_STARTED : Driver starts route to pickup\n[ETA calculated via OSRM]
+  
+  PICKUP_STARTED --> PICKED_UP : Donor & Driver confirm handover\n[HandoverRecord created]
+  
+  PICKED_UP --> IN_TRANSIT : Driver departs pickup towards NGO\n[Live location streamed via WS]
+  
+  IN_TRANSIT --> DELIVERED : Recipient NGO confirms complete handover\n[HandoverRecord finalized]
+  IN_TRANSIT --> PARTIALLY_DELIVERED : Handover confirmed with quantity shortfall
+  
+  DRIVER_ASSIGNED --> DRIVER_ISSUE : Driver emergency / rejection
+  PICKUP_STARTED --> DRIVER_ISSUE : Breakdown / accident
+  IN_TRANSIT --> DRIVER_ISSUE : Traffic gridlock / spoilage
+  
+  DRIVER_ASSIGNED --> CANCELLED : Admin force cancel
+  PICKUP_STARTED --> CANCELLED : Donor emergency cancel
+  
+  DELIVERED --> [*]
+  PARTIALLY_DELIVERED --> [*]
+  CANCELLED --> [*]
+}
+
+@enduml

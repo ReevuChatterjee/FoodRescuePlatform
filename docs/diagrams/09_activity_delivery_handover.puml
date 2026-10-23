@@ -1,0 +1,110 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 8
+skinparam shadowing false
+
+<style>
+activityDiagram {
+  BackgroundColor #E8EAF6
+  BorderColor #283593
+  FontColor #1A237E
+}
+</style>
+
+title **Food Rescue Platform (Replate) - Delivery & Dual-Party Handover Verification Workflow**
+
+|Donor|
+|Volunteer Driver|
+|Replate System|
+|Recipient NGO|
+
+|Replate System|
+start
+:Dispatch Engine assigns nearest driver;
+:Create Delivery record (status: DRIVER_ASSIGNED);
+
+|Volunteer Driver|
+:Receive Job Assignment Notification;
+:Review Food Details, Pickup & Dropoff Stops;
+:Accept Delivery Assignment;
+:Click "Start Trip to Pickup";
+
+|Replate System|
+:Compute driving route via OSRM;
+:Set Delivery status to PICKUP_STARTED;
+:Broadcast Driver En-Route status;
+
+|Volunteer Driver|
+:Navigate to Donor Pickup Location;
+:Arrive at Donor Premises;
+
+|Donor|
+:Inspect packaging, food temperature & hygiene;
+:Hand over food containers to Driver;
+:Verify actual quantity handed over;
+
+|Volunteer Driver|
+:Enter verified quantity in Mobile App;
+:Request Donor digital signature;
+
+|Donor|
+:Sign digital handover declaration;
+
+|Volunteer Driver|
+:Submit Pickup Handover (POST /deliveries/{id}/pickup-complete);
+
+|Replate System|
+:Record Donor confirmation in HandoverRecord;
+:UPDATE Delivery status = PICKED_UP;
+:UPDATE Donation status = PICKED_UP;
+:Calculate route to Recipient NGO facility;
+
+|Volunteer Driver|
+:Depart with secured food cargo;
+:Stream live GPS location en-route;
+
+|Recipient NGO|
+:Track incoming delivery on live map;
+:Prepare receiving bay & cold storage;
+
+|Volunteer Driver|
+:Arrive at Recipient NGO facility;
+:Present food cargo for intake inspection;
+
+|Recipient NGO|
+:Inspect temperature, condition & seal integrity;
+:Weigh intake quantity;
+
+|Volunteer Driver|
+:Input received quantity and condition notes;
+
+|Recipient NGO|
+if (Food accepted in good condition?) then (Yes)
+  :Sign digital intake confirmation;
+  |Volunteer Driver|
+  :Submit Dropoff Handover (POST /deliveries/{id}/dropoff-complete);
+  |Replate System|
+  :Record Recipient confirmation in HandoverRecord;
+  :Set Delivery status = DELIVERED;
+  :Set Donation status = DELIVERED;
+  :Deduct storage capacity from NGO;
+  :Compute impact metric (kg rescued, CO2 avoided);
+  :Generate tamper-proof SHA-256 audit log;
+else (No / Discrepancy)
+  :Note discrepancy / spoilage reasons;
+  |Volunteer Driver|
+  :Submit Partial / Discrepancy Report;
+  |Replate System|
+  :Set Delivery status = PARTIALLY_DELIVERED (or DRIVER_ISSUE);
+  :Flag alert to Quality Assurance Operations;
+endif
+
+|Replate System|
+:Set Vehicle availability = AVAILABLE;
+:Broadcast completion event to all parties;
+
+stop
+
+@enduml

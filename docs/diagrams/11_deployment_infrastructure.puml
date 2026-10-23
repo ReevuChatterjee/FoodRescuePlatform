@@ -1,0 +1,89 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 6
+skinparam shadowing false
+
+<style>
+node {
+  BackgroundColor #F3E5F5
+  BorderColor #4A148C
+  FontColor #311B92
+}
+artifact {
+  BackgroundColor #E0F7FA
+  BorderColor #006064
+}
+database {
+  BackgroundColor #FFF8E1
+  BorderColor #FF6F00
+}
+</style>
+
+title **Food Rescue Platform (Replate) - Deployment & Infrastructure Topology**
+
+node "Client Devices" {
+  node "Donor Browser / Tablet" {
+    artifact "React Donor SPA\n(HTML5 / WebGL / CSS)" as Artifact_Donor
+  }
+  node "NGO Workstation / Mobile" {
+    artifact "React NGO Portal\n(Intake & Capacity UI)" as Artifact_NGO
+  }
+  node "Driver Smartphone (iOS / Android)" {
+    artifact "Driver PWA / Web Client\n(Leaflet GPS Telemetry)" as Artifact_Driver
+  }
+}
+
+node "Edge Delivery & CDN Layer (Vercel Edge Network)" as Vercel_Edge {
+  artifact "Static Asset Bundle\n(Vite Build Artifacts)" as Artifact_Static
+  component "TLS / HTTPS Termination\n(Custom Domain / SSL)" as Edge_SSL
+  component "Edge Routing & Rewrites" as Edge_Router
+}
+
+node "Cloud Backend Services (Vercel Serverless / Cloud Container)" as Cloud_BE {
+  node "ASGI Execution Environment" {
+    artifact "FastAPI Application (Python 3.12)\nUvicorn Worker" as Artifact_FastAPI
+    component "In-Memory WebSocket Hub\n(Driver & Match Subscriptions)" as BE_WSHub
+  }
+  component "Scheduled Task Runner\n(Vercel Cron / Lifecycle Poller)" as Cron_Runner
+}
+
+node "Managed Database Tier (Supabase Cloud)" as DB_Node {
+  database "PostgreSQL 15 Enterprise" as PG_Instance {
+    artifact "PostGIS 3.3 Spatial Engine\n(ST_DWithin, ST_Distance)" as Ext_PostGIS
+    artifact "Core Relational Tables\n(Donations, Deliveries, Users)" as Tables_Core
+    artifact "Audit Trail (Append-Only Hash Chain)" as Tables_Audit
+  }
+  node "Blob Storage Bucket" {
+    artifact "Encrypted NGO Documents\n(FSSAI & Registration PDFs)" as Supabase_Storage
+  }
+}
+
+node "Third-Party Geospatial Infrastructure" {
+  node "OSRM Routing Cluster" {
+    component "Open Source Routing Machine API\n(Driving Directions & Speed Profiles)" as OSRM_Service
+  }
+  node "OpenStreetMap Foundation" {
+    component "Nominatim Geocoding API\n& Map Tile Servers" as OSM_Tiles
+  }
+}
+
+' Physical connections
+Artifact_Donor --> Edge_SSL : HTTPS (port 443)
+Artifact_NGO --> Edge_SSL : HTTPS (port 443)
+Artifact_Driver --> Edge_SSL : HTTPS / WSS
+
+Edge_SSL --> Artifact_Static : Cached static files
+Edge_Router --> Artifact_FastAPI : Proxied API requests (/api/v1/*)
+Edge_Router --> BE_WSHub : WebSocket upgrade (/ws/*)
+
+Artifact_FastAPI --> PG_Instance : Connection Pool (AsyncPG / TCP 5432)
+Artifact_FastAPI --> Supabase_Storage : S3-compatible REST API
+Artifact_FastAPI --> OSRM_Service : HTTP REST (/route/v1/driving)
+Artifact_FastAPI --> OSM_Tiles : Geocoding REST
+
+Cron_Runner --> Artifact_FastAPI : HTTP POST /cron/* (CRON_SECRET)
+Artifact_Driver --> OSM_Tiles : Vector Map Tiles
+
+@enduml

@@ -1,0 +1,30 @@
+@startsalt
+{+
+  <b>Replate Driver Dashboard - Mission Control</b>
+  .
+  Driver: volunteer.rajesh@replate.org | Status: [ (X) On Duty  ( ) Off Duty ]
+  --
+  {+
+    <b>Current Active Assignment: JOB-BLR-8924</b>
+    .
+    <b>Pickup:</b> Indiranagar Club Restaurant, 100ft Rd | <b>Expiry Window:</b> 1h 45m left
+    <b>Cargo:</b> 45 kg Cooked Meals (Hot Gravy & Rice)  | <b>Handling:</b> Thermal Insulated Bags
+    <b>Dropoff:</b> Robin Hood Army Community Kitchen    | <b>Estimated Transit:</b> 18 mins (5.2 km)
+    .
+    [ Navigate to Stop ] | [ Verify Handover ] | [ Report Exception ]
+  }
+  --
+  <b>Live Telemetry & Positioning</b>
+  Address / Coordinates: | "12.9715987, 77.5945627                           " | [ Broadcast Location ]
+  [ Snap to City ] | [ GPS Ping ] | Last Transmitted: 13:08:42 IST (Active)
+  --
+  {/ <b>Active Route Map</b> | Standard SOP | Mission History }
+  {
+    . | [ Leaflet Dynamic Map Rendered Below ]
+    . | -------------------------------------------------------------
+    . | [O] Driver (12.963, 77.586) ====> [P] Pickup ====> [D] Dropoff
+    . | -------------------------------------------------------------
+    . | Real-Time Distance Remaining: 1.4 km | Speed: 28 km/h | ETA: 4 mins
+  }
+}
+@endsalt

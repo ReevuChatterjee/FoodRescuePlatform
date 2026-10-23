@@ -1,0 +1,86 @@
+@startuml
+!theme plain
+autonumber
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 6
+skinparam shadowing false
+
+<style>
+sequenceDiagram {
+  participant {
+    BackgroundColor #E0F2F1
+    BorderColor #00796B
+  }
+}
+</style>
+
+title **Food Rescue Platform (Replate) - Driver Dispatch, Live Telemetry & Routing**
+
+actor "Volunteer Driver\n(Mobile / Web App)" as Driver
+participant "Driver Dashboard / Hook" as App
+participant "Dispatch Router" as Dispatch
+participant "OSRM Routing Engine" as OSRM
+database "PostgreSQL / Vehicles" as DB
+participant "WebSocket Server" as WS
+actor "Donor / NGO Clients" as Watchers
+
+== 1. Driver Availability & Location Stream ==
+Driver -> App: Toggle Duty "On Duty"
+App -> Dispatch: POST /drivers/me/availability { status: 'AVAILABLE', location: {lat, lng} }
+activate Dispatch
+Dispatch -> DB: UPDATE vehicles SET availability_status='AVAILABLE', current_location='POINT(lng, lat)'
+Dispatch --> App: 200 OK (Driver is Online)
+deactivate Dispatch
+
+loop Every 10-30 Seconds (Live Telemetry Ping)
+  App -> Dispatch: POST /drivers/me/location { latitude, longitude }
+  activate Dispatch
+  Dispatch -> DB: UPDATE vehicles SET current_location='POINT(lng, lat)'
+  Dispatch -> WS: Broadcast driver position update
+  WS --> Watchers: Push updated driver coordinate
+  Dispatch --> App: 200 OK
+  deactivate Dispatch
+end
+
+== 2. Automated Dispatch Allocation ==
+note over Dispatch: Triggered when NGO accepts a donation offer
+Dispatch -> DB: SELECT * FROM vehicles WHERE availability_status='AVAILABLE' AND capacity_kg >= donation.quantity
+DB --> Dispatch: Available Candidate Vehicles
+Dispatch -> Dispatch: Sort candidates by haversine_distance(vehicle.current_location, pickup_location)
+Dispatch -> DB: Assign best candidate:\nINSERT INTO deliveries (status='DRIVER_ASSIGNED', driver_id, donation_id, ngo_id)\nUPDATE vehicles SET availability_status='BUSY'
+Dispatch -> WS: Push notification to matched driver
+WS --> App: "New Delivery Assigned: Pickup from Donor X"
+
+== 3. Turn-by-Turn Route Navigation & Live ETA ==
+Driver -> App: Click "Accept Delivery"
+App -> Dispatch: GET /drivers/me/job
+activate Dispatch
+Dispatch -> DB: SELECT active delivery + pickup & dropoff coordinates
+DB --> Dispatch: Delivery, Pickup {lat, lng}, Dropoff {lat, lng}
+
+Dispatch -> OSRM: GET /route/v1/driving/{driver_lng},{driver_lat};{pickup_lng},{pickup_lat}
+OSRM --> Dispatch: GeoJSON Route Polyline, Distance (meters), Duration (seconds)
+
+Dispatch --> App: DriverJob JSON (Stops, Route Polyline, ETA)
+deactivate Dispatch
+
+App -> App: Render Leaflet Route Map & Turn-by-Turn Path
+App -> WS: Stream live progress along polyline
+WS --> Watchers: Donor & NGO track live driver icon moving towards pickup
+
+== 4. Handling Driver Issue / Exception ==
+alt Breakdown or Vehicle Issue
+  Driver -> App: Click "Report Issue" (e.g. Flat Tyre, Breakdown)
+  App -> Dispatch: POST /deliveries/{id}/report-issue { reason, details }
+  activate Dispatch
+  Dispatch -> DB: UPDATE deliveries SET status='DRIVER_ISSUE'
+  Dispatch -> DB: UPDATE donation SET status='DRIVER_ISSUE'
+  Dispatch -> DB: UPDATE vehicles SET availability_status='OFFLINE'
+  Dispatch -> WS: Broadcast Alert to Operations & Admin
+  Dispatch -> Dispatch: Trigger Auto-Reassignment to next closest driver
+  Dispatch --> App: 200 OK (Dispatched assistance / re-assigned)
+  deactivate Dispatch
+end
+
+@enduml

@@ -1,0 +1,118 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 8
+skinparam shadowing false
+
+<style>
+usecase {
+  BackgroundColor #E8F5E9
+  BorderColor #2E7D32
+  FontColor #1B5E20
+  FontStyle bold
+}
+actor {
+  BackgroundColor #E3F2FD
+  BorderColor #1565C0
+  FontColor #0D47A1
+}
+rectangle {
+  BackgroundColor #FAFAFA
+  BorderColor #9E9E9E
+}
+</style>
+
+title **Food Rescue Platform (Replate) - System Use Case Diagram**
+
+left to right direction
+
+actor "Food Donor\n(Restaurant/Hotel/Supermarket)" as Donor
+actor "Recipient Organization\n(NGO / Shelter / Food Bank)" as NGO
+actor "Volunteer / Driver" as Driver
+actor "System Administrator" as Admin
+actor "Automated Scheduler\n(Vercel Cron)" as Cron
+
+rectangle "Replate Food Rescue System" {
+
+  package "Donation Management" {
+    usecase "UC-01: Create Food Donation\n(Quantity, Expiry, Safety Tags)" as UC_CreateDonation
+    usecase "UC-02: Manage Donation Listing\n(View, Cancel, Track Status)" as UC_ManageDonation
+    usecase "UC-03: Confirm Pickup Handover\n(Sign / Approve Quantity)" as UC_ConfirmPickup
+  }
+
+  package "NGO & Demand Management" {
+    usecase "UC-04: Register & Upload Verification Docs\n(FSSAI / NGO Darpan)" as UC_RegisterNGO
+    usecase "UC-05: Update Storage Capacity\n& Operating Hours" as UC_UpdateCapacity
+    usecase "UC-06: Broadcast Food Demand Needs\n(Category, Qty, Priority)" as UC_BroadcastDemand
+    usecase "UC-07: Accept or Reject Food Match" as UC_DecideMatch
+    usecase "UC-08: Confirm Dropoff Receipt\n(Sign / Inspect Food)" as UC_ConfirmDropoff
+  }
+
+  package "Matching & Dispatch Engine" {
+    usecase "UC-09: Filter Eligible NGO Candidates\n(Radius, Storage, Category)" as UC_FilterCandidates
+    usecase "UC-10: Multi-Factor Weighted Scoring\n(Shelf Life, Transit, Demand, Capacity)" as UC_ScoreMatch
+    usecase "UC-11: Automated Candidate Re-matching\n(On Rejection / Expiry)" as UC_Rematch
+    usecase "UC-12: Algorithmic Driver Selection\n(Proximity to Pickup, Vehicle Capacity)" as UC_DispatchDriver
+  }
+
+  package "Driver Operations & Delivery" {
+    usecase "UC-13: Toggle On-Duty / Off-Duty Status" as UC_ToggleDuty
+    usecase "UC-14: Stream Live GPS Location" as UC_StreamLocation
+    usecase "UC-15: Accept Delivery Job" as UC_AcceptJob
+    usecase "UC-16: Navigate Turn-by-Turn Route\n(OSRM Route & ETA)" as UC_NavigateRoute
+    usecase "UC-17: Report Delivery Issue / Exception" as UC_ReportIssue
+  }
+
+  package "Administration & Platform Governance" {
+    usecase "UC-18: Verify & Approve NGO Documents" as UC_VerifyNGO
+    usecase "UC-19: Tune Regional Matching Weights" as UC_TuneWeights
+    usecase "UC-20: Monitor Live Fleet & Heatmap" as UC_MonitorFleet
+    usecase "UC-21: View Impact Analytics\n(Meals Rescued, CO2 Diverted)" as UC_ViewAnalytics
+    usecase "UC-22: Audit Tamper-Proof Event Logs" as UC_AuditLogs
+    usecase "UC-23: Clean Stale Matches & Expire Food" as UC_CronCleanup
+  }
+}
+
+' Donor Relationships
+Donor --> UC_CreateDonation
+Donor --> UC_ManageDonation
+Donor --> UC_ConfirmPickup
+
+' NGO Relationships
+NGO --> UC_RegisterNGO
+NGO --> UC_UpdateCapacity
+NGO --> UC_BroadcastDemand
+NGO --> UC_DecideMatch
+NGO --> UC_ConfirmDropoff
+
+' Driver Relationships
+Driver --> UC_ToggleDuty
+Driver --> UC_StreamLocation
+Driver --> UC_AcceptJob
+Driver --> UC_NavigateRoute
+Driver --> UC_ConfirmPickup
+Driver --> UC_ConfirmDropoff
+Driver --> UC_ReportIssue
+
+' Admin Relationships
+Admin --> UC_VerifyNGO
+Admin --> UC_TuneWeights
+Admin --> UC_MonitorFleet
+Admin --> UC_ViewAnalytics
+Admin --> UC_AuditLogs
+
+' Cron Relationships
+Cron --> UC_CronCleanup
+Cron --> UC_FilterCandidates
+
+' System Engine Inclusions / Extensions
+UC_CreateDonation ..> UC_FilterCandidates : <<include>>
+UC_FilterCandidates ..> UC_ScoreMatch : <<include>>
+UC_ScoreMatch ..> UC_DecideMatch : <<initiates>>
+UC_DecideMatch ..> UC_DispatchDriver : <<on accept>>
+UC_DecideMatch ..> UC_Rematch : <<on reject>>
+UC_DispatchDriver ..> UC_AcceptJob : <<offers>>
+UC_AcceptJob ..> UC_NavigateRoute : <<include>>
+
+@enduml

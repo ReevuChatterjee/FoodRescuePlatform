@@ -1,0 +1,204 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 4
+skinparam shadowing false
+
+<style>
+class {
+  BackgroundColor #FAFAFA
+  BorderColor #455A64
+  HeaderBackgroundColor #ECEFF1
+}
+</style>
+
+title **Food Rescue Platform (Replate) - Relational Database Schema (ERD)**
+
+entity "users" as users {
+  * id : VARCHAR(50) <<PK>>
+  --
+  * name : VARCHAR(200)
+  * email : VARCHAR(200) <<UNIQUE>>
+  * phone : VARCHAR(20)
+  * password_hash : VARCHAR(200)
+  * role : VARCHAR(20) [DONOR, NGO, DRIVER, ADMIN]
+  * created_at : TIMESTAMP WITH TIME ZONE
+}
+
+entity "donors" as donors {
+  * id : VARCHAR(50) <<PK>>
+  --
+  * user_id : VARCHAR(50) <<FK>>
+  * organisation_name : VARCHAR(200)
+  * address : TEXT
+  * location : VARCHAR(200) [POINT]
+  * contact_person : VARCHAR(200)
+  * verification_status : VARCHAR(50)
+  * daily_waste_category : VARCHAR(50)
+  * created_at : TIMESTAMP WITH TIME ZONE
+}
+
+entity "ngos" as ngos {
+  * id : VARCHAR(50) <<PK>>
+  --
+  * user_id : VARCHAR(50) <<FK>>
+  * organisation_name : VARCHAR(200)
+  * address : TEXT
+  * location : VARCHAR(200) [POINT]
+  * storage_capacity_kg : FLOAT
+  * available_capacity_kg : FLOAT
+  * operating_start : VARCHAR(10)
+  * operating_end : VARCHAR(10)
+  * verification_status : VARCHAR(50) [PENDING, APPROVED, REJECTED]
+  * created_at : TIMESTAMP WITH TIME ZONE
+}
+
+entity "ngo_food_categories" as ngo_food_categories {
+  * ngo_id : VARCHAR(50) <<PK, FK>>
+  * food_category : VARCHAR(50) <<PK>>
+  --
+  * accepted : BOOLEAN
+}
+
+entity "ngo_demand" as ngo_demand {
+  * id : SERIAL <<PK>>
+  --
+  * ngo_id : VARCHAR(50) <<FK>>
+  * food_category : VARCHAR(50)
+  * required_quantity_kg : FLOAT
+  * priority : VARCHAR(20) [LOW, MEDIUM, HIGH, CRITICAL]
+  * valid_until : TIMESTAMP WITH TIME ZONE
+  * updated_at : TIMESTAMP WITH TIME ZONE
+}
+
+entity "ngo_verification_documents" as ngo_docs {
+  * id : SERIAL <<PK>>
+  --
+  * ngo_id : VARCHAR(50) <<FK>>
+  * document_type : VARCHAR(100)
+  * file_url : VARCHAR(500)
+  * uploaded_at : TIMESTAMP WITH TIME ZONE
+}
+
+entity "donations" as donations {
+  * id : VARCHAR(50) <<PK>>
+  --
+  * donor_id : VARCHAR(50) <<FK>>
+  * food_category : VARCHAR(50)
+  * food_name : VARCHAR(200)
+  * quantity_kg : FLOAT
+  * prepared_at : TIMESTAMP WITH TIME ZONE
+  * available_from : TIMESTAMP WITH TIME ZONE
+  * expiry_time : TIMESTAMP WITH TIME ZONE
+  * pickup_location : JSON
+  * special_handling : TEXT
+  * food_safety_info : JSON
+  * status : VARCHAR(50) [AVAILABLE, MATCHED, ACCEPTED, DELIVERED...]
+  matched_ngo_id : VARCHAR(50) <<FK, Nullable>>
+  match_score : FLOAT
+  match_breakdown : JSON
+  weights_version_id : VARCHAR(100)
+  * created_at : TIMESTAMP WITH TIME ZONE
+  * updated_at : TIMESTAMP WITH TIME ZONE
+}
+
+entity "donation_rejections" as rejections {
+  * id : SERIAL <<PK>>
+  --
+  * donation_id : VARCHAR(50) <<FK>>
+  * ngo_id : VARCHAR(50) <<FK>>
+  reason : VARCHAR(200)
+  * rejected_at : TIMESTAMP WITH TIME ZONE
+}
+
+entity "vehicles" as vehicles {
+  * id : VARCHAR(50) <<PK>>
+  --
+  * driver_id : VARCHAR(50) <<FK>>
+  * capacity_kg : FLOAT
+  * current_location : VARCHAR(200) [POINT]
+  * availability_status : VARCHAR(50) [AVAILABLE, BUSY, OFFLINE]
+}
+
+entity "deliveries" as deliveries {
+  * id : VARCHAR(50) <<PK>>
+  --
+  * donation_id : VARCHAR(50) <<FK>>
+  * ngo_id : VARCHAR(50) <<FK>>
+  * driver_id : VARCHAR(50) <<FK>>
+  pickup_time : TIMESTAMP WITH TIME ZONE
+  estimated_delivery_time : TIMESTAMP WITH TIME ZONE
+  actual_pickup_time : TIMESTAMP WITH TIME ZONE
+  actual_delivery_time : TIMESTAMP WITH TIME ZONE
+  route_distance_km : FLOAT
+  estimated_duration_min : INTEGER
+  * status : VARCHAR(50) [DRIVER_ASSIGNED, PICKED_UP, DELIVERED...]
+}
+
+entity "handover_records" as handover_records {
+  * id : VARCHAR(50) <<PK>>
+  --
+  * donation_id : VARCHAR(50) <<FK>>
+  * delivery_id : VARCHAR(50) <<FK>>
+  * donor_confirmation : BOOLEAN
+  * ngo_confirmation : BOOLEAN
+  * pickup_timestamp : TIMESTAMP WITH TIME ZONE
+  * delivery_timestamp : TIMESTAMP WITH TIME ZONE
+  * quantity_handed_over : FLOAT
+  donor_signature : VARCHAR(500)
+  recipient_signature : VARCHAR(500)
+  * disclaimer_version : VARCHAR(50)
+  notes : TEXT
+  * created_at : TIMESTAMP WITH TIME ZONE
+}
+
+entity "matching_weights_history" as matching_weights {
+  * id : SERIAL <<PK>>
+  --
+  * weights_version_id : VARCHAR(100) <<UNIQUE>>
+  * city : VARCHAR(100)
+  * food_category : VARCHAR(50)
+  * w_capacity : FLOAT
+  * w_shelf_life : FLOAT
+  * w_transit : FLOAT
+  * w_demand : FLOAT
+  * w_route : FLOAT
+  * is_active : BOOLEAN
+  * created_at : TIMESTAMP WITH TIME ZONE
+}
+
+entity "audit_logs" as audit_logs {
+  * id : SERIAL <<PK>>
+  --
+  * entity_type : VARCHAR(50)
+  * entity_id : VARCHAR(50)
+  * event_type : VARCHAR(100)
+  * payload : JSON
+  * record_hash : VARCHAR(64)
+  previous_hash : VARCHAR(64)
+  * created_at : TIMESTAMP WITH TIME ZONE
+}
+
+' Foreign Key Relationships
+users ||--o| donors : "owns"
+users ||--o| ngos : "owns"
+users ||--o| vehicles : "drives"
+
+donors ||--o{ donations : "lists"
+donations ||--o{ rejections : "accumulates"
+ngos ||--o{ rejections : "rejects"
+
+ngos ||--o{ ngo_food_categories : "whitelists"
+ngos ||--o{ ngo_demand : "broadcasts"
+ngos ||--o{ ngo_docs : "verifies"
+
+donations ||--o| ngos : "matched to"
+donations ||--o| deliveries : "fulfilled by"
+ngos ||--o{ deliveries : "receives"
+users ||--o{ deliveries : "transports"
+
+donations ||--|| handover_records : "confirmed in"
+deliveries ||--|| handover_records : "evidenced by"
+
+@enduml

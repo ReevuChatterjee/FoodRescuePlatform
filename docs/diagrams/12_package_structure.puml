@@ -1,0 +1,138 @@
+@startuml
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam roundCorner 6
+skinparam shadowing false
+
+<style>
+package {
+  BackgroundColor #F5F5F5
+  BorderColor #424242
+  FontColor #212121
+}
+</style>
+
+title **Food Rescue Platform (Replate) - Modular Package Architecture**
+
+package "backend (app)" as BE_PKG {
+  package "app.core" as PKG_Core {
+    class "config.py" as Core_Config
+    class "database.py" as Core_DB
+    class "security.py" as Core_Sec
+    class "time.py (IST Time)" as Core_Time
+    class "health.py" as Core_Health
+  }
+
+  package "app.models" as PKG_Models {
+    class "User, UserRole" as M_User
+    class "Donor, NGO, NGODemand" as M_Parties
+    class "Donation, DonationStatus" as M_Donation
+    class "Vehicle, Delivery, DeliveryStatus" as M_Delivery
+    class "HandoverRecord, AuditLog" as M_Audit
+    class "MatchingWeightsHistory" as M_Weights
+  }
+
+  package "app.auth" as PKG_Auth {
+    class "router.py" as Auth_Router
+    class "service.py" as Auth_Service
+  }
+
+  package "app.donations" as PKG_Donations {
+    class "router.py" as Don_Router
+    class "service.py" as Don_Service
+  }
+
+  package "app.matching_engine" as PKG_Matching {
+    class "candidate_filter.py" as Match_Filter
+    class "scoring.py" as Match_Scorer
+    class "service.py" as Match_Service
+    class "router.py" as Match_Router
+  }
+
+  package "app.dispatch" as PKG_Dispatch {
+    class "router.py" as Disp_Router
+    class "service.py" as Disp_Service
+  }
+
+  package "app.routing" as PKG_Routing {
+    class "geo.py (Haversine)" as Rout_Geo
+    class "osrm.py (Client)" as Rout_OSRM
+    class "router.py" as Rout_Router
+  }
+
+  package "app.deliveries" as PKG_Deliveries {
+    class "router.py" as Deliv_Router
+    class "handover.py" as Deliv_Handover
+  }
+
+  package "app.analytics" as PKG_Analytics {
+    class "router.py" as Ana_Router
+    class "service.py" as Ana_Service
+  }
+
+  package "app.ws" as PKG_WS {
+    class "broker.py" as WS_Broker
+    class "router.py" as WS_Router
+  }
+
+  package "app.cron" as PKG_Cron {
+    class "router.py" as Cron_Router
+    class "service.py" as Cron_Service
+  }
+}
+
+package "frontend (src)" as FE_PKG {
+  package "src.pages" as PKG_Pages {
+    class "donor/CreateDonation.tsx" as P_Donor
+    class "ngo/NgoDashboard.tsx" as P_NGO
+    class "driver/DriverDashboard.tsx" as P_Driver
+    class "admin/AdminDashboard.tsx" as P_Admin
+    class "auth/Login.tsx" as P_Login
+  }
+
+  package "src.components" as PKG_Components {
+    class "driver/DriverRouteMap.tsx" as C_Map
+    class "common/LocationAutocomplete.tsx" as C_Loc
+    class "donor/DonationCard.tsx" as C_DCard
+    class "ngo/DemandManager.tsx" as C_Demand
+  }
+
+  package "src.hooks" as PKG_Hooks {
+    class "useDriver.ts" as H_Driver
+    class "useDriverLocation.ts" as H_Loc
+    class "useAuth.ts" as H_Auth
+    class "useDonations.ts" as H_Don
+    class "useWebSocket.ts" as H_WS
+  }
+
+  package "src.services" as PKG_Services {
+    class "api.ts" as S_API
+    class "auth.ts" as S_Auth
+  }
+}
+
+' Backend Package Dependencies
+PKG_Auth ..> PKG_Core
+PKG_Auth ..> PKG_Models
+PKG_Donations ..> PKG_Models
+PKG_Donations ..> PKG_Matching
+PKG_Matching ..> PKG_Models
+PKG_Matching ..> PKG_Routing
+PKG_Dispatch ..> PKG_Models
+PKG_Dispatch ..> PKG_Routing
+PKG_Dispatch ..> PKG_WS
+PKG_Deliveries ..> PKG_Models
+PKG_Deliveries ..> PKG_WS
+PKG_Analytics ..> PKG_Models
+PKG_Cron ..> PKG_Matching
+PKG_Cron ..> PKG_Models
+
+' Frontend Package Dependencies
+PKG_Pages ..> PKG_Components
+PKG_Pages ..> PKG_Hooks
+PKG_Components ..> PKG_Hooks
+PKG_Hooks ..> PKG_Services
+PKG_Services ..> BE_PKG : HTTP / JSON
+
+@enduml
