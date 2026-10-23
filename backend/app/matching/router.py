@@ -139,7 +139,7 @@ async def get_candidates(
 
     # Load NGOs, routes and weights
     ngos = await load_active_ngos(db)
-    routes = load_routes(donation, ngos)
+    routes = await load_routes(donation, ngos)
     weights = await load_active_weights(donation, db)
 
     # Retrieve already-excluded NGOs from previous rejections
@@ -354,7 +354,7 @@ async def reject_match(
         raise api_error(500, "INTERNAL_ERROR", "Could not reload donation for rematching.")
 
     ngos = await load_active_ngos(db)
-    routes = load_routes(engine_donation, ngos)
+    routes = await load_routes(engine_donation, ngos)
     weights = await load_active_weights(engine_donation, db)
     excluded = await get_excluded_ngo_ids(donation_id, db)
 

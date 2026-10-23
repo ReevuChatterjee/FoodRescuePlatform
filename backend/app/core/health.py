@@ -127,7 +127,7 @@ async def debug_match(approve_all: bool = False, match_latest: bool = False):
         try:
             engine_donation = await load_donation(donation.id, db)
             ngos = await load_active_ngos(db)
-            routes = load_routes(engine_donation, ngos)
+            routes = await load_routes(engine_donation, ngos)
             weights = await load_active_weights(engine_donation, db)
             excluded = await get_excluded_ngo_ids(donation.id, db)
             

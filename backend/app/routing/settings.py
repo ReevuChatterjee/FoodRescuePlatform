@@ -24,7 +24,7 @@ class RoutingSettings(BaseSettings):
         env_file="../.env", env_file_encoding="utf-8", env_prefix="ROUTING_", extra="ignore"
     )
 
-    provider: Literal["heuristic", "osrm", "tomtom"] = "heuristic"
+    provider: Literal["heuristic", "osrm", "tomtom"] = "tomtom"
     osrm_base_url: str = "https://router.project-osrm.org"
     tomtom_base_url: str = "https://api.tomtom.com"
     tomtom_api_key: str | None = None

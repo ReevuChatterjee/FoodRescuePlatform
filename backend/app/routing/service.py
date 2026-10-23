@@ -14,6 +14,7 @@ With the default ROUTING_PROVIDER=heuristic both paths return identical numbers.
 """
 from app.core.time import IST
 
+import asyncio
 import logging
 import math
 from collections.abc import Mapping
@@ -47,7 +48,7 @@ def build_provider(settings: RoutingSettings, heuristic: HeuristicRouteProvider)
             OSRMRouteProvider(settings.osrm_base_url, settings.timeout_seconds, settings.traffic_model),
             heuristic,
         )
-    if settings.provider == "tomtom":
+    if settings.provider == "tomtom" or settings.tomtom_api_key:
         if not settings.tomtom_api_key:
             logger.warning("ROUTING_PROVIDER=tomtom but ROUTING_TOMTOM_API_KEY is empty; using heuristic")
             return heuristic
@@ -91,6 +92,43 @@ def estimate_routes_from(
 ) -> dict[str, RouteEstimate]:
     departure = departure or _now()
     return {key: _heuristic.estimate(origin, point, departure) for key, point in destinations.items()}
+
+
+async def calculate_routes_from(
+    origin: LatLng, destinations: Mapping[str, LatLng], departure: datetime | None = None
+) -> dict[str, RouteEstimate]:
+    """Calculate routes from an origin to multiple destinations concurrently.
+
+    If the configured provider is heuristic, uses the fast synchronous estimator.
+    If the configured provider is network-backed (e.g. TomTom with live traffic),
+    runs concurrent requests with individual error fallback to heuristic.
+    """
+    departure = departure or _now()
+    provider = get_provider()
+
+    # Short-circuit for heuristic provider
+    if isinstance(provider, HeuristicRouteProvider):
+        return estimate_routes_from(origin, destinations, departure)
+
+    keys = list(destinations.keys())
+    if not keys:
+        return {}
+
+    tasks = [calculate_route(origin, destinations[k], departure) for k in keys]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    out: dict[str, RouteEstimate] = {}
+    for k, res in zip(keys, results):
+        if isinstance(res, Exception) or res is None:
+            logger.warning(
+                "calculate_route failed for destination %s; falling back to heuristic: %s",
+                k,
+                res,
+            )
+            out[k] = _heuristic.estimate(origin, destinations[k], departure)
+        else:
+            out[k] = res
+    return out
 
 
 def offer_route_summary(

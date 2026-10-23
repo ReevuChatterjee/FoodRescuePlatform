@@ -75,7 +75,7 @@ async def run_rematch_cron(db: Annotated[AsyncSession, Depends(get_db)]):
                 continue
 
             ngos = await load_active_ngos(db)
-            routes = load_routes(engine_donation, ngos)
+            routes = await load_routes(engine_donation, ngos)
             weights = await load_active_weights(engine_donation, db)
             excluded = await get_excluded_ngo_ids(donation.id, db)
 

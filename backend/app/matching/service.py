@@ -47,7 +47,7 @@ async def run_matching(donation_id: str):
                 return
 
             ngos = await load_active_ngos(db)
-            routes = load_routes(engine_donation, ngos)
+            routes = await load_routes(engine_donation, ngos)
             weights = await load_active_weights(engine_donation, db)
             excluded = await get_excluded_ngo_ids(donation_id, db)
 

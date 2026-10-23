@@ -36,7 +36,7 @@ from app.models import (
     NGOFoodCategory as OrmNGOFoodCategory,
     NGOVerificationStatus,
 )
-from app.routing.service import estimate_routes_from
+from app.routing.service import calculate_routes_from, estimate_routes_from
 
 
 # ---------------------------------------------------------------------------
@@ -263,16 +263,36 @@ async def load_active_ngos(db: AsyncSession) -> list[me.NGOCandidate]:
     return candidates
 
 
-def load_routes(
+async def load_routes(
     donation: me.Donation,
     ngos: list[me.NGOCandidate],
 ) -> dict[str, me.RouteMetrics]:
     """Build route metrics for each candidate NGO via Person 5's routing engine.
 
-    duration_minutes is the free-flow time; traffic_duration_minutes is the
-    time-of-day estimate the engine prefers when present (see
-    candidate_filter.py check 6 and scoring.route_score).
+    Uses live traffic if configured (e.g. TomTom) with parallel queries,
+    falling back to the deterministic time-of-day heuristic.
     """
+    estimates = await calculate_routes_from(
+        (donation.pickup_location.latitude, donation.pickup_location.longitude),
+        {ngo.ngo_id: (ngo.location.latitude, ngo.location.longitude) for ngo in ngos},
+        departure=datetime.now(IST),
+    )
+    return {
+        ngo_id: me.RouteMetrics(
+            ngo_id=ngo_id,
+            distance_km=round(estimate.distance_km, 2),
+            duration_minutes=round(estimate.duration_minutes, 1),
+            traffic_duration_minutes=round(estimate.traffic_duration_minutes, 1),
+        )
+        for ngo_id, estimate in estimates.items()
+    }
+
+
+def load_routes_sync(
+    donation: me.Donation,
+    ngos: list[me.NGOCandidate],
+) -> dict[str, me.RouteMetrics]:
+    """Synchronous fallback using the deterministic heuristic."""
     estimates = estimate_routes_from(
         (donation.pickup_location.latitude, donation.pickup_location.longitude),
         {ngo.ngo_id: (ngo.location.latitude, ngo.location.longitude) for ngo in ngos},
