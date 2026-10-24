@@ -11,6 +11,7 @@ import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { useDriverWebSocket } from '../../hooks/useDriverWebSocket';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
+import { useTrafficRoute } from '../../hooks/useTrafficRoute';
 
 const SOPS = [
   'Confirm payload and quantity before pickup.',
@@ -50,6 +51,14 @@ export function DriverDashboard() {
   const [broadcastSuccess, setBroadcastSuccess] = useState(false);
   const [sopOpen, setSopOpen] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  // ── Traffic-aware route (for JobCard live ETA) ──────────────────────────────
+  // DriverRouteMap runs its own useTrafficRoute internally; this call at the
+  // dashboard level feeds the same data to JobCard without duplicating the API
+  // call (the service-level cache ensures the result is shared).
+  const effectivePosition: GeoPoint | null = manualPos ?? location.position ?? driver?.current_location ?? null;
+  const liveRoute = useTrafficRoute(job, effectivePosition);
+
 
   const showToast = (msg: string, type: 'success' | 'error') => {
     setToast({ msg, type });
@@ -158,7 +167,7 @@ export function DriverDashboard() {
     const online = driver.availability_status !== 'OFFLINE';
     setAvailability.mutate({
       availability_status: online ? 'OFFLINE' : 'AVAILABLE',
-      location: online ? null : (manualPos ?? driver.current_location),
+      location: online ? null : (manualPos ?? location.position ?? driver.current_location),
     });
   };
 
@@ -225,7 +234,11 @@ export function DriverDashboard() {
               
               {driver && job ? (
                 <div className="space-y-6">
-                  <JobCard job={job} />
+                  <JobCard
+                    job={job}
+                    liveRoute={liveRoute.routeInfo}
+                    liveRouteSource={liveRoute.trafficSource}
+                  />
                   <div className="border border-outline-variant/50 rounded overflow-hidden">
                      <DriverRouteMap job={job} driverPosition={manualPos ?? location.position ?? driver.current_location} />
                   </div>

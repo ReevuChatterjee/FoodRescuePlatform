@@ -96,6 +96,9 @@ class RouteProvider(Protocol):
     async def route(self, origin: LatLng, destination: LatLng, departure: datetime) -> RouteEstimate:
         ...
 
+    async def route_multi(self, waypoints: list[LatLng], departure: datetime) -> RouteEstimate:
+        ...
+
 
 def _checked(value: Any, label: str) -> float:
     number = float(value)
@@ -131,8 +134,36 @@ class HeuristicRouteProvider:
             traffic_source=MODEL_TRAFFIC_SOURCE[self.traffic_model],
         )
 
+    def estimate_multi(self, waypoints: list[LatLng], departure: datetime) -> RouteEstimate:
+        """Stitch multiple straight-line segments into a single estimate."""
+        if len(waypoints) < 2:
+            raise ValueError("estimate_multi requires at least 2 waypoints")
+        total_km = 0.0
+        all_points: list[LatLng] = []
+        for i in range(len(waypoints) - 1):
+            seg_km = haversine_km(waypoints[i], waypoints[i + 1]) * self.circuity_factor
+            total_km += seg_km
+            seg_points = interpolate_line(waypoints[i], waypoints[i + 1], self.geometry_segments)
+            # Avoid duplicate junction points between segments
+            if all_points:
+                seg_points = seg_points[1:]
+            all_points.extend(seg_points)
+        free_flow = total_km * FREE_FLOW_MIN_PER_KM
+        return RouteEstimate(
+            distance_km=total_km,
+            duration_minutes=free_flow,
+            traffic_duration_minutes=free_flow * congestion_multiplier(departure, self.traffic_model),
+            geometry=encode_polyline(all_points),
+            provider=self.name,
+            departure_time=departure,
+            traffic_source=MODEL_TRAFFIC_SOURCE[self.traffic_model],
+        )
+
     async def route(self, origin: LatLng, destination: LatLng, departure: datetime) -> RouteEstimate:
         return self.estimate(origin, destination, departure)
+
+    async def route_multi(self, waypoints: list[LatLng], departure: datetime) -> RouteEstimate:
+        return self.estimate_multi(waypoints, departure)
 
 
 class OSRMRouteProvider:
@@ -150,9 +181,10 @@ class OSRMRouteProvider:
         self.traffic_model = traffic_model
         self._transport = transport
 
-    async def route(self, origin: LatLng, destination: LatLng, departure: datetime) -> RouteEstimate:
+    async def _fetch_osrm(self, waypoints: list[LatLng], departure: datetime) -> RouteEstimate:
+        """Shared OSRM fetch logic for both single-leg and multi-leg routes."""
         # OSRM wants lng,lat order.
-        coords = f"{origin[1]:.6f},{origin[0]:.6f};{destination[1]:.6f},{destination[0]:.6f}"
+        coords = ";".join(f"{p[1]:.6f},{p[0]:.6f}" for p in waypoints)
         params = {"overview": "full", "geometries": "polyline", "alternatives": "false", "steps": "false"}
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds, transport=self._transport) as client:
@@ -167,15 +199,22 @@ class OSRMRouteProvider:
             raise RoutingProviderError(f"OSRM returned code {body.get('code')!r}")
         best = routes[0]
         base_minutes = _checked(best.get("duration"), "duration") / 60
+        fallback_geom = encode_polyline(waypoints)
         return RouteEstimate(
             distance_km=_checked(best.get("distance"), "distance") / 1000,
             duration_minutes=base_minutes,
             traffic_duration_minutes=base_minutes * congestion_multiplier(departure, self.traffic_model),
-            geometry=best.get("geometry") or encode_polyline([origin, destination]),
+            geometry=best.get("geometry") or fallback_geom,
             provider=self.name,
             departure_time=departure,
             traffic_source=MODEL_TRAFFIC_SOURCE[self.traffic_model],
         )
+
+    async def route(self, origin: LatLng, destination: LatLng, departure: datetime) -> RouteEstimate:
+        return await self._fetch_osrm([origin, destination], departure)
+
+    async def route_multi(self, waypoints: list[LatLng], departure: datetime) -> RouteEstimate:
+        return await self._fetch_osrm(waypoints, departure)
 
 
 class TomTomRouteProvider:
@@ -195,8 +234,13 @@ class TomTomRouteProvider:
         self.timeout_seconds = timeout_seconds
         self._transport = transport
 
-    async def route(self, origin: LatLng, destination: LatLng, departure: datetime) -> RouteEstimate:
-        locations = f"{origin[0]:.6f},{origin[1]:.6f}:{destination[0]:.6f},{destination[1]:.6f}"
+    async def _fetch_tomtom(self, waypoints: list[LatLng], departure: datetime) -> RouteEstimate:
+        """Shared TomTom fetch logic for both single-leg and multi-leg routes.
+
+        TomTom's calculateRoute endpoint accepts colon-separated lat,lon pairs,
+        so driver:pickup:dropoff is a single request with two legs.
+        """
+        locations = ":".join(f"{p[0]:.6f},{p[1]:.6f}" for p in waypoints)
         params = {
             "key": self._api_key,
             "traffic": "true",
@@ -232,15 +276,22 @@ class TomTomRouteProvider:
             for leg in routes[0].get("legs") or []
             for p in leg.get("points") or []
         ]
+        fallback_geom = encode_polyline(waypoints)
         return RouteEstimate(
             distance_km=_checked(summary.get("lengthInMeters"), "lengthInMeters") / 1000,
             duration_minutes=without_traffic,
             traffic_duration_minutes=with_traffic,
-            geometry=encode_polyline(points or [origin, destination]),
+            geometry=encode_polyline(points) if points else fallback_geom,
             provider=self.name,
             departure_time=departure,
             traffic_source="live",
         )
+
+    async def route(self, origin: LatLng, destination: LatLng, departure: datetime) -> RouteEstimate:
+        return await self._fetch_tomtom([origin, destination], departure)
+
+    async def route_multi(self, waypoints: list[LatLng], departure: datetime) -> RouteEstimate:
+        return await self._fetch_tomtom(waypoints, departure)
 
 
 class FallbackRouteProvider:
@@ -257,6 +308,15 @@ class FallbackRouteProvider:
                 "routing provider %s failed (%s); using heuristic estimate", self.primary.name, exc
             )
             return self.fallback.estimate(origin, destination, departure)
+
+    async def route_multi(self, waypoints: list[LatLng], departure: datetime) -> RouteEstimate:
+        try:
+            return await self.primary.route_multi(waypoints, departure)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "routing provider %s multi-leg failed (%s); using heuristic estimate", self.primary.name, exc
+            )
+            return self.fallback.estimate_multi(waypoints, departure)
 
 
 class RouteCache:

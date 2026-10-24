@@ -12,7 +12,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from app.auth.dependencies import get_current_user
 from app.main import app
@@ -481,7 +481,7 @@ async def routes_client():
                 password_hash="x", role=UserRole.DRIVER)
     app.dependency_overrides[get_current_user] = lambda: user
     routing_service.configure(None)
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
     app.dependency_overrides.clear()
 
@@ -534,7 +534,36 @@ async def test_routes_calculate_rejects_out_of_range_coordinates(routes_client):
 
 async def test_routes_calculate_requires_auth():
     app.dependency_overrides.clear()
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         body = {"origin": {"latitude": A[0], "longitude": A[1]}, "destination": {"latitude": B[0], "longitude": B[1]}}
         response = await client.post("/api/v1/routes/calculate", json=body)
     assert response.status_code in (401, 403)
+
+
+async def test_routes_calculate_multi_success(routes_client):
+    body = {
+        "waypoints": [
+            {"latitude": 12.97, "longitude": 77.59},
+            {"latitude": 12.98, "longitude": 77.60},
+            {"latitude": 12.99, "longitude": 77.61},
+        ],
+        "departure_time": "2026-09-17T04:00:00Z",
+    }
+    response = await routes_client.post("/api/v1/routes/calculate-multi", json=body)
+    assert response.status_code == 200
+    payload = response.json()
+    assert "data" in payload
+    data = payload["data"]
+    assert set(data) == HTTP_KEYS
+    assert data["distance_km"] > 0
+    assert data["duration_minutes"] > 0
+    assert len(data["geometry"]) > 0
+
+
+async def test_routes_calculate_multi_validation(routes_client):
+    # Single waypoint rejected (needs at least 2)
+    response = await routes_client.post(
+        "/api/v1/routes/calculate-multi",
+        json={"waypoints": [{"latitude": 12.97, "longitude": 77.59}]},
+    )
+    assert response.status_code in (400, 422)

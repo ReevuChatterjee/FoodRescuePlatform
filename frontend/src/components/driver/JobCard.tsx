@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { DriverJob } from '../../hooks/useDriver';
+import type { DriverJob, RouteEstimate } from '../../hooks/useDriver';
+import type { TrafficRouteSource } from '../../hooks/useTrafficRoute';
 
 export function formatMinutes(minutes: number | null | undefined): string {
   if (minutes == null || !Number.isFinite(minutes)) return '—';
@@ -25,12 +26,34 @@ const TIMELINE_STATES = [
   { id: 'DELIVERED', label: 'Delivered' }
 ];
 
-export function JobCard({ job }: { job: DriverJob }) {
+// Colour dot for ETA traffic source indicator
+const SOURCE_DOT: Record<TrafficRouteSource, { color: string; title: string }> = {
+  live:       { color: '#22c55e', title: 'Live traffic (TomTom)' },
+  road_model: { color: '#6366f1', title: 'Road route with modelled traffic' },
+  heuristic:  { color: '#f97316', title: 'Straight-line estimate' },
+  static:     { color: '#f97316', title: 'Estimated at job creation' },
+  none:       { color: '#94a3b8', title: 'Loading…' },
+};
+
+interface JobCardProps {
+  job: DriverJob;
+  /** Live route info from useTrafficRoute — updates ETA as driver moves. */
+  liveRoute?: RouteEstimate | null;
+  /** Traffic source label for the ETA dot. */
+  liveRouteSource?: TrafficRouteSource;
+}
+
+export function JobCard({ job, liveRoute, liveRouteSource = 'none' }: JobCardProps) {
   const shelfLife = useMinutesUntil(job.timeline.expiry_time);
   const safety = job.food_safety_info;
   
   // Find current index
   const currentIndex = TIMELINE_STATES.findIndex(s => s.id === job.status);
+
+  // Use live route info when available, fall back to job's static estimate.
+  const etaMinutes = liveRoute?.duration_minutes ?? job.route_to_next_stop?.duration_minutes;
+  const distKm = liveRoute?.distance_km ?? job.route_to_next_stop?.distance_km;
+  const dot = liveRoute ? SOURCE_DOT[liveRouteSource] : SOURCE_DOT.static;
 
   return (
     <div className="space-y-8">
@@ -72,8 +95,22 @@ export function JobCard({ job }: { job: DriverJob }) {
             </p>
          </div>
          <div>
-            <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1">ETA</p>
-            <p className="text-[0.875rem] font-mono-data text-on-surface font-semibold">{formatMinutes(job.route_to_next_stop?.duration_minutes)}</p>
+            <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-1 flex items-center gap-1.5">
+              ETA
+              <span
+                className="w-1.5 h-1.5 rounded-full inline-block flex-shrink-0"
+                style={{ background: dot.color }}
+                title={dot.title}
+              />
+            </p>
+            <p className="text-[0.875rem] font-mono-data text-on-surface font-semibold">
+              {formatMinutes(etaMinutes)}
+              {distKm != null && (
+                <span className="text-[0.75rem] font-normal text-on-surface-variant ml-1.5">
+                  · {distKm.toFixed(1)} km
+                </span>
+              )}
+            </p>
             <p className={`text-[0.75rem] ${shelfLife < 60 ? 'text-warning font-semibold' : 'text-on-surface-variant'}`}>
               Expires in {formatMinutes(shelfLife)}
             </p>
@@ -121,3 +158,4 @@ export function JobCard({ job }: { job: DriverJob }) {
     </div>
   );
 }
+

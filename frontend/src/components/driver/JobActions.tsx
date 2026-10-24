@@ -108,8 +108,8 @@ function PickupForm({ job, capacityKg, onClose }: { job: DriverJob; capacityKg: 
       <h3 className="text-[1rem] font-semibold text-on-surface tracking-tight mb-4">Confirm pickup</h3>
       
       <div className="mb-6">
-        <label className="block text-[0.8125rem] font-semibold text-on-surface mb-1.5">Quantity loaded (kg)</label>
-        <input className="w-full sm:w-1/2 h-10 px-3 bg-surface border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" type="number" inputMode="decimal" step="0.1" min="0.1"
+        <label htmlFor="quantity-loaded-input" className="block text-[0.8125rem] font-semibold text-on-surface mb-1.5">Quantity loaded (kg)</label>
+        <input id="quantity-loaded-input" className="w-full sm:w-1/2 h-10 px-3 bg-surface border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" type="number" inputMode="decimal" step="0.1" min="0.1"
           value={kg} onChange={(e) => setKg(e.target.value)} />
         {invalid && (
           <p className="text-[0.75rem] font-medium text-error mt-1.5">Enter more than 0 kg{capacityKg > 0 ? `, up to your vehicle's ${capacityKg.toFixed(1)} kg` : ''}.</p>
@@ -157,8 +157,8 @@ function DeliverForm({ job, onClose }: { job: DriverJob; onClose: () => void }) 
       
       <div className="space-y-6">
         <div>
-          <label className="block text-[0.8125rem] font-semibold text-on-surface mb-1.5">Quantity handed over (kg)</label>
-          <input className="w-full sm:w-1/2 h-10 px-3 bg-surface border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" type="number" inputMode="decimal" step="0.1" min="0"
+          <label htmlFor="quantity-handed-over-input" className="block text-[0.8125rem] font-semibold text-on-surface mb-1.5">Quantity handed over (kg)</label>
+          <input id="quantity-handed-over-input" className="w-full sm:w-1/2 h-10 px-3 bg-surface border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" type="number" inputMode="decimal" step="0.1" min="0"
             value={kg} onChange={(e) => setKg(e.target.value)} />
           {value < job.quantity_kg && value >= 0 && (
             <p className="text-[0.75rem] text-on-surface-variant mt-1.5">Less than the {job.quantity_kg.toFixed(1)} kg picked up: this is recorded as a partial delivery.</p>

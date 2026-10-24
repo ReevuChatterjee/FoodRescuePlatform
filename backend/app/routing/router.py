@@ -1,8 +1,10 @@
 from __future__ import annotations
-"""POST /api/v1/routes/calculate — Person 5's routing API (§6).
+"""Routing API endpoints — Person 5's routing API (§6).
 
-Consumed by Person 4 (route inputs), Person 2's donor map and Person 5's driver
-app. Response `data`:
+POST /api/v1/routes/calculate   — single-leg route (origin → destination)
+POST /api/v1/routes/calculate-multi — multi-waypoint route (driver → pickup → dropoff)
+
+Response `data`:
 
     {
       "distance_km": 5.4,
@@ -27,8 +29,8 @@ from fastapi import APIRouter, Depends
 from app.auth.dependencies import get_current_user
 from app.core.envelope import envelope
 from app.models import User
-from app.routing.schemas import RouteCalculateRequest
-from app.routing.service import calculate_route
+from app.routing.schemas import RouteCalculateRequest, RouteCalculateMultiRequest
+from app.routing.service import calculate_route, calculate_route_multi
 
 router = APIRouter(prefix="/api/v1/routes", tags=["routing"])
 
@@ -40,10 +42,31 @@ async def calculate(
 ):
     departure = body.departure_time
     if departure is not None and departure.tzinfo is None:
-        departure = departure.replace(tzinfo=IST)
+        departure = departure.replace(tzinfo=timezone.utc)
     estimate = await calculate_route(
         (body.origin.latitude, body.origin.longitude),
         (body.destination.latitude, body.destination.longitude),
         departure,
     )
     return envelope(estimate.to_dict())
+
+
+@router.post("/calculate-multi")
+async def calculate_multi(
+    body: RouteCalculateMultiRequest,
+    _user: Annotated[User, Depends(get_current_user)],
+):
+    """Traffic-optimised multi-waypoint route.
+
+    Accepts an ordered list of waypoints (e.g. [driver, pickup, dropoff]).
+    Uses the configured provider (TomTom live traffic → OSRM → heuristic fallback).
+    A single TomTom request covers all waypoints, so there is no extra API cost
+    vs a two-point call.
+    """
+    departure = body.departure_time
+    if departure is not None and departure.tzinfo is None:
+        departure = departure.replace(tzinfo=timezone.utc)
+    waypoints = [(wp.latitude, wp.longitude) for wp in body.waypoints]
+    estimate = await calculate_route_multi(waypoints, departure)
+    return envelope(estimate.to_dict())
+

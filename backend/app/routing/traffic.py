@@ -52,7 +52,7 @@ def congestion_multiplier(at: datetime, model: TrafficModel = "time_of_day") -> 
     if model == "city_average":
         return AVERAGE_CONGESTION_RATIO
     if at.tzinfo is None:  # the codebase stores naive UTC
-        at = at.replace(tzinfo=IST)
+        at = at.replace(tzinfo=timezone.utc)
     local = at.astimezone(IST)
     hours = local.hour + local.minute / 60 + local.second / 3600
     index = int(hours) % 24

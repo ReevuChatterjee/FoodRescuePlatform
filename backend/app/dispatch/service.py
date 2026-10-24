@@ -713,7 +713,8 @@ async def confirm_delivery(db: AsyncSession, delivery: Delivery, quantity_handed
     vehicle = await vehicle_for_driver(db, delivery.driver_id)
     ngo = await db.get(NGO, delivery.ngo_id)
     if ngo is not None:
-        ngo.available_capacity_kg = max(0.0, ngo.available_capacity_kg - quantity_handed_over)
+        from app.ngos.router import compute_dynamic_ngo_capacity
+        ngo.available_capacity_kg = await compute_dynamic_ngo_capacity(ngo, db, auto_sync_db=False)
 
     if vehicle is not None:
         vehicle.availability_status = AVAILABLE

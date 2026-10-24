@@ -16,7 +16,7 @@ from typing import Annotated, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import delete, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user, require_role
@@ -24,8 +24,11 @@ from app.core.database import get_db
 from app.core.envelope import api_error, envelope, iso_z
 from app.models import (
     NGO,
+    Delivery,
+    DeliveryStatus,
     Donation,
     DonationStatus,
+    HandoverRecord,
     NGODemand,
     NGOFoodCategory,
     NGOVerificationStatus,
@@ -38,41 +41,83 @@ from app.routing.service import offer_route_summary  # Person 5: incoming ETA/di
 router = APIRouter(prefix="/api/v1/ngos", tags=["ngos"])
 
 
-@router.get("")
-async def list_ngos(
-    admin_user: Annotated[User, Depends(require_role("ADMIN"))],
-    db: Annotated[AsyncSession, Depends(get_db)],
-    verification_status: Optional[str] = Query(None, alias="verification_status"),
-):
-    """List NGOs with optional verification_status filter. ADMIN only.
+async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db: bool = True) -> float:
+    """Dynamically calculates available capacity (in kg) from active and non-expired donations/deliveries.
 
-    Used by the admin NGO verification queue (Person 6 frontend).
-    Response shape matches the TypeScript NGO interface in types/api.ts.
+    Formula:
+        available_capacity = max(0.0, storage_capacity_kg - total_occupied_kg)
+
+    Occupied food includes:
+        1. Non-expired delivered or in-transit deliveries assigned to this NGO
+           (using HandoverRecord.quantity_handed_over if recorded, else Donation.quantity_kg).
+        2. Accepted donations matched to this NGO awaiting driver assignment.
+
+    Terminal statuses (CANCELLED, REJECTED, EXPIRED, DRIVER_ISSUE, NO_MATCH_FOUND) and expired food
+    do not occupy storage. If delivery/donation records are deleted from the database, available capacity
+    immediately returns to 100% of storage_capacity_kg (0% utilized).
     """
-    query = select(NGO)
-    if verification_status is not None:
+    now = ist_now()
+    storage_capacity = float(ngo.storage_capacity_kg or 0.0)
+    if storage_capacity <= 0:
+        return 0.0
+
+    # 1. Active or non-expired delivered food linked to Deliveries for this NGO
+    delivery_occupied_query = (
+        select(
+            func.coalesce(
+                func.sum(
+                    func.coalesce(HandoverRecord.quantity_handed_over, Donation.quantity_kg)
+                ),
+                0.0
+            )
+        )
+        .select_from(Delivery)
+        .join(Donation, Delivery.donation_id == Donation.id)
+        .outerjoin(HandoverRecord, HandoverRecord.delivery_id == Delivery.id)
+        .where(
+            Delivery.ngo_id == ngo.id,
+            or_(
+                Delivery.status.in_([
+                    DeliveryStatus.DRIVER_ASSIGNED,
+                    DeliveryStatus.PICKUP_STARTED,
+                    DeliveryStatus.PICKED_UP,
+                    DeliveryStatus.IN_TRANSIT,
+                ]),
+                and_(
+                    Delivery.status.in_([
+                        DeliveryStatus.DELIVERED,
+                        DeliveryStatus.PARTIALLY_DELIVERED,
+                    ]),
+                    or_(Donation.expiry_time == None, Donation.expiry_time > now)
+                )
+            )
+        )
+    )
+    delivery_kg = (await db.execute(delivery_occupied_query)).scalar_one() or 0.0
+
+    # 2. Accepted donations matched to this NGO that don't have a delivery record yet
+    accepted_unassigned_query = (
+        select(func.coalesce(func.sum(Donation.quantity_kg), 0.0))
+        .where(
+            Donation.matched_ngo_id == ngo.id,
+            Donation.status == DonationStatus.ACCEPTED,
+            ~Donation.id.in_(select(Delivery.donation_id))
+        )
+    )
+    accepted_kg = (await db.execute(accepted_unassigned_query)).scalar_one() or 0.0
+
+    total_occupied = float(delivery_kg + accepted_kg)
+    available_kg = max(0.0, round(storage_capacity - total_occupied, 1))
+
+    # Sync back to NGO row so any external consumers or direct SQL queries remain accurate
+    if auto_sync_db and abs((ngo.available_capacity_kg or 0.0) - available_kg) > 0.001:
+        ngo.available_capacity_kg = available_kg
         try:
-            vs = NGOVerificationStatus(verification_status)
-        except ValueError:
-            raise api_error(400, "INVALID_STATUS", f"Unknown verification_status: {verification_status}", "verification_status")
-        query = query.where(NGO.verification_status == vs)
+            await db.commit()
+        except Exception:
+            await db.rollback()
 
-    result = await db.execute(query.order_by(NGO.created_at.desc()))
-    ngos = result.scalars().all()
-
-    data = [
-        {
-            "id": ngo.id,
-            "organisation_name": ngo.organisation_name,
-            "address": ngo.address,
-            "storage_capacity_kg": round(ngo.storage_capacity_kg, 1),
-            "available_capacity_kg": round(ngo.available_capacity_kg, 1),
-            "verification_status": ngo.verification_status.value,
-            "created_at": iso_z(ngo.created_at),
-        }
-        for ngo in ngos
-    ]
-    return envelope(data)
+    return available_kg
 
 
 async def _get_ngo_or_404(ngo_id: str, db: AsyncSession) -> NGO:
@@ -107,6 +152,8 @@ async def _to_dict(ngo: NGO, db: AsyncSession) -> dict:
         except ValueError:
             pass
 
+    dynamic_available_kg = await compute_dynamic_ngo_capacity(ngo, db)
+
     return {
         "id": ngo.id,
         "ngo_id": ngo.id,
@@ -115,7 +162,7 @@ async def _to_dict(ngo: NGO, db: AsyncSession) -> dict:
         "location": {"latitude": lat, "longitude": lng},
         "location_text": ngo.location,
         "storage_capacity_kg": round(ngo.storage_capacity_kg, 1),
-        "available_capacity_kg": round(ngo.available_capacity_kg, 1),
+        "available_capacity_kg": round(dynamic_available_kg, 1),
         "operating_hours": {"start": ngo.operating_start, "end": ngo.operating_end},
         "accepted_categories": [c for c in categories.scalars().all()],
         "is_verified": ngo.verification_status.value == "APPROVED",

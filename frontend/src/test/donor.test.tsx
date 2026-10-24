@@ -7,15 +7,14 @@ import { DonationStatus } from '../types/api';
 describe('StatusBadge', () => {
   it('renders AVAILABLE status with correct classes', () => {
     render(<StatusBadge status={'AVAILABLE' as DonationStatus} />);
-    const badge = screen.getByText('AVAILABLE');
+    const badge = screen.getByText('Available');
     expect(badge).toBeInTheDocument();
-    expect(badge.className).toContain('bg-green-100');
-    expect(badge.className).toContain('text-green-800');
+    expect(badge.className).toContain('text-success');
   });
 
   it('replaces underscores with spaces', () => {
     render(<StatusBadge status={'DRIVER_ASSIGNED' as DonationStatus} />);
-    const badge = screen.getByText('DRIVER ASSIGNED');
+    const badge = screen.getByText('Driver Assigned');
     expect(badge).toBeInTheDocument();
   });
 });

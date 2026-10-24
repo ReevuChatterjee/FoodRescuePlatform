@@ -235,11 +235,10 @@ async def load_active_ngos(db: AsyncSession) -> list[me.NGOCandidate]:
             except Exception:
                 demand = None
 
-        capacity = (
-            ngo.available_capacity_kg
-            if ngo.available_capacity_kg and ngo.available_capacity_kg > 0
-            else (ngo.storage_capacity_kg or 500.0)
-        )
+        from app.ngos.router import compute_dynamic_ngo_capacity
+        capacity = await compute_dynamic_ngo_capacity(ngo, db, auto_sync_db=False)
+        if capacity <= 0 and (not ngo.storage_capacity_kg or ngo.storage_capacity_kg <= 0):
+            capacity = 500.0
 
         try:
             candidates.append(

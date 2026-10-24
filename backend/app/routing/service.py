@@ -157,3 +157,35 @@ async def calculate_route(
     estimate = await provider.route(origin, destination, departure)
     _cache.set(key, estimate)
     return estimate
+
+
+async def calculate_route_multi(
+    waypoints: list[LatLng], departure: datetime | None = None
+) -> RouteEstimate:
+    """Traffic-aware multi-waypoint route (driver → pickup → dropoff).
+
+    Uses the configured provider (TomTom → OSRM → heuristic) with a TTL cache.
+    The cache key is built from the provider name, all waypoints, and a 5-minute
+    departure bucket so dashboard refreshes don't re-hit the network provider.
+    """
+    if len(waypoints) < 2:
+        raise ValueError("calculate_route_multi requires at least 2 waypoints")
+    if len(waypoints) == 2:
+        # Single-leg — use the standard single-route path (shares cache entries).
+        return await calculate_route(waypoints[0], waypoints[1], departure)
+    departure = departure or _now()
+    provider = get_provider()
+    # Build a composite cache key from the provider name + all waypoint coords.
+    aware = departure if departure.tzinfo else departure.replace(tzinfo=timezone.utc)
+    key: tuple = (
+        provider.name,
+        *[round(p[0], 4) for p in waypoints],
+        *[round(p[1], 4) for p in waypoints],
+        int(aware.timestamp() // 300),
+    )
+    cached = _cache.get(key)  # type: ignore[arg-type]
+    if cached is not None:
+        return cached
+    estimate = await provider.route_multi(waypoints, departure)
+    _cache.set(key, estimate)  # type: ignore[arg-type]
+    return estimate

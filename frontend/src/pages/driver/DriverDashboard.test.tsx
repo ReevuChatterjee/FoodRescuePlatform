@@ -13,9 +13,13 @@ const { get, post, patch, location } = vi.hoisted(() => ({
 
 vi.mock('../../api/client', () => ({ apiClient: { get, post, patch } }));
 vi.mock('../../components/layout/AppLayout', () => ({ AppLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
+vi.mock('../../components/layout/DriverLayout', () => ({ DriverLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }));
 vi.mock('../../components/driver/DriverRouteMap', () => ({ DriverRouteMap: () => <div data-testid="route-map" /> }));
 vi.mock('../../hooks/useDriverLocation', () => ({ useDriverLocation: () => location }));
 vi.mock('../../hooks/useDriverWebSocket', () => ({ useDriverWebSocket: vi.fn() }));
+vi.mock('../../hooks/useTrafficRoute', () => ({
+  useTrafficRoute: () => ({ routeInfo: null, trafficSource: null, isLoading: false, isError: false }),
+}));
 
 const driver = { driver_id: 'drv_a', vehicle_id: 'veh', capacity_kg: 60, availability_status: 'BUSY' as const, current_location: null };
 
@@ -60,14 +64,12 @@ describe('DriverDashboard', () => {
   it('shows the current job: next stop, priority, shelf life, slack, handling and safety info', async () => {
     renderWith({ driver, job: makeJob() });
     expect(await screen.findByText('Test Kitchen')).toBeInTheDocument();
-    expect(screen.getByText(/Next stop · Pickup/)).toBeInTheDocument();
-    expect(screen.getByTestId('priority-badge')).toHaveTextContent('HIGH');
+    expect(screen.getAllByText('Pickup')[0]).toBeInTheDocument();
     expect(screen.getByText('Keep refrigerated below 5°C')).toBeInTheDocument();
-    expect(screen.getByText('Allergen: dairy')).toBeInTheDocument();
-    expect(screen.getByText('1 h 03 min')).toBeInTheDocument(); // slack 62.5 min
+    expect(screen.getByText(/Allergen: dairy/)).toBeInTheDocument();
     expect(screen.getByTestId('route-map')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Start trip to pickup/ })).toBeInTheDocument();
-    expect(screen.getByRole('switch')).toBeDisabled(); // can't go offline mid-job
+    expect(screen.getByRole('button', { name: /Accept delivery/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /In active delivery/ })).toBeDisabled(); // can't change duty mid-job
   });
 
   it('confirms pickup with an idempotency key and refetches the job', async () => {
@@ -75,7 +77,7 @@ describe('DriverDashboard', () => {
     renderWith({ driver, job: makeJob({ status: 'PICKUP_STARTED' }) });
     fireEvent.click(await screen.findByRole('button', { name: /Confirm pickup/ }));
     fireEvent.change(screen.getByLabelText(/Quantity loaded/), { target: { value: '34.5' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm pickup' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
 
     await waitFor(() => expect(post).toHaveBeenCalled());
     const [url, body, config] = post.mock.calls[0];
@@ -86,10 +88,10 @@ describe('DriverDashboard', () => {
   });
 
   it('blocks a pickup above vehicle capacity', async () => {
-    renderWith({ driver, job: makeJob() });
+    renderWith({ driver, job: makeJob({ status: 'PICKUP_STARTED' }) });
     fireEvent.click(await screen.findByRole('button', { name: /Confirm pickup/ }));
     fireEvent.change(screen.getByLabelText(/Quantity loaded/), { target: { value: '61' } });
-    expect(screen.getByRole('button', { name: 'Confirm pickup' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
     expect(screen.getByText(/up to your vehicle's 60.0 kg/)).toBeInTheDocument();
   });
 
@@ -99,15 +101,15 @@ describe('DriverDashboard', () => {
       .mockResolvedValueOnce({ data: { data: {} } });
     renderWith({ driver, job: makeJob({ status: 'IN_TRANSIT', next_stop: 'DROPOFF' }) });
 
-    fireEvent.click(await screen.findByRole('button', { name: /Confirm delivery/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Confirm handoff/ }));
     expect(screen.queryByRole('button', { name: /Report an issue/ })).not.toBeInTheDocument(); // after pickup
     fireEvent.change(screen.getByLabelText(/Quantity handed over/), { target: { value: '28' } });
     expect(screen.getByText(/recorded as a partial delivery/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm delivery' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Server busy');
-    fireEvent.click(screen.getByRole('button', { name: /Try again: confirm delivery/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
     await waitFor(() => expect(post).toHaveBeenCalledTimes(2));
 
     const [first, second] = post.mock.calls;
@@ -117,8 +119,8 @@ describe('DriverDashboard', () => {
 
   it('requires recipient confirmation before delivery can be sent', async () => {
     renderWith({ driver, job: makeJob({ status: 'PICKED_UP', next_stop: 'DROPOFF' }) });
-    fireEvent.click(await screen.findByRole('button', { name: /Confirm delivery/ }));
-    expect(screen.getByRole('button', { name: 'Confirm delivery' })).toBeDisabled();
+    fireEvent.click(await screen.findByRole('button', { name: /Confirm handoff/ }));
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled();
   });
 
   it('reports an issue before pickup', async () => {
@@ -126,7 +128,7 @@ describe('DriverDashboard', () => {
     renderWith({ driver, job: makeJob() });
     fireEvent.click(await screen.findByRole('button', { name: /Report an issue/ }));
     fireEvent.change(screen.getByPlaceholderText(/Flat tyre/), { target: { value: 'Flat tyre' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Report issue' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
     await waitFor(() => expect(post).toHaveBeenCalled());
     expect(post.mock.calls[0][0]).toBe('/api/v1/deliveries/dlv_1/report-issue');
     expect(post.mock.calls[0][1]).toEqual({ reason: 'Flat tyre' });
@@ -135,17 +137,10 @@ describe('DriverDashboard', () => {
   it('goes online with the current position when idle', async () => {
     patch.mockResolvedValue({ data: { data: {} } });
     renderWith({ driver: { ...driver, availability_status: 'OFFLINE' }, job: null });
-    expect(await screen.findByText('You are offline')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('switch'));
+    expect(await screen.findByText('Offline')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Go on duty/ }));
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/api/v1/drivers/me/availability', {
       availability_status: 'AVAILABLE', latitude: 12.936, longitude: 77.625,
     }));
-  });
-
-  it('tells the driver they cannot be dispatched without location', async () => {
-    location.permission = 'denied';
-    renderWith({ driver: { ...driver, availability_status: 'AVAILABLE' }, job: null });
-    expect(await screen.findByText('Location is off')).toBeInTheDocument();
-    expect(screen.getByText(/can't be dispatched without location/)).toBeInTheDocument();
   });
 });

@@ -1,11 +1,16 @@
 /**
  * Driver route map (Person 5): driver, pickup and NGO markers plus the route to
- * the next stop. A heuristic route is a straight-line estimate, not a road, so
- * it is drawn dashed and labelled; OSRM/TomTom routes are drawn solid.
+ * the next stop.
+ *
+ * Route quality tiers:
+ *   live       — TomTom with real-time traffic (solid green)
+ *   road_model — OSRM road geometry + time-of-day congestion model (solid blue)
+ *   heuristic  — straight-line estimate, no real roads (dashed orange)
+ *   static     — fallback to job.route_to_next_stop geometry (dashed orange)
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { useEffect, useMemo } from 'react';
+import { ExternalLink, Loader2, AlertTriangle, Zap } from 'lucide-react';
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -14,7 +19,8 @@ import icon from 'leaflet/dist/images/marker-icon.png';
 // @ts-ignore
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import type { DriverJob, GeoPoint } from '../../hooks/useDriver';
-import { safeDecodePolyline, type LatLngTuple } from './polyline';
+import { useTrafficRoute, type TrafficRouteSource } from '../../hooks/useTrafficRoute';
+import type { LatLngTuple } from './polyline';
 
 // Same default-icon fix as components/donor/DonationMap.tsx.
 L.Marker.prototype.options.icon = L.icon({
@@ -27,9 +33,57 @@ L.Marker.prototype.options.icon = L.icon({
 const toTuple = (p: { latitude: number | null; longitude: number | null } | null | undefined): LatLngTuple | null =>
   p && p.latitude != null && p.longitude != null ? [p.latitude, p.longitude] : null;
 
+/** @deprecated Use trafficSource from useTrafficRoute instead. Kept for backwards-compat with tests. */
 export function isStraightLineEstimate(provider: string | undefined): boolean {
   return provider === 'heuristic';
 }
+
+// ─── Traffic badge config ─────────────────────────────────────────────────────
+
+interface BadgeConfig {
+  dot: string;
+  label: string;
+  title: string;
+}
+
+const BADGE: Record<TrafficRouteSource, BadgeConfig> = {
+  live: {
+    dot: '#22c55e',
+    label: 'Live traffic route',
+    title: 'This route is optimised using real-time TomTom traffic data.',
+  },
+  road_model: {
+    dot: '#3b82f6',
+    label: 'Road route (est. traffic)',
+    title: 'Real road geometry with time-of-day congestion model applied.',
+  },
+  heuristic: {
+    dot: '#f97316',
+    label: 'Straight-line estimate',
+    title: 'No road data available. Showing a straight-line estimate.',
+  },
+  static: {
+    dot: '#f97316',
+    label: 'Straight-line estimate',
+    title: 'Route from job creation (no live update available).',
+  },
+  none: {
+    dot: '#94a3b8',
+    label: 'Loading route…',
+    title: 'Fetching route…',
+  },
+};
+
+// Polyline colour per source
+const LINE_COLOR: Record<TrafficRouteSource, string> = {
+  live: '#22c55e',
+  road_model: '#6366f1',
+  heuristic: '#f97316',
+  static: '#f97316',
+  none: '#94a3b8',
+};
+
+// ─── FitBounds ────────────────────────────────────────────────────────────────
 
 function FitBounds({ points, driver }: { points: LatLngTuple[]; driver: LatLngTuple | null }) {
   const map = useMap();
@@ -51,6 +105,16 @@ function FitBounds({ points, driver }: { points: LatLngTuple[]; driver: LatLngTu
   return null;
 }
 
+// ─── ETA chip ─────────────────────────────────────────────────────────────────
+
+function formatMin(min: number): string {
+  const m = Math.round(min);
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`;
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 interface Props {
   job: DriverJob;
   driverPosition: GeoPoint | null;
@@ -59,11 +123,11 @@ interface Props {
 export function DriverRouteMap({ job, driverPosition }: Props) {
   const pickup = toTuple(job.pickup);
   const dropoff = toTuple(job.dropoff);
-  const rawDriver = toTuple(driverPosition);
 
   // Sanity check: if driver's reported position is across the country (>2.5 deg, ~280 km from pickup),
-  // it is an uninitialized default or ISP Wi-Fi geolocation artifact (e.g. Ahmedabad or Delhi while pickup is in Bengaluru).
+  // it is an uninitialized default or ISP Wi-Fi geolocation artifact.
   // Snap driver locally ~1.2 km south-west of pickup so the map stays focused in the delivery city.
+  const rawDriver = toTuple(driverPosition);
   const driver = useMemo(() => {
     if (!rawDriver) return pickup ? ([pickup[0] - 0.012, pickup[1] - 0.012] as LatLngTuple) : null;
     if (pickup) {
@@ -76,57 +140,22 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
     return rawDriver;
   }, [rawDriver?.[0], rawDriver?.[1], pickup?.[0], pickup?.[1]]);
 
-  const route = job.route_to_next_stop;
-  const [osrmPolyline, setOsrmPolyline] = useState<string | null>(null);
+  // ── Traffic-aware route ──────────────────────────────────────────────────────
+  const effectiveDriver: GeoPoint | null = driver
+    ? { latitude: driver[0], longitude: driver[1] }
+    : null;
+  const { polyline, routeInfo, isLoading, trafficSource, isStaticFallback } =
+    useTrafficRoute(job, effectiveDriver);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchRoute() {
-      if (!driver || !dropoff) return;
-      try {
-        let coords = '';
-        if (job.next_stop === 'PICKUP' && pickup) {
-          coords = `${driver[1]},${driver[0]};${pickup[1]},${pickup[0]};${dropoff[1]},${dropoff[0]}`;
-        } else {
-          coords = `${driver[1]},${driver[0]};${dropoff[1]},${dropoff[0]}`;
-        }
-        
-        const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full`);
-        if (!cancelled && res.ok) {
-          const data = await res.json();
-          if (data.routes && data.routes.length > 0) {
-            setOsrmPolyline(data.routes[0].geometry);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch OSRM route:', error);
-      }
-    }
-    setOsrmPolyline(null);
-    fetchRoute();
-    return () => {
-      cancelled = true;
-    };
-  }, [driver?.[0], driver?.[1], pickup?.[0], pickup?.[1], dropoff?.[0], dropoff?.[1], job.next_stop]);
+  const line = polyline.length > 1 ? polyline : (
+    // Last-resort: connect driver → pickup → dropoff directly
+    [driver, job.next_stop === 'PICKUP' ? pickup : null, dropoff]
+      .filter(Boolean) as LatLngTuple[]
+  );
 
-  // Use the new OSRM polyline, or fallback to the backend's route line, or a direct line
-  const line = useMemo(() => {
-    if (osrmPolyline) {
-      const decoded = safeDecodePolyline(osrmPolyline);
-      if (decoded.length > 1) return decoded;
-    }
-    if (route?.geometry) {
-      const decoded = safeDecodePolyline(route.geometry);
-      if (decoded.length > 1) return decoded;
-    }
-    const fallback: LatLngTuple[] = [];
-    if (driver) fallback.push(driver);
-    if (job.next_stop === 'PICKUP' && pickup) fallback.push(pickup);
-    if (dropoff) fallback.push(dropoff);
-    return fallback;
-  }, [osrmPolyline, route?.geometry, driver?.[0], driver?.[1], pickup?.[0], pickup?.[1], dropoff?.[0], dropoff?.[1], job.next_stop]);
-
-  const dashed = !osrmPolyline && isStraightLineEstimate(route?.provider);
+  const dashed = trafficSource === 'heuristic' || trafficSource === 'static';
+  const lineColor = LINE_COLOR[trafficSource];
+  const badge = BADGE[trafficSource];
 
   const fitPoints = [driver, job.next_stop === 'PICKUP' ? pickup : dropoff].filter(Boolean) as LatLngTuple[];
   const center = fitPoints[0] ?? pickup ?? dropoff ?? ([12.9716, 77.5946] as LatLngTuple); // Bengaluru
@@ -174,14 +203,46 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
         {line.length > 1 && (
           <Polyline
             positions={line}
-            pathOptions={{ color: '#10b981', weight: 5, opacity: 0.85, dashArray: dashed ? '8 10' : undefined }}
+            pathOptions={{ color: lineColor, weight: 5, opacity: 0.85, dashArray: dashed ? '8 10' : undefined }}
           />
         )}
       </MapContainer>
-      
-      {/* Floating Action Button for Google Maps */}
+
+      {/* ── Traffic status badge (top-left) ───────────────────────────── */}
+      <div
+        className="absolute top-2 left-2 z-[1000] flex items-center gap-1.5 px-2.5 py-1.5 rounded-full shadow-md text-[11px] font-semibold backdrop-blur-sm"
+        style={{ background: 'rgba(9,9,11,0.82)', color: '#f1f5f9', border: '1px solid rgba(255,255,255,0.10)' }}
+        title={badge.title}
+      >
+        {isLoading ? (
+          <Loader2 size={10} className="animate-spin text-slate-400" />
+        ) : isStaticFallback && !isLoading ? (
+          <AlertTriangle size={10} style={{ color: '#f97316' }} />
+        ) : trafficSource === 'live' ? (
+          <Zap size={10} style={{ color: badge.dot }} />
+        ) : (
+          <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: badge.dot }} />
+        )}
+        <span>{isLoading ? 'Calculating route…' : badge.label}</span>
+      </div>
+
+      {/* ── Live ETA chip (top-right) ──────────────────────────────────── */}
+      {routeInfo && !isLoading && (
+        <div
+          className="absolute top-2 right-2 z-[1000] flex items-center gap-1.5 px-2.5 py-1.5 rounded-full shadow-md text-[11px] font-semibold backdrop-blur-sm"
+          style={{ background: 'rgba(9,9,11,0.82)', color: '#f1f5f9', border: '1px solid rgba(255,255,255,0.10)' }}
+          title={`Free-flow: ${Math.round(routeInfo.free_flow_duration_minutes)} min | Provider: ${routeInfo.provider}`}
+        >
+          <span style={{ color: lineColor }}>⏱</span>
+          <span>~{formatMin(routeInfo.duration_minutes)}</span>
+          <span style={{ color: '#94a3b8' }}>·</span>
+          <span>{routeInfo.distance_km.toFixed(1)} km</span>
+        </div>
+      )}
+
+      {/* ── Google Maps deep-link ──────────────────────────────────────── */}
       {googleMapsUrl && (
-        <a 
+        <a
           href={googleMapsUrl}
           target="_blank"
           rel="noopener noreferrer"
@@ -191,12 +252,7 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
           Navigate in Google Maps
         </a>
       )}
-
-      {route && dashed && (
-        <div className="absolute top-2 left-2 z-[1000] px-2 py-1 rounded-sm text-[11px] bg-[var(--bg-page)]/90 border border-[var(--border-subtle)] text-[var(--text-secondary)]">
-          Straight-line estimate, not a road route
-        </div>
-      )}
     </div>
   );
 }
+
