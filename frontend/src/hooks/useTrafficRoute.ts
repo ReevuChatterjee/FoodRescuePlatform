@@ -178,6 +178,7 @@ export function useTrafficRoute(
         { waypoints },
       );
       const estimate = res.data.data;
+      console.log('[useTrafficRoute] Received route from backend:', estimate.provider, estimate.traffic_source);
       const decoded = safeDecodePolyline(estimate.geometry);
       setRouteInfo(estimate);
       setPolyline(decoded.length > 1 ? decoded : buildFallback(currentJob, sanitizedDriver));
@@ -185,7 +186,52 @@ export function useTrafficRoute(
       lastFetchedPos.current = sanitizedDriver;
       lastFetchedAt.current = Date.now();
     } catch (err: unknown) {
-      // Graceful client fallback: if backend is unreachable or restarting,
+      console.warn('[useTrafficRoute] Backend calculate-multi call failed, attempting client road fallback:', err);
+
+      // Client fallback 1: If TomTom key is provided on frontend via VITE_TOMTOM_API_KEY, use live TomTom traffic directly
+      const clientTomTomKey = import.meta.env.VITE_TOMTOM_API_KEY || import.meta.env.VITE_ROUTING_TOMTOM_API_KEY;
+      if (clientTomTomKey) {
+        try {
+          const locStr = waypoints.map((w) => `${w.latitude.toFixed(6)},${w.longitude.toFixed(6)}`).join(':');
+          const ttUrl = `https://api.tomtom.com/routing/1/calculateRoute/${locStr}/json?key=${clientTomTomKey}&traffic=true&travelMode=car&routeType=fastest&computeTravelTimeFor=all`;
+          const ttRes = await fetch(ttUrl);
+          if (ttRes.ok) {
+            const ttData = await ttRes.json();
+            const route = ttData.routes?.[0];
+            if (route) {
+              const summary = route.summary || {};
+              const withTraffic = (summary.travelTimeInSeconds ?? 0) / 60;
+              const noTraffic = (summary.noTrafficTravelTimeInSeconds ?? summary.travelTimeInSeconds ?? 0) / 60;
+              const pts: LatLngTuple[] = [];
+              for (const leg of route.legs || []) {
+                for (const p of leg.points || []) {
+                  pts.push([p.latitude, p.longitude]);
+                }
+              }
+              const ttEstimate: RouteEstimate = {
+                distance_km: (summary.lengthInMeters ?? 0) / 1000,
+                duration_minutes: withTraffic,
+                free_flow_duration_minutes: noTraffic,
+                geometry: '',
+                provider: 'tomtom',
+                traffic_aware: true,
+                traffic_source: 'live',
+                departure_time: new Date().toISOString(),
+              };
+              setRouteInfo(ttEstimate);
+              setPolyline(pts.length > 1 ? pts : buildFallback(currentJob, sanitizedDriver));
+              setIsStaticFallback(false);
+              lastFetchedPos.current = sanitizedDriver;
+              lastFetchedAt.current = Date.now();
+              return;
+            }
+          }
+        } catch (ttErr) {
+          console.warn('[useTrafficRoute] Client direct TomTom failed:', ttErr);
+        }
+      }
+
+      // Client fallback 2: if backend is unreachable or restarting,
       // fetch real turn-by-turn road geometry directly from OSRM and apply the time-of-day traffic model.
       try {
         const coords = waypoints.map((w) => `${w.longitude.toFixed(6)},${w.latitude.toFixed(6)}`).join(';');
