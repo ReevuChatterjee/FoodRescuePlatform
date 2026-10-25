@@ -63,8 +63,9 @@ def build_provider(settings: RoutingSettings, heuristic: HeuristicRouteProvider)
 
 def get_provider() -> RouteProvider:
     global _provider
-    if _provider is None:
-        _provider = build_provider(_settings, _heuristic)
+    current_settings = RoutingSettings()
+    if _provider is None or (current_settings.tomtom_api_key and not isinstance(_provider, ChainedRouteProvider)):
+        _provider = build_provider(current_settings, _heuristic)
     return _provider
 
 

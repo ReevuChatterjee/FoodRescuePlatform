@@ -67,37 +67,67 @@ async def readiness():
 async def debug_routing():
     """Diagnose the active routing provider and TomTom API key in production."""
     import os
+    from datetime import datetime, timezone
     from app.routing.settings import RoutingSettings
     from app.routing.service import get_provider, calculate_route
+    from app.routing.providers import TomTomRouteProvider
 
     s = RoutingSettings()
     p = get_provider()
     key = s.tomtom_api_key
     masked_key = f"{key[:4]}...{key[-4:]}" if key and len(key) > 8 else ("SET" if key else "NOT_SET")
 
-    test_result = None
-    test_error = None
+    detected_env = {
+        k: (f"{v[:4]}...{v[-4:]}" if len(v) > 8 else "SET")
+        for k, v in os.environ.items()
+        if "TOM" in k.upper() or "ROUTING" in k.upper()
+    }
+
+    direct_tomtom_result = None
+    direct_tomtom_error = None
+    if key:
+        try:
+            tt = TomTomRouteProvider(key, timeout_seconds=8.0)
+            est = await tt.route((12.9352, 77.6245), (12.9716, 77.5946), datetime.now(timezone.utc))
+            direct_tomtom_result = {
+                "distance_km": est.distance_km,
+                "duration_minutes": est.duration_minutes,
+                "traffic_duration_minutes": est.traffic_duration_minutes,
+                "traffic_source": est.traffic_source,
+            }
+        except Exception as e:
+            direct_tomtom_error = str(e)
+
+    chained_result = None
+    chained_error = None
     try:
         est = await calculate_route((12.9352, 77.6245), (12.9716, 77.5946))
-        test_result = {
+        chained_result = {
             "provider": est.provider,
             "traffic_source": est.traffic_source,
             "distance_km": est.distance_km,
             "duration_minutes": est.duration_minutes,
         }
     except Exception as e:
-        test_error = str(e)
+        chained_error = str(e)
 
     return {
-        "configured_provider": s.provider,
+        "has_tomtom_key": bool(key),
+        "tomtom_key_preview": masked_key,
         "active_provider_name": p.name,
         "active_provider_class": type(p).__name__,
-        "has_tomtom_key": bool(s.tomtom_api_key),
-        "tomtom_key_preview": masked_key,
-        "env_ROUTING_TOMTOM_API_KEY": bool(os.environ.get("ROUTING_TOMTOM_API_KEY")),
-        "env_TOMTOM_API_KEY": bool(os.environ.get("TOMTOM_API_KEY")),
-        "route_test": test_result,
-        "route_error": test_error,
+        "configured_provider": s.provider,
+        "detected_env_vars": detected_env,
+        "direct_tomtom_test": {
+            "success": direct_tomtom_result is not None,
+            "result": direct_tomtom_result,
+            "error": direct_tomtom_error,
+        },
+        "chained_route_test": {
+            "provider": chained_result.get("provider") if chained_result else None,
+            "traffic_source": chained_result.get("traffic_source") if chained_result else None,
+            "error": chained_error,
+        },
     }
 
 @router.get("/debug")

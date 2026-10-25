@@ -224,12 +224,12 @@ class TomTomRouteProvider:
         self,
         api_key: str,
         base_url: str = "https://api.tomtom.com",
-        timeout_seconds: float = 4.0,
+        timeout_seconds: float = 8.0,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         if not api_key:
             raise ValueError("TomTom provider needs ROUTING_TOMTOM_API_KEY")
-        self._api_key = api_key
+        self._api_key = api_key.strip().strip("'\"")
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
         self._transport = transport
@@ -240,7 +240,16 @@ class TomTomRouteProvider:
         TomTom's calculateRoute endpoint accepts colon-separated lat,lon pairs,
         so driver:pickup:dropoff is a single request with two legs.
         """
-        locations = ":".join(f"{p[0]:.6f},{p[1]:.6f}" for p in waypoints)
+        # Deduplicate consecutive points too close to each other (~22 m)
+        deduped: list[LatLng] = [waypoints[0]]
+        for wp in waypoints[1:]:
+            last = deduped[-1]
+            if abs(wp[0] - last[0]) > 0.0002 or abs(wp[1] - last[1]) > 0.0002:
+                deduped.append(wp)
+        if len(deduped) < 2:
+            deduped = [waypoints[0], (waypoints[-1][0] + 0.0003, waypoints[-1][1] + 0.0003)]
+
+        locations = ":".join(f"{p[0]:.6f},{p[1]:.6f}" for p in deduped)
         params = {
             "key": self._api_key,
             "traffic": "true",
@@ -250,7 +259,7 @@ class TomTomRouteProvider:
         }
         aware = departure if departure.tzinfo else departure.replace(tzinfo=timezone.utc)
         if aware > datetime.now(timezone.utc) + timedelta(minutes=1):
-            params["departAt"] = aware.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+            params["departAt"] = aware.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds, transport=self._transport) as client:
                 response = await client.get(
@@ -260,7 +269,9 @@ class TomTomRouteProvider:
             # Never include the URL: it carries the API key.
             raise RoutingProviderError(f"TomTom request failed: {type(exc).__name__}") from exc
         if response.status_code != 200:
-            raise RoutingProviderError(f"TomTom returned HTTP {response.status_code}")
+            err_text = response.text[:200]
+            logger.warning("TomTom returned HTTP %s: %s", response.status_code, err_text)
+            raise RoutingProviderError(f"TomTom returned HTTP {response.status_code}: {err_text}")
         routes = response.json().get("routes") or []
         if not routes:
             raise RoutingProviderError("TomTom returned no routes")
