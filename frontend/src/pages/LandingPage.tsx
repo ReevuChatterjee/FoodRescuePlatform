@@ -700,7 +700,7 @@ export function LandingPage() {
           </div>
           
           <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-outline-variant/30 dark:border-transparent text-[0.8125rem] text-on-surface-variant">
-            <span>© 2025 RePlate. All rights reserved.</span>
+            <span>© 2026 RePlate. All rights reserved.</span>
           </div>
         </motion.div>
       </footer>
