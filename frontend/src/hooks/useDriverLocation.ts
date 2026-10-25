@@ -221,6 +221,15 @@ export function useDriverLocation(enabled: boolean): DriverLocationReturn {
 
     // Fast initial fix if not manually overridden
     if (!manualOverride.current) {
+      // Parallel fast IP geolocation resolution (resolves in ~250ms)
+      void fetchIpLocation().then((res) => {
+        if (res && !manualOverride.current && !latest.current) {
+          latest.current = res.coords;
+          setState((s) => ({ ...s, permission: 'granted', position: res.coords, lastError: null }));
+        }
+      });
+
+      // Browser hardware GPS / Wi-Fi triangulation to refine precision
       fetchBrowserLocation(
         (point) => {
           if (!manualOverride.current) {

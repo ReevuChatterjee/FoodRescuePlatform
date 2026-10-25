@@ -11,7 +11,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, Loader2, AlertTriangle, Zap, FastForward, Navigation, Package } from 'lucide-react';
-import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap, ZoomControl } from 'react-leaflet';
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 // @ts-ignore — image imports resolved by Vite
@@ -324,65 +324,17 @@ function FitBounds({ points, driver, pickup }: { points: LatLngTuple[]; driver: 
   return null;
 }
 
-// ─── Floating View Controller (My GPS / Delivery toggle) ──────────────────────
+// ─── Map Binder ───────────────────────────────────────────────────────────────
 
-function MapViewController({
-  driver,
-  pickup,
-  onRefreshGps,
-}: {
-  driver: LatLngTuple | null;
-  pickup: LatLngTuple | null;
-  onRefreshGps?: () => void;
-}) {
+function MapBinder({ mapRef }: { mapRef: React.MutableRefObject<L.Map | null> }) {
   const map = useMap();
-  if (!driver && !pickup) return null;
-
-  return (
-    <div
-      className="leaflet-top leaflet-left"
-      style={{ marginTop: '38px', marginLeft: '8px', zIndex: 1000, pointerEvents: 'auto' }}
-    >
-      <div
-        className="flex items-center gap-1 p-0.5 rounded-full shadow-lg backdrop-blur-md"
-        style={{ background: 'rgba(9,9,11,0.92)', border: '1px solid rgba(255,255,255,0.12)' }}
-      >
-        <button
-          type="button"
-          title={driver ? 'Focus map on my GPS location' : 'Locate my GPS position'}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (driver) {
-              map.flyTo(driver, 16, { duration: 0.8 });
-            }
-            if (onRefreshGps) {
-              onRefreshGps();
-            }
-          }}
-          className="px-2.5 py-1 text-[10px] font-semibold text-emerald-400 hover:bg-emerald-500/20 rounded-full flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer"
-        >
-          <Navigation size={11} className="fill-emerald-400 text-emerald-400" />
-          <span>My GPS</span>
-        </button>
-        {pickup && (
-          <button
-            type="button"
-            title="Focus map on delivery stop"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              map.flyTo(pickup, 15, { duration: 0.8 });
-            }}
-            className="px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:bg-white/10 rounded-full flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer"
-          >
-            <Package size={11} className="text-amber-400" />
-            <span>Delivery</span>
-          </button>
-        )}
-      </div>
-    </div>
-  );
+  useEffect(() => {
+    mapRef.current = map;
+    return () => {
+      mapRef.current = null;
+    };
+  }, [map, mapRef]);
+  return null;
 }
 
 // ─── ETA chip ─────────────────────────────────────────────────────────────────
@@ -402,6 +354,7 @@ interface Props {
 }
 
 export function DriverRouteMap({ job, driverPosition, onRefreshGps }: Props) {
+  const mapRef = useRef<L.Map | null>(null);
   const tomtomKey = useMemo(() => getClientTomTomKey(), []);
   const pickup = toTuple(job.pickup);
   const dropoff = toTuple(job.dropoff);
@@ -494,7 +447,7 @@ export function DriverRouteMap({ job, driverPosition, onRefreshGps }: Props) {
   return (
     <div className="relative h-72 sm:h-96 w-full rounded-sm overflow-hidden border border-[var(--border-strong)]">
       <MapContainer center={center} zoom={14} scrollWheelZoom={false} zoomControl={false} className="h-full w-full">
-        <ZoomControl position="bottomright" />
+        <MapBinder mapRef={mapRef} />
         {tomtomKey ? (
           <TileLayer
             url={`https://{s}.api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
@@ -509,7 +462,6 @@ export function DriverRouteMap({ job, driverPosition, onRefreshGps }: Props) {
           />
         )}
         <FitBounds points={fitPoints} driver={driver} pickup={pickup} />
-        <MapViewController driver={activeDriverPos} pickup={pickup} onRefreshGps={onRefreshGps} />
         {pickup && (
           <Marker position={pickup}>
             <Popup>
@@ -618,22 +570,68 @@ export function DriverRouteMap({ job, driverPosition, onRefreshGps }: Props) {
         </span>
       </div>
 
-      {/* ── Traffic status badge (top-left) ───────────────────────────── */}
-      <div
-        className="absolute top-2 left-2 z-[1000] flex items-center gap-1.5 px-2.5 py-1.5 rounded-full shadow-md text-[11px] font-semibold backdrop-blur-sm"
-        style={{ background: 'rgba(9,9,11,0.82)', color: '#f1f5f9', border: '1px solid rgba(255,255,255,0.10)' }}
-        title={badge.title}
-      >
-        {isLoading ? (
-          <Loader2 size={10} className="animate-spin text-slate-400" />
-        ) : isStaticFallback && !isLoading ? (
-          <AlertTriangle size={10} style={{ color: '#f97316' }} />
-        ) : trafficSource === 'live' ? (
-          <Zap size={10} style={{ color: badge.dot }} />
-        ) : (
-          <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: badge.dot }} />
+      {/* ── Top-Left: Traffic Status Badge + Quick Focus Navigation (Single unified container) ── */}
+      <div className="absolute top-2 left-2 z-[1000] flex flex-col gap-1.5 pointer-events-auto">
+        {/* Traffic status badge */}
+        <div
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full shadow-md text-[11px] font-semibold backdrop-blur-md"
+          style={{ background: 'rgba(9,9,11,0.88)', color: '#f1f5f9', border: '1px solid rgba(255,255,255,0.12)' }}
+          title={badge.title}
+        >
+          {isLoading ? (
+            <Loader2 size={10} className="animate-spin text-slate-400" />
+          ) : isStaticFallback && !isLoading ? (
+            <AlertTriangle size={10} style={{ color: '#f97316' }} />
+          ) : trafficSource === 'live' ? (
+            <Zap size={10} style={{ color: badge.dot }} />
+          ) : (
+            <span className="w-2 h-2 rounded-full inline-block flex-shrink-0" style={{ background: badge.dot }} />
+          )}
+          <span>{isLoading ? 'Calculating route…' : badge.label}</span>
+        </div>
+
+        {/* Quick focus navigation: My GPS & Delivery */}
+        {(activeDriverPos || pickup) && (
+          <div
+            className="flex items-center gap-1 p-0.5 rounded-full shadow-lg backdrop-blur-md self-start"
+            style={{ background: 'rgba(9,9,11,0.92)', border: '1px solid rgba(255,255,255,0.14)' }}
+          >
+            <button
+              type="button"
+              title="Focus map on my GPS location"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (activeDriverPos && mapRef.current) {
+                  mapRef.current.flyTo(activeDriverPos, 16, { duration: 0.8 });
+                }
+                if (onRefreshGps) onRefreshGps();
+              }}
+              className="px-2.5 py-1 text-[10px] font-semibold text-emerald-400 hover:bg-emerald-500/20 rounded-full flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer"
+            >
+              <Navigation size={11} className="fill-emerald-400 text-emerald-400" />
+              <span>My GPS</span>
+            </button>
+
+            {pickup && (
+              <button
+                type="button"
+                title="Focus map on delivery stop"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (pickup && mapRef.current) {
+                    mapRef.current.flyTo(pickup, 15, { duration: 0.8 });
+                  }
+                }}
+                className="px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:bg-white/10 rounded-full flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer"
+              >
+                <Package size={11} className="text-amber-400" />
+                <span>Delivery</span>
+              </button>
+            )}
+          </div>
         )}
-        <span>{isLoading ? 'Calculating route…' : badge.label}</span>
       </div>
 
       {/* ── Live ETA chip + Simulation toggle (top-right) ─────────────── */}
@@ -679,6 +677,26 @@ export function DriverRouteMap({ job, driverPosition, onRefreshGps }: Props) {
             <span>{routeInfo.distance_km.toFixed(1)} km</span>
           </div>
         )}
+      </div>
+
+      {/* ── Bottom-Right: Clean Custom Zoom Controls ── */}
+      <div className="absolute bottom-2 right-2 z-[1000] flex flex-col gap-1 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => mapRef.current?.zoomIn()}
+          className="w-7 h-7 rounded bg-slate-900/90 text-white hover:bg-slate-800 border border-white/20 shadow-lg flex items-center justify-center font-bold text-sm backdrop-blur-sm cursor-pointer transition-colors"
+          title="Zoom in"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => mapRef.current?.zoomOut()}
+          className="w-7 h-7 rounded bg-slate-900/90 text-white hover:bg-slate-800 border border-white/20 shadow-lg flex items-center justify-center font-bold text-sm backdrop-blur-sm cursor-pointer transition-colors"
+          title="Zoom out"
+        >
+          −
+        </button>
       </div>
 
       {/* ── Google Maps deep-link ──────────────────────────────────────── */}

@@ -859,3 +859,13 @@ option {
   will-change: transform;
 }
 
+/* Hide Leaflet default zoom controls completely to prevent top-left overlap */
+.leaflet-control-zoom,
+.leaflet-top.leaflet-left .leaflet-control-zoom,
+.leaflet-control-container .leaflet-control-zoom {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
