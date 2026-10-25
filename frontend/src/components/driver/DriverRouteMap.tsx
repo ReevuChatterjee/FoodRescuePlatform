@@ -179,14 +179,28 @@ const LINE_COLOR: Record<TrafficRouteSource, string> = {
 
 // ─── FitBounds ────────────────────────────────────────────────────────────────
 
-function FitBounds({ points, driver }: { points: LatLngTuple[]; driver: LatLngTuple | null }) {
+// ─── FitBounds ────────────────────────────────────────────────────────────────
+
+function FitBounds({ points, driver, pickup }: { points: LatLngTuple[]; driver: LatLngTuple | null; pickup: LatLngTuple | null }) {
   const map = useMap();
   const key = points.map((p) => p.join(',')).join(';');
   useEffect(() => {
     map.invalidateSize();
     try {
       if (points.length > 1) {
-        map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 16, animate: true });
+        // If driver and delivery stops are in different cities (> 2.0 degrees apart)
+        const latSpan = Math.max(...points.map((p) => p[0])) - Math.min(...points.map((p) => p[0]));
+        const lngSpan = Math.max(...points.map((p) => p[1])) - Math.min(...points.map((p) => p[1]));
+        if (latSpan > 2.0 || lngSpan > 2.0) {
+          // Center on driver's real GPS position so they can see their location marker immediately!
+          if (driver) {
+            map.setView(driver, 15, { animate: true });
+          } else if (pickup) {
+            map.setView(pickup, 15, { animate: true });
+          }
+        } else {
+          map.fitBounds(L.latLngBounds(points), { padding: [40, 40], maxZoom: 16, animate: true });
+        }
       } else if (points.length === 1) {
         map.setView(points[0], 15, { animate: true });
       } else if (driver) {
@@ -197,6 +211,48 @@ function FitBounds({ points, driver }: { points: LatLngTuple[]; driver: LatLngTu
     }
   }, [key, driver?.[0], driver?.[1], map]);
   return null;
+}
+
+// ─── Floating View Controller (My GPS / Delivery toggle) ──────────────────────
+
+function MapViewController({ driver, pickup }: { driver: LatLngTuple | null; pickup: LatLngTuple | null }) {
+  const map = useMap();
+  if (!driver && !pickup) return null;
+
+  return (
+    <div className="leaflet-top leaflet-left" style={{ marginTop: '72px', marginLeft: '12px', zIndex: 1000, pointerEvents: 'auto' }}>
+      <div className="flex flex-col gap-1 bg-slate-900/90 backdrop-blur-md p-1 rounded border border-white/15 shadow-xl">
+        {driver && (
+          <button
+            type="button"
+            title="Focus map on my GPS location"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              map.flyTo(driver, 16, { duration: 1.2 });
+            }}
+            className="px-2 py-1 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-500/20 rounded flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+          >
+            <span>📍</span> My GPS
+          </button>
+        )}
+        {pickup && (
+          <button
+            type="button"
+            title="Focus map on delivery stop"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              map.flyTo(pickup, 15, { duration: 1.2 });
+            }}
+            className="px-2 py-1 text-[11px] font-semibold text-slate-300 hover:bg-white/10 rounded flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+          >
+            <span>📦</span> Delivery
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── ETA chip ─────────────────────────────────────────────────────────────────
@@ -219,19 +275,9 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
   const pickup = toTuple(job.pickup);
   const dropoff = toTuple(job.dropoff);
 
-  // Sanity check: if driver's reported position is across the country (>2.5 deg, ~280 km from pickup),
-  // it is an uninitialized default or ISP Wi-Fi geolocation artifact.
-  // Snap driver locally ~1.2 km south-west of pickup so the map stays focused in the delivery city.
   const rawDriver = toTuple(driverPosition);
   const driver = useMemo(() => {
     if (!rawDriver) return pickup ? ([pickup[0] - 0.012, pickup[1] - 0.012] as LatLngTuple) : null;
-    if (pickup) {
-      const dLat = Math.abs(rawDriver[0] - pickup[0]);
-      const dLng = Math.abs(rawDriver[1] - pickup[1]);
-      if (dLat > 2.5 || dLng > 2.5) {
-        return [pickup[0] - 0.012, pickup[1] - 0.012] as LatLngTuple;
-      }
-    }
     return rawDriver;
   }, [rawDriver?.[0], rawDriver?.[1], pickup?.[0], pickup?.[1]]);
 
@@ -333,7 +379,8 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           />
         )}
-        <FitBounds points={fitPoints} driver={driver} />
+        <FitBounds points={fitPoints} driver={driver} pickup={pickup} />
+        <MapViewController driver={activeDriverPos} pickup={pickup} />
         {pickup && (
           <Marker position={pickup}>
             <Popup>

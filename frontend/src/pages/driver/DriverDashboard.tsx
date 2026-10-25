@@ -7,7 +7,7 @@ import { DriverRouteMap } from '../../components/driver/DriverRouteMap';
 import { JobActions } from '../../components/driver/JobActions';
 import { JobCard } from '../../components/driver/JobCard';
 import { apiErrorMessage, useCurrentJob, useSetAvailability, CURRENT_JOB_KEY, type GeoPoint } from '../../hooks/useDriver';
-import { useDriverLocation } from '../../hooks/useDriverLocation';
+import { useDriverLocation, fetchBrowserLocation } from '../../hooks/useDriverLocation';
 import { useDriverWebSocket } from '../../hooks/useDriverWebSocket';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { LocationAutocomplete } from '../../components/common/LocationAutocomplete';
@@ -82,30 +82,26 @@ export function DriverDashboard() {
   });
 
   const useGPS = () => {
-    if (!navigator.geolocation) {
-      showToast('Geolocation not supported.', 'error');
-      return;
-    }
     setGpsLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const latitude = pos.coords.latitude;
-        const longitude = pos.coords.longitude;
-        setLat(latitude.toFixed(6));
-        setLng(longitude.toFixed(6));
-        setAddress('Current GPS Location');
+    try {
+      localStorage.removeItem('replate_driver_override_location');
+    } catch {}
+    setManualPos(null);
+    location.setOverridePosition(null);
+
+    fetchBrowserLocation(
+      (point) => {
+        setLat(point.latitude.toFixed(6));
+        setLng(point.longitude.toFixed(6));
+        setAddress('Live System GPS');
         setGpsLoading(false);
-        showToast('GPS lock acquired', 'success');
-        const point = { latitude, longitude };
-        setManualPos(point);
-        location.setOverridePosition(point);
+        showToast(`📍 Live GPS acquired: ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}`, 'success');
         locationMutation.mutate(point);
       },
-      () => {
-        showToast('Could not acquire GPS fix. Enter manually.', 'error');
+      (errMsg) => {
+        showToast(errMsg, 'error');
         setGpsLoading(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 },
     );
   };
 

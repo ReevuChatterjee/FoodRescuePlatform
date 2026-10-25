@@ -46,6 +46,55 @@ function getStoredLocation(): GeoPoint | null {
   return null;
 }
 
+/**
+ * Fallback-enabled browser geolocation retriever.
+ * Tries high-accuracy GNSS hardware first; if that times out or is unavailable (common on Windows PC/laptops),
+ * automatically falls back to standard network Wi-Fi/IP location triangulation.
+ */
+export function fetchBrowserLocation(
+  onSuccess: (coords: GeoPoint) => void,
+  onError: (msg: string) => void,
+) {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    onError('Geolocation is not supported by your browser.');
+    return;
+  }
+
+  if (!navigator.geolocation.getCurrentPosition) {
+    return;
+  }
+
+  // Attempt 1: Fast high accuracy (mobile / LTE laptop) with 4-second timeout
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      onSuccess({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+    },
+    (err) => {
+      if (err.code === err.PERMISSION_DENIED) {
+        onError('Location permission denied. Please allow location access in your browser address bar.');
+        return;
+      }
+      // Attempt 2: Standard network Wi-Fi/IP location (works on Windows laptops/desktops!)
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          onSuccess({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        },
+        (fallbackErr) => {
+          if (fallbackErr.code === fallbackErr.PERMISSION_DENIED) {
+            onError('Location permission denied in your browser settings.');
+          } else if (fallbackErr.code === fallbackErr.TIMEOUT) {
+            onError('Location request timed out. Please check Windows location permissions.');
+          } else {
+            onError('Could not retrieve system location. Check your network or enter location manually.');
+          }
+        },
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 30000 },
+      );
+    },
+    { enableHighAccuracy: true, timeout: 4000, maximumAge: 10000 },
+  );
+}
+
 export function useDriverLocation(enabled: boolean): DriverLocationReturn {
   const storedOverride = getStoredLocation();
   const [state, setState] = useState<DriverLocationState>(() => ({
@@ -59,7 +108,7 @@ export function useDriverLocation(enabled: boolean): DriverLocationReturn {
   const lastSentAt = useRef<number | null>(null);
   const inFlight = useRef(false);
 
-  // Allow external manual override
+  // Allow external manual override (pass null to restore live hardware GPS)
   const setOverridePosition = (point: GeoPoint | null) => {
     manualOverride.current = point;
     if (point) {
@@ -67,23 +116,44 @@ export function useDriverLocation(enabled: boolean): DriverLocationReturn {
         localStorage.setItem('replate_driver_override_location', JSON.stringify(point));
       } catch {}
       latest.current = point;
-      setState((s) => ({ ...s, position: point }));
+      setState((s) => ({ ...s, position: point, lastError: null }));
     } else {
       try {
         localStorage.removeItem('replate_driver_override_location');
       } catch {}
+      if (latest.current) {
+        setState((s) => ({ ...s, position: latest.current, lastError: null }));
+      }
     }
   };
 
   // Watch position whenever the page is open, so going online can include a fix.
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+
+    // Fast initial fix if not manually overridden
+    if (!manualOverride.current) {
+      fetchBrowserLocation(
+        (point) => {
+          if (!manualOverride.current) {
+            latest.current = point;
+            setState((s) => ({ ...s, permission: 'granted', position: point, lastError: null }));
+          }
+        },
+        (err) => {
+          if (err.includes('denied')) {
+            setState((s) => ({ ...s, permission: 'denied', lastError: err }));
+          }
+        },
+      );
+    }
+
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         if (manualOverride.current) return; // Ignore hardware GPS if manually overridden
         const point = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
         latest.current = point;
-        setState((s) => ({ ...s, permission: 'granted', position: point }));
+        setState((s) => ({ ...s, permission: 'granted', position: point, lastError: null }));
       },
       (err) => {
         if (manualOverride.current) return;
@@ -91,10 +161,10 @@ export function useDriverLocation(enabled: boolean): DriverLocationReturn {
         setState((s) => ({
           ...s,
           permission: denied ? 'denied' : s.permission,
-          lastError: denied ? null : 'Waiting for a GPS fix…',
+          lastError: denied ? 'Location permission denied in browser' : null,
         }));
       },
-      { enableHighAccuracy: true, maximumAge: 5_000, timeout: 20_000 },
+      { enableHighAccuracy: false, maximumAge: 10_000, timeout: 25_000 },
     );
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
