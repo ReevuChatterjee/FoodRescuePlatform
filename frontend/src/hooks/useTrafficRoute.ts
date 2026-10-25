@@ -87,7 +87,7 @@ function buildFallback(job: DriverJob, driverPos: LatLngTuple | null): LatLngTup
   return pts;
 }
 
-function getClientTomTomKey(): string | null {
+export function getClientTomTomKey(): string | null {
   const envKey = import.meta.env.VITE_TOMTOM_API_KEY || import.meta.env.VITE_ROUTING_TOMTOM_API_KEY;
   let key: string | null = null;
   if (envKey) key = String(envKey).trim().replace(/^['"]|['"]$/g, '');

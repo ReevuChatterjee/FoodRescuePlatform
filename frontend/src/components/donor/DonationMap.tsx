@@ -6,7 +6,9 @@ import icon from 'leaflet/dist/images/marker-icon.png';
 // @ts-ignore
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { apiClient } from '../../api/client';
+import { getClientTomTomKey } from '../../hooks/useTrafficRoute';
 
 // Fix leaflet default icon issue in React
 let DefaultIcon = L.icon({
@@ -30,6 +32,7 @@ interface NGOProfile {
 }
 
 export function DonationMap({ pickupLocation, ngoId, driverId }: Props) {
+  const tomtomKey = useMemo(() => getClientTomTomKey(), []);
   const { data: driverLoc } = useQuery<{latitude: number, longitude: number, timestamp: string}>({
     queryKey: ['driver_location', driverId],
     enabled: !!driverId,
@@ -56,10 +59,19 @@ export function DonationMap({ pickupLocation, ngoId, driverId }: Props) {
   return (
     <div className="h-96 w-full rounded-lg overflow-hidden border border-gray-300 shadow-sm">
       <MapContainer center={center} zoom={13} scrollWheelZoom={false} className="h-full w-full">
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        />
+        {tomtomKey ? (
+          <TileLayer
+            url={`https://{s}.api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
+            subdomains={['a', 'b', 'c', 'd']}
+            attribution='&copy; <a href="https://www.tomtom.com" target="_blank" rel="noreferrer">TomTom</a>'
+            maxZoom={22}
+          />
+        ) : (
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          />
+        )}
         <Marker position={[pickupLocation.latitude, pickupLocation.longitude]}>
           <Popup>
             <b>Pickup Location</b><br/>{pickupLocation.address}

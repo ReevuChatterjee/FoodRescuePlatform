@@ -19,7 +19,7 @@ import icon from 'leaflet/dist/images/marker-icon.png';
 // @ts-ignore
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import type { DriverJob, GeoPoint } from '../../hooks/useDriver';
-import { useTrafficRoute, type TrafficRouteSource } from '../../hooks/useTrafficRoute';
+import { useTrafficRoute, getClientTomTomKey, type TrafficRouteSource } from '../../hooks/useTrafficRoute';
 import type { LatLngTuple } from './polyline';
 
 // Same default-icon fix as components/donor/DonationMap.tsx.
@@ -121,6 +121,7 @@ interface Props {
 }
 
 export function DriverRouteMap({ job, driverPosition }: Props) {
+  const tomtomKey = useMemo(() => getClientTomTomKey(), []);
   const pickup = toTuple(job.pickup);
   const dropoff = toTuple(job.dropoff);
 
@@ -173,10 +174,28 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
   return (
     <div className="relative h-72 sm:h-96 w-full rounded-sm overflow-hidden border border-[var(--border-strong)]">
       <MapContainer center={center} zoom={14} scrollWheelZoom={false} className="h-full w-full">
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        />
+        {tomtomKey ? (
+          <>
+            <TileLayer
+              url={`https://{s}.api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
+              subdomains={['a', 'b', 'c', 'd']}
+              attribution='&copy; <a href="https://www.tomtom.com" target="_blank" rel="noreferrer">TomTom</a>'
+              maxZoom={22}
+            />
+            {/* Live Traffic Flow Layer: draws real-time green/yellow/red traffic flow directly on streets */}
+            <TileLayer
+              url={`https://{s}.api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${tomtomKey}`}
+              subdomains={['a', 'b', 'c', 'd']}
+              opacity={0.8}
+              maxZoom={22}
+            />
+          </>
+        ) : (
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          />
+        )}
         <FitBounds points={fitPoints} driver={driver} />
         {pickup && (
           <Marker position={pickup}>
