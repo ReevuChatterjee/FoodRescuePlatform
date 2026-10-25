@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { useAnalyticsOverview } from '../../hooks/useAnalytics';
+import { useDonationWebSocket } from '../../hooks/useDonationWebSocket';
 import { ThemeToggle } from '../common/ThemeToggle';
 
 const NAV_GROUPS = [
@@ -50,6 +51,7 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
+  useDonationWebSocket();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const { user, clearAuth } = useAuthStore();

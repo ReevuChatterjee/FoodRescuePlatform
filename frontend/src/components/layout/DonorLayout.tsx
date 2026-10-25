@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Leaf } from 'lucide-react';
 import { useAuthStore } from '../../hooks/useAuthStore';
+import { useDonationWebSocket } from '../../hooks/useDonationWebSocket';
 import { ThemeToggle } from '../common/ThemeToggle';
 
 const NAV = [
@@ -14,6 +15,7 @@ interface DonorLayoutProps {
 }
 
 export function DonorLayout({ children }: DonorLayoutProps) {
+  useDonationWebSocket();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, clearAuth } = useAuthStore();
   const location = useLocation();

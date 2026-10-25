@@ -359,8 +359,20 @@ async def cancel_donation(
     await db.commit()
     await db.refresh(donation)
 
+    if donation.matched_ngo_id:
+        from app.models import NGO
+        ngo = await db.get(NGO, donation.matched_ngo_id)
+        if ngo is not None:
+            from app.ngos.router import compute_dynamic_ngo_capacity
+            await compute_dynamic_ngo_capacity(ngo, db, auto_sync_db=True)
+
     # So Person 4 removes it from the candidate pool if it's still mid-match.
     await manager.broadcast("donations", {
+        "event": "donation.cancelled",
+        "donation_id": donation.id,
+        "reason": body.reason,
+    })
+    await manager.broadcast("deliveries", {
         "event": "donation.cancelled",
         "donation_id": donation.id,
         "reason": body.reason,

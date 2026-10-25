@@ -32,7 +32,7 @@ from app.dispatch.service import (  # Person 5: delivery lifecycle service
     publish,
     run_dispatch_pending,
 )
-from app.models import AuditLog, Delivery, DeliveryStatus, Donation, DonationStatus, HandoverRecord, User
+from app.models import AuditLog, Delivery, DeliveryStatus, Donation, DonationStatus, HandoverRecord, NGO, User
 from app.ws.manager import manager
 
 deliveries_router = APIRouter(prefix="/api/v1/deliveries", tags=["deliveries"])
@@ -148,6 +148,29 @@ async def deliver(
     await db.commit()
     await db.refresh(delivery)
 
+    # Recompute NGO dynamic available capacity and broadcast
+    ngo = await db.get(NGO, delivery.ngo_id)
+    new_capacity = None
+    if ngo is not None:
+        from app.ngos.router import compute_dynamic_ngo_capacity
+        new_capacity = await compute_dynamic_ngo_capacity(ngo, db, auto_sync_db=True)
+
+    await manager.broadcast("deliveries", {
+        "event": "delivery.delivered",
+        "delivery_id": delivery.id,
+        "donation_id": delivery.donation_id,
+        "ngo_id": delivery.ngo_id,
+        "available_capacity_kg": new_capacity,
+    })
+    await manager.broadcast("donations", {
+        "event": "donation.delivered",
+        "donation_id": delivery.donation_id,
+        "delivery_id": delivery.id,
+        "ngo_id": delivery.ngo_id,
+        "status": delivery.status.value,
+        "available_capacity_kg": new_capacity,
+    })
+
     response = envelope(_delivery_to_dict(delivery))
     await cache_response(scope, idem_key, response)
     await publish(events)
@@ -207,16 +230,35 @@ async def handover(
     ))
     await db.commit()
 
+    # Recompute NGO dynamic available capacity and broadcast
+    ngo = await db.get(NGO, delivery.ngo_id)
+    new_capacity = None
+    if ngo is not None:
+        from app.ngos.router import compute_dynamic_ngo_capacity
+        new_capacity = await compute_dynamic_ngo_capacity(ngo, db, auto_sync_db=True)
+
     response = envelope({
         "delivery_id": delivery_id,
         "ngo_confirmation": record.ngo_confirmation,
         "quantity_handed_over": round(record.quantity_handed_over, 1),
         "notes": record.notes,
+        "available_capacity_kg": new_capacity,
     })
     await cache_response("handover", idem_key, response)
 
     await manager.broadcast("deliveries", {
-        "event": "delivery.handover_confirmed", "delivery_id": delivery_id,
+        "event": "delivery.handover_confirmed",
+        "delivery_id": delivery_id,
+        "donation_id": delivery.donation_id,
+        "ngo_id": delivery.ngo_id,
+        "available_capacity_kg": new_capacity,
+    })
+    await manager.broadcast("donations", {
+        "event": "donation.handover_confirmed",
+        "donation_id": delivery.donation_id,
+        "delivery_id": delivery_id,
+        "ngo_id": delivery.ngo_id,
+        "available_capacity_kg": new_capacity,
     })
 
     return response

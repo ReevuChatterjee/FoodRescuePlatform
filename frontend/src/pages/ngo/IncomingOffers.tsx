@@ -68,10 +68,19 @@ export function IncomingOffers() {
       const res = await apiClient.post(`/api/v1/matching/${offer.donation_id}/accept`, payload);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (resData, offer) => {
       showToast('Offer accepted — dispatch sequence initiated.', 'success');
       setActionDonationId(null);
+      const updatedCap = resData?.data?.available_capacity_kg;
+      if (typeof updatedCap === 'number') {
+        queryClient.setQueryData(['ngo', 'profile'], (old: any) => old ? { ...old, available_capacity_kg: updatedCap } : old);
+      } else if (profile?.available_capacity_kg !== undefined) {
+        queryClient.setQueryData(['ngo', 'profile'], (old: any) => old ? { ...old, available_capacity_kg: Math.max(0, Number((old.available_capacity_kg - offer.quantity_kg).toFixed(1))) } : old);
+      }
+      queryClient.invalidateQueries({ queryKey: ['ngo', 'profile'] });
       queryClient.invalidateQueries({ queryKey: ['ngo', 'incoming'] });
+      queryClient.invalidateQueries({ queryKey: ['donations'] });
+      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
     },
     onError: (err: any) => {
       showToast(err.response?.data?.error?.message || 'Failed to accept offer.', 'error');
@@ -92,6 +101,9 @@ export function IncomingOffers() {
       showToast('Offer declined — rematching initiated.', 'success');
       setActionDonationId(null);
       queryClient.invalidateQueries({ queryKey: ['ngo', 'incoming'] });
+      queryClient.invalidateQueries({ queryKey: ['ngo', 'profile'] });
+      queryClient.invalidateQueries({ queryKey: ['donations'] });
+      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
     },
     onError: (err: any) => {
       showToast(err.response?.data?.error?.message || 'Failed to decline offer.', 'error');

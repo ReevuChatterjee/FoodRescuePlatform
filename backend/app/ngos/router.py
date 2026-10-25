@@ -61,19 +61,29 @@ async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db:
     if storage_capacity <= 0:
         return 0.0
 
+    # Subquery for highest handover recorded per delivery so that multiple handover logs don't multiply sum
+    handover_subquery = (
+        select(
+            HandoverRecord.delivery_id,
+            func.max(HandoverRecord.quantity_handed_over).label("quantity_handed_over")
+        )
+        .group_by(HandoverRecord.delivery_id)
+        .subquery()
+    )
+
     # 1. Active or non-expired delivered food linked to Deliveries for this NGO
     delivery_occupied_query = (
         select(
             func.coalesce(
                 func.sum(
-                    func.coalesce(HandoverRecord.quantity_handed_over, Donation.quantity_kg)
+                    func.coalesce(handover_subquery.c.quantity_handed_over, Donation.quantity_kg)
                 ),
                 0.0
             )
         )
         .select_from(Delivery)
         .join(Donation, Delivery.donation_id == Donation.id)
-        .outerjoin(HandoverRecord, HandoverRecord.delivery_id == Delivery.id)
+        .outerjoin(handover_subquery, handover_subquery.c.delivery_id == Delivery.id)
         .where(
             Delivery.ngo_id == ngo.id,
             or_(
@@ -95,13 +105,25 @@ async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db:
     )
     delivery_kg = (await db.execute(delivery_occupied_query)).scalar_one() or 0.0
 
-    # 2. Accepted donations matched to this NGO that don't have a delivery record yet
+    # 2. Accepted / assigned donations matched to this NGO that don't have an active delivery record yet
+    active_delivery_subquery = (
+        select(Delivery.donation_id).where(
+            Delivery.status.in_([
+                DeliveryStatus.DRIVER_ASSIGNED,
+                DeliveryStatus.PICKUP_STARTED,
+                DeliveryStatus.PICKED_UP,
+                DeliveryStatus.IN_TRANSIT,
+                DeliveryStatus.DELIVERED,
+                DeliveryStatus.PARTIALLY_DELIVERED,
+            ])
+        )
+    )
     accepted_unassigned_query = (
         select(func.coalesce(func.sum(Donation.quantity_kg), 0.0))
         .where(
             Donation.matched_ngo_id == ngo.id,
-            Donation.status == DonationStatus.ACCEPTED,
-            ~Donation.id.in_(select(Delivery.donation_id))
+            Donation.status.in_([DonationStatus.ACCEPTED, DonationStatus.DRIVER_ASSIGNED]),
+            ~Donation.id.in_(active_delivery_subquery)
         )
     )
     accepted_kg = (await db.execute(accepted_unassigned_query)).scalar_one() or 0.0
@@ -114,6 +136,19 @@ async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db:
         ngo.available_capacity_kg = available_kg
         try:
             await db.commit()
+            from app.ws.manager import manager
+            await manager.broadcast("donations", {
+                "event": "ngo.capacity_updated",
+                "ngo_id": ngo.id,
+                "storage_capacity_kg": storage_capacity,
+                "available_capacity_kg": available_kg,
+            })
+            await manager.broadcast("deliveries", {
+                "event": "ngo.capacity_updated",
+                "ngo_id": ngo.id,
+                "storage_capacity_kg": storage_capacity,
+                "available_capacity_kg": available_kg,
+            })
         except Exception:
             await db.rollback()
 
@@ -453,6 +488,20 @@ async def update_capacity(
 
     ngo.available_capacity_kg = body.available_capacity_kg
     await db.commit()
+
+    from app.ws.manager import manager
+    await manager.broadcast("donations", {
+        "event": "ngo.capacity_updated",
+        "ngo_id": ngo.id,
+        "storage_capacity_kg": ngo.storage_capacity_kg,
+        "available_capacity_kg": round(ngo.available_capacity_kg, 1),
+    })
+    await manager.broadcast("deliveries", {
+        "event": "ngo.capacity_updated",
+        "ngo_id": ngo.id,
+        "storage_capacity_kg": ngo.storage_capacity_kg,
+        "available_capacity_kg": round(ngo.available_capacity_kg, 1),
+    })
 
     return envelope({"ngo_id": ngo.id, "available_capacity_kg": round(ngo.available_capacity_kg, 1)})
 

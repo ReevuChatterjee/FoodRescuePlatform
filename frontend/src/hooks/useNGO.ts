@@ -53,7 +53,7 @@ export function useMyNGOProfile() {
       const res = await apiClient.get<SuccessEnvelope<NGOProfile>>(`/api/v1/ngos/${ngoId}`);
       return res.data.data;
     },
-    refetchInterval: 60000,
+    refetchInterval: 10000,
   });
 }
 
@@ -65,7 +65,7 @@ export function useIncomingOffers(ngoId: string | undefined) {
       return res.data.data;
     },
     enabled: !!ngoId,
-    refetchInterval: 15000, // Person 3: auto-poll for new matches
+    refetchInterval: 10000, // auto-poll for new matches
   });
 }
 
@@ -130,6 +130,11 @@ export function useOfferDecision(ngoId: string | undefined) {
       });
       return res.data.data;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ngo', 'incoming'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ngo', 'incoming'] });
+      queryClient.invalidateQueries({ queryKey: ['ngo', 'profile'] });
+      queryClient.invalidateQueries({ queryKey: ['donations'] });
+      queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+    },
   });
 }

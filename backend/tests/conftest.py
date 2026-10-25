@@ -11,7 +11,7 @@ import pytest
 import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import NullPool
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from app.core.config import settings
 from app.core.database import Base
@@ -63,7 +63,7 @@ async def db_session(test_engine):
 @pytest.fixture
 async def async_client():
     """Provide an async HTTP client for API testing."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
 

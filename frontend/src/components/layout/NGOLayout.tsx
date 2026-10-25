@@ -9,6 +9,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LogOut, Menu, X } from 'lucide-react';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { useMyNGOProfile } from '../../hooks/useNGO';
+import { useDonationWebSocket } from '../../hooks/useDonationWebSocket';
 import { ThemeToggle } from '../common/ThemeToggle';
 
 const NAV = [
@@ -22,6 +23,7 @@ interface NGOLayoutProps {
 }
 
 export function NGOLayout({ children }: NGOLayoutProps) {
+  useDonationWebSocket();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, clearAuth } = useAuthStore();
   const { data: profile } = useMyNGOProfile();

@@ -272,11 +272,28 @@ async def accept_match(
         import logging as _log
         _log.getLogger(__name__).warning("Inline dispatch on accept failed: %s", _e)
 
+    # Recalculate NGO dynamic available capacity and sync to database
+    from app.ngos.router import compute_dynamic_ngo_capacity
+    ngo = await db.get(OrmNGO, body.ngo_id)
+    new_capacity = None
+    if ngo is not None:
+        new_capacity = await compute_dynamic_ngo_capacity(ngo, db, auto_sync_db=True)
+
     await manager.broadcast("donations", {
         "event": "donation.accepted",
         "donation_id": donation.id,
         "ngo_id": body.ngo_id,
         "status": donation.status.value,
+        "quantity_kg": donation.quantity_kg,
+        "available_capacity_kg": new_capacity,
+    })
+    await manager.broadcast("deliveries", {
+        "event": "donation.accepted",
+        "donation_id": donation.id,
+        "ngo_id": body.ngo_id,
+        "status": donation.status.value,
+        "quantity_kg": donation.quantity_kg,
+        "available_capacity_kg": new_capacity,
     })
 
     return envelope({
@@ -285,6 +302,8 @@ async def accept_match(
         "matched_ngo_id": donation.matched_ngo_id,
         "match_score": donation.match_score,
         "weights_version_id": donation.weights_version_id,
+        "available_capacity_kg": new_capacity,
+        "storage_capacity_kg": ngo.storage_capacity_kg if ngo else None,
         "updated_at": iso_z(donation.updated_at),
     })
 
@@ -367,12 +386,22 @@ async def reject_match(
         reference_time=max(datetime.now(IST), engine_donation.available_from),
     )
 
+    # Recompute capacity for the rejected NGO and sync to database
+    from app.ngos.router import compute_dynamic_ngo_capacity
+    rejected_ngo = await db.get(OrmNGO, body.ngo_id)
+    if rejected_ngo is not None:
+        await compute_dynamic_ngo_capacity(rejected_ngo, db, auto_sync_db=True)
+
     # Update donation status
     if not rematch_result.matches:
         donation.status = DonationStatus.NO_MATCH_FOUND
         donation.updated_at = ist_now()
         await db.commit()
         await manager.broadcast("donations", {
+            "event": "donation.no_match_found",
+            "donation_id": donation_id,
+        })
+        await manager.broadcast("deliveries", {
             "event": "donation.no_match_found",
             "donation_id": donation_id,
         })
@@ -383,6 +412,12 @@ async def reject_match(
         donation.updated_at = ist_now()
         await db.commit()
         await manager.broadcast("donations", {
+            "event": "donation.rematched",
+            "donation_id": donation_id,
+            "candidate_count": len(rematch_result.matches),
+            "top_ngo_id": rematch_result.matches[0].ngo_id,
+        })
+        await manager.broadcast("deliveries", {
             "event": "donation.rematched",
             "donation_id": donation_id,
             "candidate_count": len(rematch_result.matches),
