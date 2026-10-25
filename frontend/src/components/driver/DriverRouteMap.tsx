@@ -145,7 +145,7 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
   const effectiveDriver: GeoPoint | null = driver
     ? { latitude: driver[0], longitude: driver[1] }
     : null;
-  const { polyline, routeInfo, isLoading, trafficSource, isStaticFallback } =
+  const { polyline, trafficSegments, routeInfo, isLoading, trafficSource, isStaticFallback } =
     useTrafficRoute(job, effectiveDriver);
 
   const line = polyline.length > 1 ? polyline : (
@@ -223,10 +223,64 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
         {line.length > 1 && (
           <Polyline
             positions={line}
-            pathOptions={{ color: lineColor, weight: 5, opacity: 0.85, dashArray: dashed ? '8 10' : undefined }}
+            pathOptions={{
+              color: dashed ? LINE_COLOR.heuristic : (trafficSource === 'live' ? '#22c55e' : (LINE_COLOR[trafficSource] || LINE_COLOR.road_model)),
+              weight: 5,
+              opacity: 0.85,
+              dashArray: dashed ? '8 10' : undefined,
+              lineJoin: 'round',
+              lineCap: 'round',
+            }}
           />
         )}
+
+        {/* Live traffic congestion segments on route: Amber for slow, Red for heavy jams */}
+        {trafficSegments && trafficSegments.length > 0 && trafficSegments
+          .filter((seg) => seg.points && seg.points.length > 1)
+          .map((seg, idx) => (
+            <Polyline
+              key={`traffic-seg-${idx}`}
+              positions={seg.points}
+              pathOptions={{
+                color: seg.severity === 'jam' ? '#ef4444' : '#f59e0b',
+                weight: 7,
+                opacity: 0.95,
+                lineJoin: 'round',
+                lineCap: 'round',
+              }}
+            >
+              <Popup>
+                <div className="text-xs">
+                  <b style={{ color: seg.severity === 'jam' ? '#ef4444' : '#f59e0b' }}>
+                    {seg.severity === 'jam' ? 'Heavy Traffic Jam' : 'Moderate Traffic Slowdown'}
+                  </b>
+                  {seg.delay_seconds != null && seg.delay_seconds > 0 && (
+                    <div>Delay: +{Math.round(seg.delay_seconds / 60)} min</div>
+                  )}
+                  {seg.speed_kmh != null && (
+                    <div>Avg Speed: {Math.round(seg.speed_kmh)} km/h</div>
+                  )}
+                </div>
+              </Popup>
+            </Polyline>
+          ))}
       </MapContainer>
+
+      {/* ── Traffic Flow Legend (bottom-left) ─────────────────────────── */}
+      <div
+        className="absolute bottom-2 left-2 z-[1000] flex items-center gap-2.5 px-2.5 py-1 rounded shadow text-[10px] font-medium backdrop-blur-md"
+        style={{ background: 'rgba(9,9,11,0.85)', color: '#f1f5f9', border: '1px solid rgba(255,255,255,0.12)' }}
+      >
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full inline-block bg-[#22c55e]" /> Clear
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full inline-block bg-[#f59e0b]" /> Slow
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full inline-block bg-[#ef4444]" /> Heavy
+        </span>
+      </div>
 
       {/* ── Traffic status badge (top-left) ───────────────────────────── */}
       <div

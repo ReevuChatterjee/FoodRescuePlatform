@@ -22,6 +22,13 @@ export interface GeoPoint {
   longitude: number;
 }
 
+export interface TrafficSegmentData {
+  points: [number, number][];
+  severity: 'normal' | 'slow' | 'jam';
+  delay_seconds?: number;
+  speed_kmh?: number;
+}
+
 export interface RouteEstimate {
   distance_km: number;
   duration_minutes: number; // ETA including congestion
@@ -31,6 +38,7 @@ export interface RouteEstimate {
   free_flow_duration_minutes: number;
   provider: 'heuristic' | 'osrm' | 'tomtom';
   departure_time: string;
+  traffic_segments?: TrafficSegmentData[];
 }
 
 export interface DriverProfile {

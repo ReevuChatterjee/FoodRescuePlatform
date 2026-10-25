@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient } from '../api/client';
-import type { DriverJob, GeoPoint, RouteEstimate } from './useDriver';
+import type { DriverJob, GeoPoint, RouteEstimate, TrafficSegmentData } from './useDriver';
 import { safeDecodePolyline, type LatLngTuple } from '../components/driver/polyline';
 import type { SuccessEnvelope } from '../types/api';
 
@@ -38,6 +38,8 @@ export type TrafficRouteSource = 'live' | 'road_model' | 'heuristic' | 'static' 
 export interface TrafficRouteResult {
   /** Decoded polyline ready for react-leaflet Polyline. */
   polyline: LatLngTuple[];
+  /** Traffic congestion sections with severity (jam/slow). */
+  trafficSegments: TrafficSegmentData[];
   /** Full RouteEstimate from the backend, null while loading or on error. */
   routeInfo: RouteEstimate | null;
   /** True while a fetch is in progress. */
@@ -132,7 +134,7 @@ async function fetchDirectTomTom(
     }
 
     const locStr = deduped.map((w) => `${w.latitude.toFixed(6)},${w.longitude.toFixed(6)}`).join(':');
-    const ttUrl = `https://api.tomtom.com/routing/1/calculateRoute/${locStr}/json?key=${encodeURIComponent(key)}&traffic=true&travelMode=car&routeType=fastest&computeTravelTimeFor=all`;
+    const ttUrl = `https://api.tomtom.com/routing/1/calculateRoute/${locStr}/json?key=${encodeURIComponent(key)}&traffic=true&travelMode=car&routeType=fastest&computeTravelTimeFor=all&sectionType=traffic`;
     const ttRes = await fetch(ttUrl);
     if (!ttRes.ok) {
       const errText = await ttRes.text();
@@ -151,6 +153,27 @@ async function fetchDirectTomTom(
         pts.push([p.latitude, p.longitude]);
       }
     }
+
+    const segments: TrafficSegmentData[] = [];
+    for (const sec of route.sections || []) {
+      if (sec.sectionType === 'TRAFFIC') {
+        const start = sec.startPointIndex ?? 0;
+        const end = Math.min(pts.length, (sec.endPointIndex ?? start) + 1);
+        const segPoints = pts.slice(start, end);
+        if (segPoints.length > 1) {
+          const cat = String(sec.simpleCategory || '').toUpperCase();
+          const delay = Number(sec.delayInSeconds || 0);
+          const severity: 'slow' | 'jam' = (cat === 'JAM' || delay >= 120) ? 'jam' : 'slow';
+          segments.push({
+            points: segPoints,
+            severity,
+            delay_seconds: delay,
+            speed_kmh: sec.effectiveSpeedInKmh,
+          });
+        }
+      }
+    }
+
     const estimate: RouteEstimate = {
       distance_km: (summary.lengthInMeters ?? 0) / 1000,
       duration_minutes: withTraffic,
@@ -160,6 +183,7 @@ async function fetchDirectTomTom(
       traffic_aware: true,
       traffic_source: 'live',
       departure_time: new Date().toISOString(),
+      traffic_segments: segments,
     };
     return { estimate, points: pts };
   } catch (err) {
@@ -173,6 +197,7 @@ export function useTrafficRoute(
   driverPosition: GeoPoint | null,
 ): TrafficRouteResult {
   const [polyline, setPolyline] = useState<LatLngTuple[]>([]);
+  const [trafficSegments, setTrafficSegments] = useState<TrafficSegmentData[]>([]);
   const [routeInfo, setRouteInfo] = useState<RouteEstimate | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -270,6 +295,7 @@ export function useTrafficRoute(
           estimate = live.estimate;
           setRouteInfo(live.estimate);
           setPolyline(live.points.length > 1 ? live.points : buildFallback(currentJob, sanitizedDriver));
+          setTrafficSegments(live.estimate.traffic_segments || []);
           setIsStaticFallback(false);
           lastFetchedPos.current = sanitizedDriver;
           lastFetchedAt.current = Date.now();
@@ -280,6 +306,7 @@ export function useTrafficRoute(
       const decoded = safeDecodePolyline(estimate.geometry);
       setRouteInfo(estimate);
       setPolyline(decoded.length > 1 ? decoded : buildFallback(currentJob, sanitizedDriver));
+      setTrafficSegments(estimate.traffic_segments || []);
       setIsStaticFallback(false);
       lastFetchedPos.current = sanitizedDriver;
       lastFetchedAt.current = Date.now();
@@ -292,6 +319,7 @@ export function useTrafficRoute(
         if (live) {
           setRouteInfo(live.estimate);
           setPolyline(live.points.length > 1 ? live.points : buildFallback(currentJob, sanitizedDriver));
+          setTrafficSegments(live.estimate.traffic_segments || []);
           setIsStaticFallback(false);
           lastFetchedPos.current = sanitizedDriver;
           lastFetchedAt.current = Date.now();
@@ -369,5 +397,5 @@ export function useTrafficRoute(
     ? 'static'
     : 'none';
 
-  return { polyline, routeInfo, isLoading, isTrafficAware, trafficSource, isStaticFallback, error };
+  return { polyline, trafficSegments, routeInfo, isLoading, isTrafficAware, trafficSource, isStaticFallback, error };
 }

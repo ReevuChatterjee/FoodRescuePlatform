@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 import math
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal, Protocol
 
@@ -58,6 +58,7 @@ class RouteEstimate:
     provider: str  # which engine actually produced this estimate
     departure_time: datetime
     traffic_source: TrafficSource  # where the congestion in traffic_duration_minutes came from
+    traffic_segments: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def eta_minutes(self) -> float:
@@ -73,7 +74,7 @@ class RouteEstimate:
         ETA including congestion, as in the contract. `traffic_source` says how that
         congestion was obtained: live data, one of the models, or "none" (free-flow);
         consumers must not apply their own congestion on top."""
-        return {
+        out = {
             "distance_km": round(self.distance_km, 1),
             "duration_minutes": round(self.traffic_duration_minutes, 1),
             "geometry": self.geometry,
@@ -84,6 +85,9 @@ class RouteEstimate:
             "provider": self.provider,
             "departure_time": _iso_z(self.departure_time),
         }
+        if self.traffic_segments:
+            out["traffic_segments"] = self.traffic_segments
+        return out
 
 
 class RoutingProviderError(RuntimeError):
@@ -256,6 +260,7 @@ class TomTomRouteProvider:
             "travelMode": "car",
             "routeType": "fastest",
             "computeTravelTimeFor": "all",
+            "sectionType": "traffic",
         }
         aware = departure if departure.tzinfo else departure.replace(tzinfo=timezone.utc)
         if aware > datetime.now(timezone.utc) + timedelta(minutes=1):
@@ -288,6 +293,24 @@ class TomTomRouteProvider:
             for p in leg.get("points") or []
         ]
         fallback_geom = encode_polyline(waypoints)
+
+        traffic_segments: list[dict[str, Any]] = []
+        for sec in routes[0].get("sections") or []:
+            if sec.get("sectionType") == "TRAFFIC":
+                start_idx = sec.get("startPointIndex", 0)
+                end_idx = min(len(points), (sec.get("endPointIndex", start_idx) + 1))
+                seg_pts = points[start_idx:end_idx]
+                if len(seg_pts) > 1:
+                    cat = str(sec.get("simpleCategory") or "").upper()
+                    delay = float(sec.get("delayInSeconds") or 0)
+                    severity = "jam" if (cat == "JAM" or delay >= 120) else "slow"
+                    traffic_segments.append({
+                        "points": [[p[0], p[1]] for p in seg_pts],
+                        "severity": severity,
+                        "delay_seconds": round(delay),
+                        "speed_kmh": sec.get("effectiveSpeedInKmh"),
+                    })
+
         return RouteEstimate(
             distance_km=_checked(summary.get("lengthInMeters"), "lengthInMeters") / 1000,
             duration_minutes=without_traffic,
@@ -296,6 +319,7 @@ class TomTomRouteProvider:
             provider=self.name,
             departure_time=departure,
             traffic_source="live",
+            traffic_segments=traffic_segments,
         )
 
     async def route(self, origin: LatLng, destination: LatLng, departure: datetime) -> RouteEstimate:
