@@ -725,11 +725,8 @@ function ProcessStep({
   dotRef?: React.RefObject<HTMLDivElement>; 
   disableMotion: boolean; 
 }) {
-  // Dot fill transforms
+  // Dot fill scale (0 to 1)
   const fillScale = useTransform(fillProgress, [0, 1], [0, 1]);
-  const activeBorderOpacity = useTransform(fillProgress, [0, 0.4], [0, 1]);
-  const pulseScale = useTransform(fillProgress, [0, 0.65, 1], [0.8, 1.45, 1]);
-  const pulseOpacity = useTransform(fillProgress, [0, 0.65, 1], [0, 0.5, 0]);
 
   // Typography transitions
   const activeOpacity = useTransform(fillProgress, [0, 0.8], [0, 1]);
@@ -744,9 +741,7 @@ function ProcessStep({
           <span>{num}</span>
         </div>
         <div className="w-12 md:w-16 shrink-0 flex flex-col items-center pt-[10px]">
-          <div ref={dotRef} className="w-3.5 h-3.5 rounded-full border-[1.5px] border-primary bg-primary relative z-10 shadow-xs flex items-center justify-center">
-            <div className="w-1 h-1 rounded-full bg-on-primary" />
-          </div>
+          <div ref={dotRef} className="w-3.5 h-3.5 rounded-full bg-primary relative z-10" />
         </div>
         <div className="flex-1 pt-0">
           <h3 className="text-[1.125rem] font-medium mb-1.5 text-on-surface">
@@ -783,31 +778,16 @@ function ProcessStep({
       <div className="w-12 md:w-16 shrink-0 flex flex-col items-center pt-[10px]">
         <div 
           ref={dotRef} 
-          className="w-3.5 h-3.5 rounded-full border-[1.5px] border-outline-variant bg-surface relative z-10 shadow-xs flex items-center justify-center"
+          className="w-3.5 h-3.5 rounded-full relative z-10 flex items-center justify-center"
         >
-          {/* Active border overlay */}
-          <motion.div 
-            style={{ opacity: activeBorderOpacity }} 
-            className="absolute -inset-[1.5px] rounded-full border-[1.5px] border-primary pointer-events-none" 
-          />
+          {/* Base hollow outline with canvas background */}
+          <div className="absolute inset-0 rounded-full border-2 border-outline-variant bg-surface" />
 
-          {/* Pulse ping ring on fill */}
-          <motion.div 
-            style={{ scale: pulseScale, opacity: pulseOpacity }} 
-            className="absolute -inset-1 rounded-full border-2 border-primary pointer-events-none" 
-          />
-
-          {/* Inner expanding fill */}
+          {/* Solid fill that smoothly scales up to seamlessly cover the entire circle */}
           <motion.div 
             style={{ scale: fillScale }} 
-            className="w-full h-full rounded-full bg-primary origin-center flex items-center justify-center"
-          >
-            {/* Center core accent */}
-            <motion.div 
-              style={{ scale: fillScale }}
-              className="w-1 h-1 rounded-full bg-on-primary/90" 
-            />
-          </motion.div>
+            className="absolute -inset-[1px] rounded-full bg-primary origin-center" 
+          />
         </div>
       </div>
 
