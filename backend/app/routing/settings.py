@@ -21,10 +21,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class RoutingSettings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file="../.env", env_file_encoding="utf-8", env_prefix="ROUTING_", extra="ignore"
+        env_file=(".env", "../.env"), env_file_encoding="utf-8", env_prefix="ROUTING_", extra="ignore"
     )
 
-    provider: Literal["heuristic", "osrm", "tomtom"] = "tomtom"
+    provider: Literal["heuristic", "osrm", "tomtom"] = "heuristic"
     osrm_base_url: str = "https://router.project-osrm.org"
     tomtom_base_url: str = "https://api.tomtom.com"
     tomtom_api_key: str | None = None

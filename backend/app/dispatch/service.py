@@ -915,6 +915,7 @@ async def build_current_job(
         vehicle.current_location = format_latlng(origin)
         await db.commit()
         await db.refresh(vehicle)
+        data["driver"] = driver_profile_view(vehicle)
 
     route = await calculate_route(origin, target, now) if origin and target else None
 

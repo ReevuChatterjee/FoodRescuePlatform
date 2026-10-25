@@ -153,11 +153,12 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
       .filter(Boolean) as LatLngTuple[]
   );
 
-  const dashed = trafficSource === 'heuristic' || trafficSource === 'static';
-  const lineColor = LINE_COLOR[trafficSource];
+  // Only dash if it is genuinely a low-point straight-line estimate (<=8 points), never a real road route.
+  const dashed = (trafficSource === 'heuristic' || trafficSource === 'static') && line.length <= 8;
+  const lineColor = dashed ? LINE_COLOR.heuristic : (LINE_COLOR[trafficSource] || LINE_COLOR.road_model);
   const badge = BADGE[trafficSource];
 
-  const fitPoints = [driver, job.next_stop === 'PICKUP' ? pickup : dropoff].filter(Boolean) as LatLngTuple[];
+  const fitPoints = [driver, pickup, dropoff].filter(Boolean) as LatLngTuple[];
   const center = fitPoints[0] ?? pickup ?? dropoff ?? ([12.9716, 77.5946] as LatLngTuple); // Bengaluru
 
   const googleMapsUrl = useMemo(() => {

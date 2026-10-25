@@ -4,6 +4,9 @@ Pytest configuration for backend unit tests.
 Shared fixtures for auth, database, and API testing.
 """
 
+import os
+os.environ["ROUTING_PROVIDER"] = "heuristic"
+
 import pytest
 import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker

@@ -319,6 +319,59 @@ class FallbackRouteProvider:
             return self.fallback.estimate_multi(waypoints, departure)
 
 
+class ChainedRouteProvider:
+    """Tries primary (TomTom live traffic) -> secondary (OSRM road model) -> fallback (heuristic)."""
+
+    def __init__(
+        self, primary: RouteProvider, secondary: RouteProvider, fallback: HeuristicRouteProvider
+    ) -> None:
+        self.primary = primary
+        self.secondary = secondary
+        self.fallback = fallback
+        self.name = primary.name
+
+    async def route(self, origin: LatLng, destination: LatLng, departure: datetime) -> RouteEstimate:
+        try:
+            return await self.primary.route(origin, destination, departure)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "primary routing provider %s failed (%s); falling back to %s",
+                self.primary.name,
+                exc,
+                self.secondary.name,
+            )
+            try:
+                return await self.secondary.route(origin, destination, departure)
+            except Exception as exc2:  # noqa: BLE001
+                logger.warning(
+                    "secondary routing provider %s failed (%s); using heuristic estimate",
+                    self.secondary.name,
+                    exc2,
+                )
+                return self.fallback.estimate(origin, destination, departure)
+
+    async def route_multi(self, waypoints: list[LatLng], departure: datetime) -> RouteEstimate:
+        try:
+            return await self.primary.route_multi(waypoints, departure)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "primary routing provider %s multi-leg failed (%s); falling back to %s",
+                self.primary.name,
+                exc,
+                self.secondary.name,
+            )
+            try:
+                return await self.secondary.route_multi(waypoints, departure)
+            except Exception as exc2:  # noqa: BLE001
+                logger.warning(
+                    "secondary routing provider %s multi-leg failed (%s); using heuristic estimate",
+                    self.secondary.name,
+                    exc2,
+                )
+                return self.fallback.estimate_multi(waypoints, departure)
+
+
+
 class RouteCache:
     """Tiny TTL cache so dashboard refreshes don't re-hit a network provider.
 

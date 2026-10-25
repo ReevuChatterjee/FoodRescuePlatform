@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 
 from app.routing.geo import LatLng, parse_latlng
 from app.routing.providers import (
+    ChainedRouteProvider,
     FallbackRouteProvider,
     HeuristicRouteProvider,
     OSRMRouteProvider,
@@ -52,12 +53,11 @@ def build_provider(settings: RoutingSettings, heuristic: HeuristicRouteProvider)
         if not settings.tomtom_api_key:
             logger.warning("ROUTING_PROVIDER=tomtom but ROUTING_TOMTOM_API_KEY is empty; using heuristic")
             return heuristic
-        return FallbackRouteProvider(
-            TomTomRouteProvider(
-                settings.tomtom_api_key, settings.tomtom_base_url, settings.timeout_seconds
-            ),
-            heuristic,
+        osrm = OSRMRouteProvider(settings.osrm_base_url, settings.timeout_seconds, settings.traffic_model)
+        tomtom = TomTomRouteProvider(
+            settings.tomtom_api_key, settings.tomtom_base_url, settings.timeout_seconds
         )
+        return ChainedRouteProvider(tomtom, osrm, heuristic)
     return heuristic
 
 

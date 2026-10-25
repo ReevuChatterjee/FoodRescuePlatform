@@ -10,6 +10,9 @@ import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import os
+os.environ["ROUTING_PROVIDER"] = "heuristic"
+
 import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient
