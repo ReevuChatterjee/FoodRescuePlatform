@@ -89,15 +89,29 @@ function buildFallback(job: DriverJob, driverPos: LatLngTuple | null): LatLngTup
 
 function getClientTomTomKey(): string | null {
   const envKey = import.meta.env.VITE_TOMTOM_API_KEY || import.meta.env.VITE_ROUTING_TOMTOM_API_KEY;
-  if (envKey) return String(envKey).trim().replace(/^['"]|['"]$/g, '');
-  if (typeof window !== 'undefined') {
+  let key: string | null = null;
+  if (envKey) key = String(envKey).trim().replace(/^['"]|['"]$/g, '');
+  if (!key && typeof window !== 'undefined') {
     const storageKey =
       window.localStorage.getItem('TOMTOM_API_KEY') ||
       window.localStorage.getItem('ROUTING_TOMTOM_API_KEY') ||
       window.localStorage.getItem('VITE_TOMTOM_API_KEY');
-    if (storageKey) return storageKey.trim().replace(/^['"]|['"]$/g, '');
+    if (storageKey) key = storageKey.trim().replace(/^['"]|['"]$/g, '');
   }
-  return null;
+  if (!key) return null;
+  if (
+    key === 'VITE_TOMTOM_API_KEY' ||
+    key === 'ROUTING_TOMTOM_API_KEY' ||
+    key === 'TOMTOM_API_KEY' ||
+    key === 'PASTE_YOUR_TOMTOM_KEY_HERE' ||
+    key.includes('API_KEY')
+  ) {
+    console.error(
+      `[useTrafficRoute] Found placeholder "${key}" instead of an actual TomTom API key! Please get your 32-character key from https://developer.tomtom.com and set that as the value.`,
+    );
+    return null;
+  }
+  return key;
 }
 
 async function fetchDirectTomTom(

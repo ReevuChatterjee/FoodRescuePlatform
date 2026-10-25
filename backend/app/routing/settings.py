@@ -54,16 +54,23 @@ class RoutingSettings(BaseSettings):
     @field_validator("tomtom_api_key", mode="before")
     @classmethod
     def clean_api_key(cls, v: object) -> str | None:
+        def is_valid(s: str) -> bool:
+            return bool(
+                s
+                and s not in ("ROUTING_TOMTOM_API_KEY", "TOMTOM_API_KEY", "VITE_TOMTOM_API_KEY", "None", "null", "")
+                and "API_KEY" not in s
+            )
+
         if v:
             cleaned = str(v).strip().strip("'\"")
-            if cleaned:
+            if is_valid(cleaned):
                 return cleaned
         # Fallback: scan os.environ directly for any TomTom variable name
         for k, val in os.environ.items():
             k_upper = k.upper()
             if ("TOMTOM" in k_upper or "TOM_TOM" in k_upper) and "URL" not in k_upper:
                 cleaned = str(val).strip().strip("'\"")
-                if cleaned:
+                if is_valid(cleaned):
                     return cleaned
         return None
 
