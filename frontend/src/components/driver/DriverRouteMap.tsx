@@ -10,8 +10,8 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Loader2, AlertTriangle, Zap, FastForward } from 'lucide-react';
-import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
+import { ExternalLink, Loader2, AlertTriangle, Zap, FastForward, Navigation, Package } from 'lucide-react';
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap, ZoomControl } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 // @ts-ignore — image imports resolved by Vite
@@ -326,27 +326,45 @@ function FitBounds({ points, driver, pickup }: { points: LatLngTuple[]; driver: 
 
 // ─── Floating View Controller (My GPS / Delivery toggle) ──────────────────────
 
-function MapViewController({ driver, pickup }: { driver: LatLngTuple | null; pickup: LatLngTuple | null }) {
+function MapViewController({
+  driver,
+  pickup,
+  onRefreshGps,
+}: {
+  driver: LatLngTuple | null;
+  pickup: LatLngTuple | null;
+  onRefreshGps?: () => void;
+}) {
   const map = useMap();
   if (!driver && !pickup) return null;
 
   return (
-    <div className="leaflet-top leaflet-left" style={{ marginTop: '72px', marginLeft: '12px', zIndex: 1000, pointerEvents: 'auto' }}>
-      <div className="flex flex-col gap-1 bg-slate-900/90 backdrop-blur-md p-1 rounded border border-white/15 shadow-xl">
-        {driver && (
-          <button
-            type="button"
-            title="Focus map on my GPS location"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              map.flyTo(driver, 16, { duration: 1.2 });
-            }}
-            className="px-2 py-1 text-[11px] font-semibold text-emerald-400 hover:bg-emerald-500/20 rounded flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
-          >
-            <span>📍</span> My GPS
-          </button>
-        )}
+    <div
+      className="leaflet-top leaflet-left"
+      style={{ marginTop: '38px', marginLeft: '8px', zIndex: 1000, pointerEvents: 'auto' }}
+    >
+      <div
+        className="flex items-center gap-1 p-0.5 rounded-full shadow-lg backdrop-blur-md"
+        style={{ background: 'rgba(9,9,11,0.92)', border: '1px solid rgba(255,255,255,0.12)' }}
+      >
+        <button
+          type="button"
+          title={driver ? 'Focus map on my GPS location' : 'Locate my GPS position'}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (driver) {
+              map.flyTo(driver, 16, { duration: 0.8 });
+            }
+            if (onRefreshGps) {
+              onRefreshGps();
+            }
+          }}
+          className="px-2.5 py-1 text-[10px] font-semibold text-emerald-400 hover:bg-emerald-500/20 rounded-full flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer"
+        >
+          <Navigation size={11} className="fill-emerald-400 text-emerald-400" />
+          <span>My GPS</span>
+        </button>
         {pickup && (
           <button
             type="button"
@@ -354,11 +372,12 @@ function MapViewController({ driver, pickup }: { driver: LatLngTuple | null; pic
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              map.flyTo(pickup, 15, { duration: 1.2 });
+              map.flyTo(pickup, 15, { duration: 0.8 });
             }}
-            className="px-2 py-1 text-[11px] font-semibold text-slate-300 hover:bg-white/10 rounded flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+            className="px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:bg-white/10 rounded-full flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer"
           >
-            <span>📦</span> Delivery
+            <Package size={11} className="text-amber-400" />
+            <span>Delivery</span>
           </button>
         )}
       </div>
@@ -379,9 +398,10 @@ function formatMin(min: number): string {
 interface Props {
   job: DriverJob;
   driverPosition: GeoPoint | null;
+  onRefreshGps?: () => void;
 }
 
-export function DriverRouteMap({ job, driverPosition }: Props) {
+export function DriverRouteMap({ job, driverPosition, onRefreshGps }: Props) {
   const tomtomKey = useMemo(() => getClientTomTomKey(), []);
   const pickup = toTuple(job.pickup);
   const dropoff = toTuple(job.dropoff);
@@ -473,7 +493,8 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
 
   return (
     <div className="relative h-72 sm:h-96 w-full rounded-sm overflow-hidden border border-[var(--border-strong)]">
-      <MapContainer center={center} zoom={14} scrollWheelZoom={false} className="h-full w-full">
+      <MapContainer center={center} zoom={14} scrollWheelZoom={false} zoomControl={false} className="h-full w-full">
+        <ZoomControl position="bottomright" />
         {tomtomKey ? (
           <TileLayer
             url={`https://{s}.api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
@@ -488,7 +509,7 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
           />
         )}
         <FitBounds points={fitPoints} driver={driver} pickup={pickup} />
-        <MapViewController driver={activeDriverPos} pickup={pickup} />
+        <MapViewController driver={activeDriverPos} pickup={pickup} onRefreshGps={onRefreshGps} />
         {pickup && (
           <Marker position={pickup}>
             <Popup>

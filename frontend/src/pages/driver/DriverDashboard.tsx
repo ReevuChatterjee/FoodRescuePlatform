@@ -83,19 +83,18 @@ export function DriverDashboard() {
 
   const useGPS = () => {
     setGpsLoading(true);
-    try {
-      localStorage.removeItem('replate_driver_override_location');
-    } catch {}
-    setManualPos(null);
-    location.setOverridePosition(null);
-
     fetchBrowserLocation(
-      (point) => {
+      (point, source) => {
         setLat(point.latitude.toFixed(6));
         setLng(point.longitude.toFixed(6));
-        setAddress('Live System GPS');
+        setAddress(source ? `Live Location (${source})` : 'Live System GPS');
+        setManualPos(point);
+        location.setOverridePosition(point);
         setGpsLoading(false);
-        showToast(`📍 Live GPS acquired: ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}`, 'success');
+        showToast(
+          `📍 Location acquired: ${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)}${source ? ` via ${source}` : ''}`,
+          'success',
+        );
         locationMutation.mutate(point);
       },
       (errMsg) => {
@@ -236,7 +235,11 @@ export function DriverDashboard() {
                     liveRouteSource={liveRoute.trafficSource}
                   />
                   <div className="border border-outline-variant/50 rounded overflow-hidden">
-                     <DriverRouteMap job={job} driverPosition={manualPos ?? location.position ?? driver.current_location} />
+                     <DriverRouteMap
+                       job={job}
+                       driverPosition={manualPos ?? location.position ?? driver.current_location}
+                       onRefreshGps={useGPS}
+                     />
                   </div>
                   <JobActions job={job} vehicleCapacityKg={driver.capacity_kg} />
                 </div>
