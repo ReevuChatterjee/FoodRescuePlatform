@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Loader2, AlertTriangle, Zap } from 'lucide-react';
+import { ExternalLink, Loader2, AlertTriangle, Zap, FastForward } from 'lucide-react';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -48,84 +48,195 @@ function calculateBearing(start: LatLngTuple, end: LatLngTuple): number {
   return (bearing + 360) % 360;
 }
 
+/** Realistic vector delivery scooter icon for UI buttons, badges and popups */
+export function DeliveryScooterIcon({ className = '', size = 18 }: { className?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-label="Delivery Scooter"
+    >
+      {/* Insulated Delivery Cargo Box (Rear Mount) */}
+      <rect x="3" y="10" width="10" height="9" rx="2" fill="#f59e0b" stroke="#b45309" strokeWidth="1.2" />
+      {/* Box Security Straps & Logo Emblem */}
+      <line x1="3" y1="14" x2="13" y2="14" stroke="#92400e" strokeWidth="1" />
+      <line x1="8" y1="10" x2="8" y2="19" stroke="#92400e" strokeWidth="1" />
+      <circle cx="8" cy="14" r="1.5" fill="#ffffff" />
+
+      {/* Rear Wheel */}
+      <circle cx="7" cy="24" r="4.5" fill="#1e293b" stroke="#0f172a" strokeWidth="1.2" />
+      <circle cx="7" cy="24" r="2.2" fill="#94a3b8" />
+      <circle cx="7" cy="24" r="1" fill="#0f172a" />
+
+      {/* Front Wheel */}
+      <circle cx="25" cy="24" r="4.5" fill="#1e293b" stroke="#0f172a" strokeWidth="1.2" />
+      <circle cx="25" cy="24" r="2.2" fill="#94a3b8" />
+      <circle cx="25" cy="24" r="1" fill="#0f172a" />
+
+      {/* Scooter Chassis & Footboard Deck */}
+      <path
+        d="M7 24h5l4-7h5"
+        stroke="#10b981"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 24l3.5-4h4.5"
+        stroke="#047857"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Seat Cushion */}
+      <path
+        d="M11 16c0-1.5 2-2 5-2s4 .5 4 2z"
+        fill="#0f172a"
+      />
+
+      {/* Front Steering Column & Mudguard */}
+      <path
+        d="M25 24l-3-11.5l-2-4.5"
+        stroke="#0f172a"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M22 21c1-1.5 3.5-1.5 5 0"
+        stroke="#10b981"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+
+      {/* Handlebar & Chrome Mirror */}
+      <line x1="18" y1="8" x2="22" y2="8" stroke="#475569" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="18" cy="6" r="1.2" fill="#94a3b8" />
+
+      {/* Front Headlight (Bright illumination) */}
+      <circle cx="23.5" cy="11" r="1.8" fill="#fef08a" stroke="#ca8a04" strokeWidth="0.8" />
+      <polygon points="25.5,11 29,8.5 29,13.5" fill="#fef08a" fillOpacity="0.4" />
+    </svg>
+  );
+}
+
 /** Swiggy/Zomato style animated delivery scooter marker icon with radar pulse & heading arrow */
 function createDriverMarkerIcon(headingDeg: number) {
+  const roundedHeading = Math.round(headingDeg);
   return L.divIcon({
     className: 'driver-live-marker',
     html: `
-      <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+      <div style="position: relative; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
         <!-- Pulsing Radar / Sonar Wave Ring (Swiggy/Zomato style) -->
         <div style="
           position: absolute;
-          width: 44px;
-          height: 44px;
+          width: 48px;
+          height: 48px;
           border-radius: 50%;
-          background: rgba(16, 185, 129, 0.35);
+          background: radial-gradient(circle, rgba(16, 185, 129, 0.45) 0%, rgba(16, 185, 129, 0.15) 55%, transparent 75%);
           animation: driver-radar-pulse 2s infinite ease-out;
           pointer-events: none;
         "></div>
-        
-        <!-- Rotating Vehicle Container -->
+
+        <!-- Rotating Scooter Group (Faces heading direction) -->
         <div style="
           position: relative;
-          width: 34px;
-          height: 34px;
-          border-radius: 50%;
-          background: #0f172a;
-          border: 2px solid #10b981;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 0 2px rgba(16, 185, 129, 0.25);
+          width: 44px;
+          height: 44px;
           display: flex;
           align-items: center;
           justify-content: center;
-          transform: rotate(${Math.round(headingDeg)}deg);
-          transition: transform 0.4s ease-out;
+          transform: rotate(${roundedHeading}deg);
+          transition: transform 0.25s linear;
+          filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
         ">
-          <!-- Direction Heading Needle -->
-          <div style="
-            position: absolute;
-            top: -6px;
-            width: 0;
-            height: 0;
-            border-left: 4px solid transparent;
-            border-right: 4px solid transparent;
-            border-bottom: 6px solid #10b981;
-          "></div>
+          <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="scooter-beam-${roundedHeading}" x1="0%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" stop-color="#fef08a" stop-opacity="0.6" />
+                <stop offset="60%" stop-color="#fef08a" stop-opacity="0.2" />
+                <stop offset="100%" stop-color="#fef08a" stop-opacity="0" />
+              </linearGradient>
+            </defs>
 
-          <!-- Scooter / Delivery Bike SVG -->
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f8fafc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="6" cy="17" r="3" fill="#10b981" stroke="#ffffff" stroke-width="1.5"/>
-            <circle cx="18" cy="17" r="3" fill="#10b981" stroke="#ffffff" stroke-width="1.5"/>
-            <path d="M6 17h4l3-6h-3" stroke="#f8fafc" stroke-width="2"/>
-            <path d="M14 11l4 6" stroke="#f8fafc" stroke-width="2"/>
-            <path d="M12 6h3" stroke="#f8fafc" stroke-width="2"/>
-            <rect x="4" y="6" width="6" height="5" rx="1" fill="#f59e0b" stroke="#ffffff" stroke-width="1"/>
+            <!-- Headlight Beam (Illuminating road ahead) -->
+            <polygon points="22,12 11,0 33,0" fill="url(#scooter-beam-${roundedHeading})" />
+
+            <!-- Direction Indicator Trajectory Arrow -->
+            <path d="M19 4 L22 1 L25 4" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+
+            <!-- Front Tire -->
+            <rect x="20.5" y="5.5" width="3" height="6.5" rx="1.5" fill="#1e293b" />
+
+            <!-- Front Mudguard / Fairing (Emerald Green) -->
+            <path d="M18 11.5 C18 9 26 9 26 11.5 L24.5 14.5 L19.5 14.5 Z" fill="#10b981" />
+
+            <!-- Headlight LED -->
+            <circle cx="22" cy="11.5" r="1.8" fill="#ffffff" stroke="#fef08a" stroke-width="0.8" />
+
+            <!-- Handlebars & Chrome Mirrors -->
+            <line x1="12" y1="13.5" x2="32" y2="13.5" stroke="#334155" stroke-width="2.2" stroke-linecap="round" />
+            <circle cx="12" cy="11.5" r="1.4" fill="#94a3b8" />
+            <circle cx="32" cy="11.5" r="1.4" fill="#94a3b8" />
+            <rect x="11.5" y="12.5" width="2.5" height="2" rx="0.5" fill="#0f172a" />
+            <rect x="30" y="12.5" width="2.5" height="2" rx="0.5" fill="#0f172a" />
+
+            <!-- Driver Silhouette: Shoulders & Helmet -->
+            <ellipse cx="22" cy="20" rx="7" ry="3.5" fill="#047857" />
+            <path d="M17 19.5 L22 22 L27 19.5" stroke="#34d399" stroke-width="1" stroke-linecap="round" />
+            <circle cx="22" cy="18" r="4" fill="#0f172a" stroke="#10b981" stroke-width="1.2" />
+            <path d="M19.5 16.5 Q22 15 24.5 16.5" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" fill="none" />
+
+            <!-- Central Footboard Deck -->
+            <rect x="19.5" y="21.5" width="5" height="4.5" rx="1" fill="#334155" />
+
+            <!-- Rear Insulated Food Cargo Box (Swiggy/Zomato/RePlate thermal box) -->
+            <rect x="15" y="24.5" width="14" height="12" rx="2.5" fill="#f59e0b" stroke="#d97706" stroke-width="1.2" />
+            <line x1="15" y1="28" x2="29" y2="28" stroke="#b45309" stroke-width="1" />
+            <line x1="22" y1="24.5" x2="22" y2="36.5" stroke="#b45309" stroke-width="1" />
+            <circle cx="22" cy="32" r="2" fill="#ffffff" />
+            <circle cx="22" cy="32" r="1.2" fill="#f59e0b" />
+
+            <!-- Taillight (Red LED) -->
+            <rect x="19.5" y="36.5" width="5" height="1.8" rx="0.8" fill="#ef4444" />
+
+            <!-- Rear Tire -->
+            <rect x="20.5" y="37.5" width="3" height="4.5" rx="1.5" fill="#1e293b" />
           </svg>
         </div>
 
-        <!-- Live Status Pill -->
+        <!-- Live Status Badge Pill -->
         <div style="
           position: absolute;
-          bottom: -15px;
-          background: rgba(15, 23, 42, 0.92);
+          bottom: -12px;
+          background: rgba(15, 23, 42, 0.94);
           color: #ffffff;
-          font-size: 9px;
+          font-size: 8.5px;
           font-weight: 700;
-          letter-spacing: 0.02em;
+          letter-spacing: 0.03em;
           padding: 1px 5px;
           border-radius: 9999px;
           white-space: nowrap;
-          border: 1px solid rgba(16, 185, 129, 0.5);
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          border: 1px solid rgba(16, 185, 129, 0.6);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+          display: flex;
+          align-items: center;
+          gap: 3px;
           pointer-events: none;
         ">
-          Live GPS
+          <span style="width: 4px; height: 4px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+          GPS
         </div>
       </div>
     `,
-    iconSize: [44, 44],
-    iconAnchor: [22, 22],
+    iconSize: [50, 50],
+    iconAnchor: [25, 25],
   });
 }
+
 
 /** @deprecated Use trafficSource from useTrafficRoute instead. Kept for backwards-compat with tests. */
 export function isStraightLineEstimate(provider: string | undefined): boolean {
@@ -288,6 +399,9 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
   // Simulation drive mode (for testing movement smoothly along the route)
   const [isSimulating, setIsSimulating] = useState(false);
   const [simIndex, setSimIndex] = useState(0);
+  const [simSpeed, setSimSpeed] = useState<1 | 2 | 4>(2); // 1x = 240ms, 2x = 120ms, 4x = 60ms
+
+  const simIntervalMs = simSpeed === 4 ? 60 : simSpeed === 2 ? 120 : 240;
 
   useEffect(() => {
     if (driver) {
@@ -323,13 +437,16 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
       setSimIndex((idx: number) => {
         const next = (idx + 1) % line.length;
         if (line[idx] && line[next]) {
-          setHeading(calculateBearing(line[idx], line[next]));
+          const b = calculateBearing(line[idx], line[next]);
+          if (!isNaN(b)) {
+            setHeading(b);
+          }
         }
         return next;
       });
-    }, 1200);
+    }, simIntervalMs);
     return () => clearInterval(interval);
-  }, [isSimulating, line]);
+  }, [isSimulating, line, simIntervalMs]);
 
   const activeDriverPos: LatLngTuple | null = isSimulating && line.length > 0
     ? line[simIndex] ?? driver
@@ -394,7 +511,10 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
           <Marker position={activeDriverPos} icon={driverMarkerIcon} zIndexOffset={1000}>
             <Popup>
               <div className="text-xs font-medium">
-                <b className="text-emerald-600 block mb-0.5">🛵 Delivery Partner (Live)</b>
+                <div className="flex items-center gap-1.5 text-emerald-600 font-bold mb-0.5">
+                  <DeliveryScooterIcon size={16} />
+                  <span>Delivery Partner (Live)</span>
+                </div>
                 <div>Status: Moving with live traffic</div>
                 {heading > 0 && <div className="text-slate-500">Direction: {Math.round(heading)}°</div>}
               </div>
@@ -503,16 +623,28 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
             setIsSimulating((s: boolean) => !s);
             if (!isSimulating) setSimIndex(0);
           }}
-          className={`px-2 py-1 rounded-full text-[10px] font-semibold border backdrop-blur-sm transition-all flex items-center gap-1 shadow-sm ${
+          className={`px-2.5 py-1 rounded-full text-[10px] font-semibold border backdrop-blur-sm transition-all flex items-center gap-1.5 shadow-sm ${
             isSimulating
               ? 'bg-emerald-600 text-white border-emerald-400'
               : 'bg-slate-900/80 text-slate-300 border-white/10 hover:text-white'
           }`}
-          title="Toggle movement simulation along the route"
+          title="Toggle realistic delivery scooter movement simulation along the route"
         >
-          <span>🛵</span>
+          <DeliveryScooterIcon size={15} />
           <span>{isSimulating ? 'Moving…' : 'Simulate'}</span>
         </button>
+
+        {isSimulating && (
+          <button
+            type="button"
+            onClick={() => setSimSpeed((prev) => (prev === 1 ? 2 : prev === 2 ? 4 : 1))}
+            className="px-2 py-1 rounded-full text-[10px] font-bold bg-slate-900/90 text-emerald-400 border border-emerald-500/40 hover:bg-slate-800 transition-colors shadow-sm flex items-center gap-1 backdrop-blur-sm"
+            title={`Simulation speed: ${simSpeed}x (Click to cycle 1x / 2x / 4x)`}
+          >
+            <FastForward size={11} />
+            <span>{simSpeed}x</span>
+          </button>
+        )}
 
         {routeInfo && !isLoading && (
           <div
