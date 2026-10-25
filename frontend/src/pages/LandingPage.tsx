@@ -136,7 +136,7 @@ export function LandingPage() {
     <div className="min-h-screen flex flex-col bg-base text-on-surface">
 
       {/* ── Navbar ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container border-b border-outline-variant/30">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container border-b border-outline-variant/30 dark:border-transparent">
         <div className="h-16 w-full max-w-7xl mx-auto px-4 lg:px-8 flex items-center justify-between gap-6">
           <div className="flex items-center gap-3 shrink-0">
             <Leaf size={24} className="text-primary" />
@@ -169,7 +169,7 @@ export function LandingPage() {
       <main className="w-full pt-16 bg-base">
 
         {/* ── Hero Section ── */}
-        <section ref={heroRef} className="relative pt-24 pb-12 lg:pt-28 lg:pb-16 px-4 lg:px-8 border-b border-outline-variant/30 overflow-hidden">
+        <section ref={heroRef} className="relative pt-24 pb-12 lg:pt-28 lg:pb-16 px-4 lg:px-8 border-b border-outline-variant/30 dark:border-transparent overflow-hidden">
           
           <HeroBackgroundMap scrollY={scrollY} />
 
@@ -290,7 +290,7 @@ export function LandingPage() {
         </section>
 
         {/* ── Logistical Sequence ── */}
-        <section id="how-it-works" className="w-full py-16 px-4 lg:px-8 border-b border-outline-variant/30">
+        <section id="how-it-works" className="w-full py-16 px-4 lg:px-8 border-b border-outline-variant/30 dark:border-transparent">
           <div className="max-w-3xl mx-auto" ref={processRef}>
             <h2 className="text-[2rem] font-semibold text-on-surface mb-12 tracking-tight">From surplus to delivery</h2>
             
@@ -355,7 +355,7 @@ export function LandingPage() {
         </section>
 
         {/* ── What Gets Matched Strip ── */}
-        <section className="w-full py-8 px-4 lg:px-8 bg-surface-container-lowest border-b border-outline-variant/30 overflow-hidden">
+        <section className="w-full py-8 px-4 lg:px-8 bg-surface-container-lowest border-b border-outline-variant/30 dark:border-transparent overflow-hidden">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
             <span className="text-[0.75rem] font-semibold uppercase tracking-widest text-on-surface-variant">Matching considers</span>
             <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-[0.875rem] font-mono-data text-on-surface">
@@ -384,7 +384,7 @@ export function LandingPage() {
         </section>
 
         {/* ── Network Roles (State Machine Controlled) ── */}
-        <section id="network-roles" ref={networkRef} className="w-full py-16 px-4 lg:px-8 border-b border-outline-variant/30 relative">
+        <section id="network-roles" ref={networkRef} className="w-full py-16 px-4 lg:px-8 border-b border-outline-variant/30 dark:border-transparent relative">
           <div className="max-w-7xl mx-auto relative z-10">
             <motion.h2 
               initial={{ opacity: 0 }}
@@ -527,7 +527,7 @@ export function LandingPage() {
         </section>
 
         {/* ── Traceability ── */}
-        <section id="traceability" ref={traceRef} className="w-full py-16 px-4 lg:px-8 bg-surface-container-lowest border-b border-outline-variant/30 overflow-hidden">
+        <section id="traceability" ref={traceRef} className="w-full py-16 px-4 lg:px-8 bg-surface-container-lowest border-b border-outline-variant/30 dark:border-transparent overflow-hidden">
           <div className="max-w-5xl mx-auto text-center">
             <motion.h2 
               initial={{ opacity: 0 }}
@@ -583,7 +583,7 @@ export function LandingPage() {
         </section>
 
         {/* ── Operational Facts ── */}
-        <section className="w-full py-16 px-4 lg:px-8 border-b border-outline-variant/30">
+        <section className="w-full py-16 px-4 lg:px-8 border-b border-outline-variant/30 dark:border-transparent">
           <div className="max-w-7xl mx-auto">
             <h2 className="text-[1.5rem] font-semibold text-on-surface mb-12 tracking-tight">Built around the realities of perishable food.</h2>
             
@@ -655,7 +655,7 @@ export function LandingPage() {
       </main>
 
       {/* ── Footer ── */}
-      <footer className="w-full py-12 px-4 lg:px-8 bg-surface-container-lowest border-t border-outline-variant/30">
+      <footer className="w-full py-12 px-4 lg:px-8 bg-surface-container-lowest border-t border-outline-variant/30 dark:border-transparent">
         <motion.div 
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -699,7 +699,7 @@ export function LandingPage() {
             </div>
           </div>
           
-          <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-outline-variant/30 text-[0.8125rem] text-on-surface-variant">
+          <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-outline-variant/30 dark:border-transparent text-[0.8125rem] text-on-surface-variant">
             <span>© 2025 RePlate. All rights reserved.</span>
           </div>
         </motion.div>

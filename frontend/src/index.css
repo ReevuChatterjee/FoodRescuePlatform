@@ -188,6 +188,12 @@
     --border-subtle:     var(--border-hair);
   }
 
+  /* Prevent fallback to currentColor (white) for opacity utility on hex CSS vars in dark mode */
+  html.dark .border-outline-variant\/30,
+  html.dark .border-outline-variant\/20 {
+    border-color: transparent !important;
+  }
+
   html {
     font-family: var(--font-ui);
     -webkit-font-smoothing: antialiased;
