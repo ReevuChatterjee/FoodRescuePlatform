@@ -259,7 +259,7 @@ class DispatchOutcome:
 async def _claim_vehicle(db: AsyncSession, vehicle_id: str) -> bool:
     result = await db.execute(
         update(Vehicle)
-        .where(Vehicle.id == vehicle_id)
+        .where(Vehicle.id == vehicle_id, Vehicle.availability_status == AVAILABLE)
         .values(availability_status=BUSY)
     )
     return result.rowcount == 1
@@ -342,33 +342,46 @@ async def _dispatch_locked(
         donation_id=donation.id, pickup=pickup, dropoff=dropoff, quantity_kg=donation.quantity_kg,
         available_from=as_aware(donation.available_from), expiry_time=expiry,
     )
+    reassigning = donation.status == DonationStatus.DRIVER_ISSUE
+    delivery: Delivery | None = None
+    previous_driver_id: str | None = None
+    if reassigning:  # reuse the row so analytics count one delivery, not a failed + a new one
+        prev_res = await db.execute(
+            select(Delivery)
+            .where(Delivery.donation_id == donation.id, Delivery.status == DeliveryStatus.DRIVER_ISSUE)
+            .order_by(Delivery.pickup_time.desc())
+        )
+        delivery = prev_res.scalars().first()
+        previous_driver_id = delivery.driver_id if delivery is not None else None
+
     vehicles = (
         await db.execute(select(Vehicle).where(Vehicle.availability_status == AVAILABLE))
     ).scalars().all()
     if not vehicles:
-        all_v = (await db.execute(select(Vehicle))).scalars().all()
-        if all_v:
-            vehicles = all_v
-    if not vehicles:
-        # Auto-create vehicle for any existing driver user
+        # Auto-create vehicle for any existing driver user if no vehicles exist at all in DB
         driver_users = (await db.execute(select(User).where(User.role == UserRole.DRIVER))).scalars().all()
         for du in driver_users:
-            v = Vehicle(
-                id=new_id("veh"),
-                driver_id=du.id,
-                capacity_kg=100.0,
-                current_location="28.6273,77.2190",
-                availability_status=AVAILABLE,
-            )
-            db.add(v)
-            vehicles.append(v)
+            v_check = (await db.execute(select(Vehicle).where(Vehicle.driver_id == du.id))).scalars().first()
+            if not v_check:
+                v = Vehicle(
+                    id=new_id("veh"),
+                    driver_id=du.id,
+                    capacity_kg=100.0,
+                    current_location="28.6273,77.2190",
+                    availability_status=AVAILABLE,
+                )
+                db.add(v)
+                vehicles.append(v)
         if vehicles:
             await db.commit()
+
+    if reassigning and previous_driver_id:
+        vehicles = [v for v in vehicles if v.driver_id != previous_driver_id]
 
     candidates = [
         DriverCandidate(
             driver_id=v.driver_id, vehicle_id=v.id, capacity_kg=v.capacity_kg if v.capacity_kg and v.capacity_kg > 0 else 100.0,
-            availability_status="AVAILABLE", location=parse_latlng(v.current_location) or (28.6273, 77.2190),
+            availability_status=AVAILABLE, location=parse_latlng(v.current_location) or (28.6273, 77.2190),
         )
         for v in vehicles
     ]
@@ -397,16 +410,16 @@ async def _dispatch_locked(
             if matching_pref:
                 target_cand = matching_pref[0]
 
-        await _claim_vehicle(db, target_cand.vehicle_id)
-        chosen = DriverPlan(
-            driver=target_cand,
-            to_pickup=get_heuristic().estimate(target_cand.location or (28.6273, 77.2190), job.pickup, now),
-            to_dropoff=get_heuristic().estimate(job.pickup, job.dropoff, now),
-            pickup_at=now,
-            delivered_at=now + timedelta(minutes=15),
-            slack_minutes=0.0,
-            capacity_slack_kg=target_cand.capacity_kg - job.quantity_kg,
-        )
+        if await _claim_vehicle(db, target_cand.vehicle_id):
+            chosen = DriverPlan(
+                driver=target_cand,
+                to_pickup=get_heuristic().estimate(target_cand.location or (28.6273, 77.2190), job.pickup, now),
+                to_dropoff=get_heuristic().estimate(job.pickup, job.dropoff, now),
+                pickup_at=now,
+                delivered_at=now + timedelta(minutes=15),
+                slack_minutes=0.0,
+                capacity_slack_kg=target_cand.capacity_kg - job.quantity_kg,
+            )
 
     if chosen is None:
         reason = "NO_AVAILABLE_DRIVER" if not candidates else "NO_FEASIBLE_DRIVER"
@@ -418,19 +431,6 @@ async def _dispatch_locked(
                                  donation_id=donation.id, reason=reason))
         await db.commit()
         return stop(DispatchStatus.PENDING, reason, driver_rejections=rejections, events=events)
-
-    reassigning = donation.status == DonationStatus.DRIVER_ISSUE
-    delivery: Delivery | None = None
-    previous_driver_id: str | None = None
-    if reassigning:  # reuse the row so analytics count one delivery, not a failed + a new one
-        delivery = (
-            await db.execute(
-                select(Delivery)
-                .where(Delivery.donation_id == donation.id, Delivery.status == DeliveryStatus.DRIVER_ISSUE)
-                .order_by(Delivery.pickup_time.desc())
-            )
-        ).scalars().first()
-        previous_driver_id = delivery.driver_id if delivery is not None else None
     if delivery is None:
         delivery = Delivery(id=new_id("dlv"), donation_id=donation.id, ngo_id=ngo.id,
                             driver_id=chosen.driver.driver_id, status=DeliveryStatus.DRIVER_ASSIGNED)
@@ -849,46 +849,17 @@ async def build_current_job(
 
     delivery = await active_delivery_for_driver(db, driver_id)
 
-    # 1. If this driver has no active delivery, claim any unstarted delivery in the system
-    if delivery is None:
-        unstarted_res = await db.execute(
-            select(Delivery)
-            .where(Delivery.status == DeliveryStatus.DRIVER_ASSIGNED)
-            .order_by(Delivery.id.desc())
-        )
-        unstarted = unstarted_res.scalars().first()
-        if unstarted:
-            unstarted.driver_id = driver_id
-            delivery = unstarted
-            if vehicle.availability_status == AVAILABLE:
-                vehicle.availability_status = BUSY
+    # Sync vehicle status with active delivery:
+    # If the driver has an active delivery, their status is BUSY.
+    # If the driver has no active delivery but was marked BUSY, reset to AVAILABLE.
+    # If the driver is OFFLINE, they remain OFFLINE!
+    if delivery is not None:
+        if vehicle.availability_status != BUSY:
+            vehicle.availability_status = BUSY
             await db.commit()
-            await db.refresh(delivery)
-
-    # 2. If still no delivery, check if there is an ACCEPTED donation waiting for a driver
-    if delivery is None:
-        don_res = await db.execute(
-            select(Donation)
-            .where(
-                Donation.status.in_((DonationStatus.ACCEPTED, DonationStatus.DRIVER_ISSUE)),
-                Donation.matched_ngo_id.isnot(None),
-            )
-            .order_by(Donation.created_at.desc())
-        )
-        pending_don = don_res.scalars().first()
-        if pending_don:
-            outcome = await dispatch_donation(db, pending_don.id, preferred_driver_id=driver_id)
-            if outcome and outcome.delivery:
-                deliv_id = outcome.delivery.get("id")
-                if deliv_id:
-                    delivery = await db.get(Delivery, deliv_id)
-                    if delivery and delivery.driver_id != driver_id:
-                        delivery.driver_id = driver_id
-                        await db.commit()
-                        await db.refresh(delivery)
-
-    if delivery is not None and vehicle.availability_status != BUSY:
-        vehicle.availability_status = BUSY
+            await db.refresh(vehicle)
+    elif vehicle.availability_status == BUSY:
+        vehicle.availability_status = AVAILABLE
         await db.commit()
         await db.refresh(vehicle)
 

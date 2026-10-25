@@ -142,12 +142,13 @@ def rank_drivers(
         if driver.availability_status != "AVAILABLE":
             rejections[driver.driver_id] = DriverRejection.NOT_AVAILABLE
             continue
-        capacity = driver.capacity_kg if driver.capacity_kg and driver.capacity_kg > 0 else 100.0
-        if capacity < job.quantity_kg:
+        if driver.capacity_kg < job.quantity_kg:
             rejections[driver.driver_id] = DriverRejection.INSUFFICIENT_VEHICLE_CAPACITY
             continue
-        driver_loc = driver.location if driver.location is not None else job.pickup
-        to_pickup = estimator(driver_loc, job.pickup, now)
+        if driver.location is None:
+            rejections[driver.driver_id] = DriverRejection.LOCATION_UNKNOWN
+            continue
+        to_pickup = estimator(driver.location, job.pickup, now)
         depart = departure_from_pickup(job, to_pickup, now, config)
         to_dropoff = estimator(job.pickup, job.dropoff, depart)
         plan = build_plan(job, driver, to_pickup, to_dropoff, now, config)
