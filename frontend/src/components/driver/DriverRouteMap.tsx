@@ -358,21 +358,12 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
     <div className="relative h-72 sm:h-96 w-full rounded-sm overflow-hidden border border-[var(--border-strong)]">
       <MapContainer center={center} zoom={14} scrollWheelZoom={false} className="h-full w-full">
         {tomtomKey ? (
-          <>
-            <TileLayer
-              url={`https://{s}.api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
-              subdomains={['a', 'b', 'c', 'd']}
-              attribution='&copy; <a href="https://www.tomtom.com" target="_blank" rel="noreferrer">TomTom</a>'
-              maxZoom={22}
-            />
-            {/* Live Traffic Flow Layer: draws real-time green/yellow/red traffic flow directly on streets */}
-            <TileLayer
-              url={`https://{s}.api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${tomtomKey}`}
-              subdomains={['a', 'b', 'c', 'd']}
-              opacity={0.8}
-              maxZoom={22}
-            />
-          </>
+          <TileLayer
+            url={`https://{s}.api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=${tomtomKey}`}
+            subdomains={['a', 'b', 'c', 'd']}
+            attribution='&copy; <a href="https://www.tomtom.com" target="_blank" rel="noreferrer">TomTom</a>'
+            maxZoom={22}
+          />
         ) : (
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -410,13 +401,26 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
             </Popup>
           </Marker>
         )}
+        {/* High-contrast dark casing underlay for the route */}
+        {line.length > 1 && (
+          <Polyline
+            positions={line}
+            pathOptions={{
+              color: '#0f172a',
+              weight: 8,
+              opacity: 0.55,
+              lineJoin: 'round',
+              lineCap: 'round',
+            }}
+          />
+        )}
         {line.length > 1 && (
           <Polyline
             positions={line}
             pathOptions={{
               color: dashed ? LINE_COLOR.heuristic : (trafficSource === 'live' ? '#22c55e' : (LINE_COLOR[trafficSource] || LINE_COLOR.road_model)),
               weight: 5,
-              opacity: 0.85,
+              opacity: 0.95,
               dashArray: dashed ? '8 10' : undefined,
               lineJoin: 'round',
               lineCap: 'round',
@@ -424,7 +428,7 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
           />
         )}
 
-        {/* Live traffic congestion segments on route: Amber for slow, Red for heavy jams */}
+        {/* Live traffic congestion segments ON ROUTE ONLY: Amber for slow, Red for heavy jams */}
         {trafficSegments && trafficSegments.length > 0 && trafficSegments
           .filter((seg) => seg.points && seg.points.length > 1)
           .map((seg, idx) => (
@@ -433,8 +437,8 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
               positions={seg.points}
               pathOptions={{
                 color: seg.severity === 'jam' ? '#ef4444' : '#f59e0b',
-                weight: 7,
-                opacity: 0.95,
+                weight: 6,
+                opacity: 1,
                 lineJoin: 'round',
                 lineCap: 'round',
               }}
@@ -442,10 +446,10 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
               <Popup>
                 <div className="text-xs">
                   <b style={{ color: seg.severity === 'jam' ? '#ef4444' : '#f59e0b' }}>
-                    {seg.severity === 'jam' ? 'Heavy Traffic Jam' : 'Moderate Traffic Slowdown'}
+                    {seg.severity === 'jam' ? '🔴 Heavy Traffic Jam' : '🟡 Moderate Traffic Slowdown'}
                   </b>
                   {seg.delay_seconds != null && seg.delay_seconds > 0 && (
-                    <div>Delay: +{Math.round(seg.delay_seconds / 60)} min</div>
+                    <div className="mt-0.5">Route Delay: +{Math.round(seg.delay_seconds / 60)} min</div>
                   )}
                   {seg.speed_kmh != null && (
                     <div>Avg Speed: {Math.round(seg.speed_kmh)} km/h</div>
@@ -456,11 +460,12 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
           ))}
       </MapContainer>
 
-      {/* ── Traffic Flow Legend (bottom-left) ─────────────────────────── */}
+      {/* ── Route Traffic Flow Legend (bottom-left) ─────────────────────────── */}
       <div
         className="absolute bottom-2 left-2 z-[1000] flex items-center gap-2.5 px-2.5 py-1 rounded shadow text-[10px] font-medium backdrop-blur-md"
-        style={{ background: 'rgba(9,9,11,0.85)', color: '#f1f5f9', border: '1px solid rgba(255,255,255,0.12)' }}
+        style={{ background: 'rgba(9,9,11,0.88)', color: '#f1f5f9', border: '1px solid rgba(255,255,255,0.12)' }}
       >
+        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mr-0.5">Route</span>
         <span className="flex items-center gap-1">
           <span className="w-2 h-2 rounded-full inline-block bg-[#22c55e]" /> Clear
         </span>
