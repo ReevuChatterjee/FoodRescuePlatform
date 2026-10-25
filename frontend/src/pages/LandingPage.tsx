@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Leaf, ArrowDown } from 'lucide-react';
 import { motion, useScroll, useTransform, useReducedMotion, MotionValue, useInView, useMotionValue, animate } from 'framer-motion';
@@ -16,10 +16,53 @@ export function LandingPage() {
 
   // ── Process Section Scroll Tracking ──
   const processRef = useRef<HTMLDivElement>(null);
+  const processContainerRef = useRef<HTMLDivElement>(null);
+  const dot1Ref = useRef<HTMLDivElement>(null);
+  const dot4Ref = useRef<HTMLDivElement>(null);
+  const [processTrackBounds, setProcessTrackBounds] = useState({ top: 17, height: 330 });
+
   const { scrollYProgress: processScroll } = useScroll({
     target: processRef,
     offset: ["start center", "end center"]
   });
+
+  // Calculate pixel bounds of vertical track from center of dot 1 to center of dot 4
+  useLayoutEffect(() => {
+    const updateTrackBounds = () => {
+      if (dot1Ref.current && dot4Ref.current && processContainerRef.current) {
+        const cRect = processContainerRef.current.getBoundingClientRect();
+        const d1Rect = dot1Ref.current.getBoundingClientRect();
+        const d4Rect = dot4Ref.current.getBoundingClientRect();
+        const top = (d1Rect.top + d1Rect.height / 2) - cRect.top;
+        const bottom = (d4Rect.top + d4Rect.height / 2) - cRect.top;
+        setProcessTrackBounds({ top, height: Math.max(0, bottom - top) });
+      }
+    };
+
+    updateTrackBounds();
+    window.addEventListener('resize', updateTrackBounds);
+    const ro = window.ResizeObserver ? new ResizeObserver(updateTrackBounds) : null;
+    if (ro && processContainerRef.current) {
+      ro.observe(processContainerRef.current);
+    }
+    return () => {
+      window.removeEventListener('resize', updateTrackBounds);
+      ro?.disconnect();
+    };
+  }, []);
+
+  // Vertical line pauses as it reaches each dot, allowing the dot to fill up, then proceeds
+  const processLineScale = useTransform(
+    processScroll,
+    [0.00, 0.06, 0.33, 0.39, 0.66, 0.72, 0.94, 1.00],
+    [0.00, 0.00, 0.333, 0.333, 0.667, 0.667, 1.000, 1.000]
+  );
+
+  // Each dot fills up when the line reaches it
+  const dot1Fill = useTransform(processScroll, [0.00, 0.06], [0, 1]);
+  const dot2Fill = useTransform(processScroll, [0.33, 0.39], [0, 1]);
+  const dot3Fill = useTransform(processScroll, [0.66, 0.72], [0, 1]);
+  const dot4Fill = useTransform(processScroll, [0.94, 1.00], [0, 1]);
 
   // ── Network Section State Machine ──
   const networkRef = useRef<HTMLDivElement>(null);
@@ -251,15 +294,29 @@ export function LandingPage() {
           <div className="max-w-3xl mx-auto" ref={processRef}>
             <h2 className="text-[2rem] font-semibold text-on-surface mb-12 tracking-tight">From surplus to delivery</h2>
             
-            <div className="relative">
+            <div className="relative" ref={processContainerRef}>
               {/* Background structural track */}
-              <div className="absolute left-[3.5rem] md:left-[5rem] top-3 bottom-0 w-[2px] -ml-[1px] bg-outline-variant/30 z-0" />
+              <div 
+                className="absolute left-[3.5rem] md:left-[5rem] w-[2px] -ml-[1px] bg-outline-variant/30 z-0 pointer-events-none" 
+                style={{ top: `${processTrackBounds.top}px`, height: `${processTrackBounds.height}px` }}
+              />
               
               {/* Foreground progress track */}
               {!disableMotion && (
                 <motion.div 
-                  className="absolute left-[3.5rem] md:left-[5rem] top-3 bottom-0 w-[2px] -ml-[1px] bg-primary z-0 origin-top" 
-                  style={{ scaleY: processScroll }}
+                  className="absolute left-[3.5rem] md:left-[5rem] w-[2px] -ml-[1px] bg-primary z-0 origin-top pointer-events-none" 
+                  style={{ 
+                    top: `${processTrackBounds.top}px`, 
+                    height: `${processTrackBounds.height}px`, 
+                    scaleY: processLineScale 
+                  }}
+                />
+              )}
+
+              {disableMotion && (
+                <div 
+                  className="absolute left-[3.5rem] md:left-[5rem] w-[2px] -ml-[1px] bg-primary z-0 pointer-events-none" 
+                  style={{ top: `${processTrackBounds.top}px`, height: `${processTrackBounds.height}px` }}
                 />
               )}
 
@@ -267,28 +324,30 @@ export function LandingPage() {
                 num="01" 
                 title="Donor lists surplus" 
                 desc="Donors log food type, quantity, preparation time, and availability window into the system. The record is created instantly." 
-                progress={processScroll} start={0} mid={0.25} end={0.5}
+                fillProgress={dot1Fill}
+                dotRef={dot1Ref}
                 disableMotion={disableMotion}
               />
               <ProcessStep 
                 num="02" 
                 title="RePlate matches supply with demand" 
                 desc="The system considers capacity, shelf life, transit time and route efficiency." 
-                progress={processScroll} start={0.25} mid={0.5} end={0.75}
+                fillProgress={dot2Fill}
                 disableMotion={disableMotion}
               />
               <ProcessStep 
                 num="03" 
                 title="Driver receives the dispatch" 
                 desc="Pickup and drop-off windows are enforced and route information is provided." 
-                progress={processScroll} start={0.5} mid={0.75} end={1.0}
+                fillProgress={dot3Fill}
                 disableMotion={disableMotion}
               />
               <ProcessStep 
                 num="04" 
                 title="Delivery is recorded" 
                 desc="The handoff creates a digital record of the completed delivery." 
-                progress={processScroll} start={0.75} mid={0.875} end={1.0}
+                fillProgress={dot4Fill}
+                dotRef={dot4Ref}
                 disableMotion={disableMotion}
               />
             </div>
@@ -651,37 +710,43 @@ export function LandingPage() {
 
 // ── Helper Components ──
 
-function ProcessStep({ num, title, desc, progress, start, mid, end, disableMotion }: 
-  { num: string, title: string, desc: string, progress: MotionValue<number>, start: number, mid: number, end: number, disableMotion: boolean }) 
-{
-  const textColor = useTransform(progress, 
-    [start, mid, end], 
-    ["var(--on-surface-variant)", "var(--on-surface)", "var(--on-surface)"]
-  );
-  
-  const numColor = useTransform(progress,
-    [start, mid, end],
-    ["var(--outline-variant)", "var(--primary)", "var(--primary)"]
-  );
+function ProcessStep({ 
+  num, 
+  title, 
+  desc, 
+  fillProgress, 
+  dotRef, 
+  disableMotion 
+}: { 
+  num: string; 
+  title: string; 
+  desc: string; 
+  fillProgress: MotionValue<number>; 
+  dotRef?: React.RefObject<HTMLDivElement>; 
+  disableMotion: boolean; 
+}) {
+  // Dot fill transforms
+  const fillScale = useTransform(fillProgress, [0, 1], [0, 1]);
+  const activeBorderOpacity = useTransform(fillProgress, [0, 0.4], [0, 1]);
+  const pulseScale = useTransform(fillProgress, [0, 0.65, 1], [0.8, 1.45, 1]);
+  const pulseOpacity = useTransform(fillProgress, [0, 0.65, 1], [0, 0.5, 0]);
 
-  const dotBgColor = useTransform(progress,
-    [start, mid, end],
-    ["var(--surface)", "var(--primary)", "rgba(var(--primary), 0.2)"]
-  );
-
-  const dotBorderColor = useTransform(progress,
-    [start, mid, end],
-    ["var(--outline-variant)", "var(--primary)", "var(--primary)"]
-  );
+  // Typography transitions
+  const activeOpacity = useTransform(fillProgress, [0, 0.8], [0, 1]);
+  const inactiveOpacity = useTransform(fillProgress, [0, 0.8], [1, 0]);
+  const titleOpacity = useTransform(fillProgress, [0, 0.8], [0.75, 1]);
+  const descOpacity = useTransform(fillProgress, [0, 0.8], [0.65, 0.85]);
 
   if (disableMotion) {
     return (
       <div className="flex relative z-10 pb-10 last:pb-0">
-        <div className="w-8 md:w-12 shrink-0 text-right font-mono-data pt-1 text-primary">
+        <div className="w-8 md:w-12 shrink-0 text-right font-mono-data pt-1 text-primary font-bold text-[0.875rem]">
           <span>{num}</span>
         </div>
         <div className="w-12 md:w-16 shrink-0 flex flex-col items-center pt-[10px]">
-          <div className="w-2.5 h-2.5 rounded-full border border-primary bg-primary" />
+          <div ref={dotRef} className="w-3.5 h-3.5 rounded-full border-[1.5px] border-primary bg-primary relative z-10 shadow-xs flex items-center justify-center">
+            <div className="w-1 h-1 rounded-full bg-on-primary" />
+          </div>
         </div>
         <div className="flex-1 pt-0">
           <h3 className="text-[1.125rem] font-medium mb-1.5 text-on-surface">
@@ -697,22 +762,67 @@ function ProcessStep({ num, title, desc, progress, start, mid, end, disableMotio
 
   return (
     <div className="flex relative z-10 pb-10 last:pb-0">
-      <div className="w-8 md:w-12 shrink-0 text-right font-mono-data pt-1">
-        <motion.span style={{ color: numColor }} className="transition-colors duration-300">
+      {/* Number */}
+      <div className="w-8 md:w-12 shrink-0 text-right font-mono-data pt-1 text-[0.875rem] relative select-none">
+        <motion.span 
+          style={{ opacity: inactiveOpacity }} 
+          className="text-on-surface-variant/60 font-medium absolute right-0"
+        >
           {num}
         </motion.span>
+        <motion.span 
+          style={{ opacity: activeOpacity }} 
+          className="text-primary font-bold absolute right-0"
+        >
+          {num}
+        </motion.span>
+        <span className="invisible">{num}</span>
       </div>
+
+      {/* Dot Column */}
       <div className="w-12 md:w-16 shrink-0 flex flex-col items-center pt-[10px]">
-        <motion.div 
-          style={{ backgroundColor: dotBgColor, borderColor: dotBorderColor }} 
-          className="w-2.5 h-2.5 rounded-full border transition-colors duration-300 z-10 bg-base" 
-        />
+        <div 
+          ref={dotRef} 
+          className="w-3.5 h-3.5 rounded-full border-[1.5px] border-outline-variant bg-surface relative z-10 shadow-xs flex items-center justify-center"
+        >
+          {/* Active border overlay */}
+          <motion.div 
+            style={{ opacity: activeBorderOpacity }} 
+            className="absolute -inset-[1.5px] rounded-full border-[1.5px] border-primary pointer-events-none" 
+          />
+
+          {/* Pulse ping ring on fill */}
+          <motion.div 
+            style={{ scale: pulseScale, opacity: pulseOpacity }} 
+            className="absolute -inset-1 rounded-full border-2 border-primary pointer-events-none" 
+          />
+
+          {/* Inner expanding fill */}
+          <motion.div 
+            style={{ scale: fillScale }} 
+            className="w-full h-full rounded-full bg-primary origin-center flex items-center justify-center"
+          >
+            {/* Center core accent */}
+            <motion.div 
+              style={{ scale: fillScale }}
+              className="w-1 h-1 rounded-full bg-on-primary/90" 
+            />
+          </motion.div>
+        </div>
       </div>
+
+      {/* Title & Description */}
       <div className="flex-1 pt-0">
-        <motion.h3 style={{ color: textColor }} className="text-[1.125rem] font-medium mb-1.5 transition-colors duration-300">
+        <motion.h3 
+          style={{ opacity: titleOpacity }} 
+          className="text-[1.125rem] font-medium mb-1.5 text-on-surface transition-opacity duration-200"
+        >
           {title}
         </motion.h3>
-        <motion.p style={{ color: textColor }} className="text-[0.9375rem] leading-relaxed max-w-[60ch] opacity-80 transition-colors duration-300">
+        <motion.p 
+          style={{ opacity: descOpacity }} 
+          className="text-[0.9375rem] leading-relaxed max-w-[60ch] text-on-surface-variant transition-opacity duration-200"
+        >
           {desc}
         </motion.p>
       </div>
