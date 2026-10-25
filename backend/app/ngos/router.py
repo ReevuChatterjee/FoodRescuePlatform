@@ -61,53 +61,26 @@ async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db:
     if storage_capacity <= 0:
         return 0.0
 
-    # Subquery for highest handover recorded per delivery so that multiple handover logs don't multiply sum
-    handover_subquery = (
+    ngo_identifiers = [ngo.id]
+    if ngo.user_id and ngo.user_id != ngo.id:
+        ngo_identifiers.append(ngo.user_id)
+
+    # 1. Deduplicated latest handover quantity per donation
+    latest_handover_subquery = (
         select(
-            HandoverRecord.delivery_id,
+            HandoverRecord.donation_id,
             func.max(HandoverRecord.quantity_handed_over).label("quantity_handed_over")
         )
-        .group_by(HandoverRecord.delivery_id)
+        .where(HandoverRecord.donation_id.isnot(None))
+        .group_by(HandoverRecord.donation_id)
         .subquery()
     )
 
-    # 1. Active or non-expired delivered food linked to Deliveries for this NGO
-    delivery_occupied_query = (
-        select(
-            func.coalesce(
-                func.sum(
-                    func.coalesce(handover_subquery.c.quantity_handed_over, Donation.quantity_kg)
-                ),
-                0.0
-            )
-        )
-        .select_from(Delivery)
-        .join(Donation, Delivery.donation_id == Donation.id)
-        .outerjoin(handover_subquery, handover_subquery.c.delivery_id == Delivery.id)
-        .where(
-            Delivery.ngo_id == ngo.id,
-            or_(
-                Delivery.status.in_([
-                    DeliveryStatus.DRIVER_ASSIGNED,
-                    DeliveryStatus.PICKUP_STARTED,
-                    DeliveryStatus.PICKED_UP,
-                    DeliveryStatus.IN_TRANSIT,
-                ]),
-                and_(
-                    Delivery.status.in_([
-                        DeliveryStatus.DELIVERED,
-                        DeliveryStatus.PARTIALLY_DELIVERED,
-                    ]),
-                    or_(Donation.expiry_time == None, Donation.expiry_time > now)
-                )
-            )
-        )
-    )
-    delivery_kg = (await db.execute(delivery_occupied_query)).scalar_one() or 0.0
-
-    # 2. Accepted / assigned donations matched to this NGO that don't have an active delivery record yet
-    active_delivery_subquery = (
+    # Deliveries assigned to this NGO (to link donations where matched_ngo_id might not have synced)
+    delivery_donation_ids = (
         select(Delivery.donation_id).where(
+            Delivery.ngo_id.in_(ngo_identifiers),
+            Delivery.donation_id.isnot(None),
             Delivery.status.in_([
                 DeliveryStatus.DRIVER_ASSIGNED,
                 DeliveryStatus.PICKUP_STARTED,
@@ -118,17 +91,50 @@ async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db:
             ])
         )
     )
-    accepted_unassigned_query = (
-        select(func.coalesce(func.sum(Donation.quantity_kg), 0.0))
+
+    # 2. All donations assigned to this NGO that are active or delivered & non-expired
+    occupied_query = (
+        select(
+            func.coalesce(
+                func.sum(
+                    func.coalesce(
+                        latest_handover_subquery.c.quantity_handed_over,
+                        Donation.quantity_kg
+                    )
+                ),
+                0.0
+            )
+        )
+        .select_from(Donation)
+        .outerjoin(latest_handover_subquery, latest_handover_subquery.c.donation_id == Donation.id)
         .where(
-            Donation.matched_ngo_id == ngo.id,
-            Donation.status.in_([DonationStatus.ACCEPTED, DonationStatus.DRIVER_ASSIGNED]),
-            ~Donation.id.in_(active_delivery_subquery)
+            or_(
+                Donation.matched_ngo_id.in_(ngo_identifiers),
+                Donation.id.in_(delivery_donation_ids)
+            ),
+            or_(
+                # Active pre-delivery statuses: offered/matched, accepted, assigned, in-transit
+                Donation.status.in_([
+                    DonationStatus.MATCHED,
+                    DonationStatus.ACCEPTED,
+                    DonationStatus.DRIVER_ASSIGNED,
+                    DonationStatus.PICKUP_STARTED,
+                    DonationStatus.PICKED_UP,
+                    DonationStatus.IN_TRANSIT,
+                ]),
+                # Delivered statuses (as long as food is not expired)
+                and_(
+                    Donation.status.in_([
+                        DonationStatus.DELIVERED,
+                        DonationStatus.PARTIALLY_DELIVERED,
+                    ]),
+                    or_(Donation.expiry_time == None, Donation.expiry_time > now)
+                )
+            )
         )
     )
-    accepted_kg = (await db.execute(accepted_unassigned_query)).scalar_one() or 0.0
 
-    total_occupied = float(delivery_kg + accepted_kg)
+    total_occupied = float((await db.execute(occupied_query)).scalar_one() or 0.0)
     available_kg = max(0.0, round(storage_capacity - total_occupied, 1))
 
     # Sync back to NGO row so any external consumers or direct SQL queries remain accurate
@@ -156,7 +162,7 @@ async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db:
 
 
 async def _get_ngo_or_404(ngo_id: str, db: AsyncSession) -> NGO:
-    result = await db.execute(select(NGO).where(NGO.id == ngo_id))
+    result = await db.execute(select(NGO).where(or_(NGO.id == ngo_id, NGO.user_id == ngo_id)))
     ngo = result.scalar_one_or_none()
     if ngo is None:
         raise api_error(404, "NGO_NOT_FOUND", f"NGO {ngo_id} not found.")
@@ -521,9 +527,13 @@ async def incoming_offers(
     ngo = await _get_ngo_or_404(ngo_id, db)
     _require_self_or_admin(ngo_user, ngo)
 
+    ngo_identifiers = [ngo.id]
+    if ngo.user_id and ngo.user_id != ngo.id:
+        ngo_identifiers.append(ngo.user_id)
+
     result = await db.execute(
         select(Donation).where(
-            Donation.matched_ngo_id == ngo.id,
+            Donation.matched_ngo_id.in_(ngo_identifiers),
             Donation.status == DonationStatus.MATCHED,
         ).order_by(Donation.created_at.desc())
     )

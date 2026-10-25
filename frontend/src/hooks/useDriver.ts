@@ -129,7 +129,7 @@ export function useCurrentJob() {
       return res.data.data;
     },
     // WebSocket events invalidate this; the interval is only a safety net.
-    refetchInterval: 60_000,
+    refetchInterval: 5_000,
   });
 }
 

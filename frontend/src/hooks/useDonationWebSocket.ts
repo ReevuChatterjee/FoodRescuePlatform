@@ -45,6 +45,7 @@ export function useDonationWebSocket() {
             queryClient.invalidateQueries({ queryKey: ['ngo', 'profile'] });
             queryClient.invalidateQueries({ queryKey: ['ngo', 'incoming'] });
             queryClient.invalidateQueries({ queryKey: ['deliveries'] });
+            queryClient.invalidateQueries({ queryKey: ['driver'] });
             queryClient.invalidateQueries({ queryKey: ['analytics'] });
 
             if (data.donation_id) {
@@ -105,8 +106,7 @@ export function useDonationWebSocket() {
             queryClient.invalidateQueries({ queryKey: ['ngo', 'profile'] });
             queryClient.invalidateQueries({ queryKey: ['ngo', 'incoming'] });
             queryClient.invalidateQueries({ queryKey: ['deliveries'] });
-            queryClient.invalidateQueries({ queryKey: ['driver', 'job'] });
-            queryClient.invalidateQueries({ queryKey: ['driver', 'deliveries'] });
+            queryClient.invalidateQueries({ queryKey: ['driver'] });
             queryClient.invalidateQueries({ queryKey: ['analytics'] });
 
             if (data.delivery_id) {

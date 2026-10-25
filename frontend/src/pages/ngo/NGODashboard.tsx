@@ -10,7 +10,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import { useMyNGOProfile } from '../../hooks/useNGO';
+import { useMyNGOProfile, useIncomingOffers } from '../../hooks/useNGO';
 import { NGOLayout } from '../../components/layout/NGOLayout';
 
 const CATEGORY_DISPLAY: Record<string, string> = {
@@ -24,6 +24,7 @@ const CATEGORY_DISPLAY: Record<string, string> = {
 
 export function NGODashboard() {
   const { data: profile, isLoading, error } = useMyNGOProfile();
+  const { data: incomingOffers } = useIncomingOffers(profile?.ngo_id);
 
   if (isLoading) {
     return (
@@ -51,6 +52,10 @@ export function NGODashboard() {
 
   const isVerified = profile.verification_status === 'APPROVED';
   const isPending  = profile.verification_status === 'PENDING';
+  const occupiedKg = Math.max(0, Number((profile.storage_capacity_kg - profile.available_capacity_kg).toFixed(1)));
+  const utilPct = profile.storage_capacity_kg > 0 
+    ? Math.min(100, Math.round((occupiedKg / profile.storage_capacity_kg) * 100))
+    : 0;
 
   return (
     <NGOLayout>
@@ -73,6 +78,24 @@ export function NGODashboard() {
       {isPending && (
         <div className="mb-10 text-[0.875rem] text-warning border border-warning/30 px-4 py-3">
           <span className="font-bold">Verification Pending:</span> Your NGO is awaiting admin review. You can still view your profile and incoming offers.
+        </div>
+      )}
+
+      {/* Incoming offers alert banner */}
+      {incomingOffers && incomingOffers.length > 0 && (
+        <div className="mb-8 p-4 bg-primary/10 border border-primary/30 rounded-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
+            <p className="text-[0.875rem] font-medium text-on-surface">
+              <span className="font-bold text-primary">{incomingOffers.length} food offer{incomingOffers.length > 1 ? 's' : ''} available</span> — {incomingOffers.reduce((s, o) => s + (o.quantity_kg || 0), 0).toFixed(1)} kg reserved for your review
+            </p>
+          </div>
+          <Link
+            to="/ngo/incoming"
+            className="text-[0.8125rem] font-semibold text-primary hover:underline underline-offset-2 flex items-center gap-1"
+          >
+            Review & Accept Offers →
+          </Link>
         </div>
       )}
 
@@ -103,12 +126,19 @@ export function NGODashboard() {
             <div className="h-[2px] w-full bg-outline-variant/30 overflow-hidden rounded-none mb-3">
               <div
                 className="h-full bg-primary transition-all duration-300 ease-out"
-                style={{ width: `${profile.storage_capacity_kg > 0 ? Math.min(((profile.storage_capacity_kg - profile.available_capacity_kg) / profile.storage_capacity_kg) * 100, 100) : 0}%` }}
+                style={{ width: `${utilPct}%` }}
               />
             </div>
 
             <div className="flex items-center justify-between text-[0.8125rem]">
-              <span className="text-on-surface-variant font-mono-data">{profile.storage_capacity_kg > 0 ? (((profile.storage_capacity_kg - profile.available_capacity_kg) / profile.storage_capacity_kg) * 100).toFixed(0) : 0}% utilized</span>
+              <span className="text-on-surface-variant font-mono-data">
+                {utilPct}% utilized
+                {occupiedKg > 0 && (
+                  <span className="ml-2 text-primary font-sans">
+                    ({occupiedKg} kg occupied / in-transit)
+                  </span>
+                )}
+              </span>
               <span className="text-on-surface-variant font-mono-data">{profile.storage_capacity_kg} kg capacity</span>
             </div>
           </div>
@@ -193,8 +223,13 @@ export function NGODashboard() {
             
             <div className="flex flex-col gap-5">
               {[
-                { label: 'Incoming offers', href: '/ngo/incoming', desc: 'Review matched donations' },
-                { label: 'Settings',        href: '/ngo/settings', desc: 'Manage capacity, demand and profile' },
+                { 
+                  label: 'Incoming offers', 
+                  href: '/ngo/incoming', 
+                  desc: 'Review matched donations',
+                  badge: incomingOffers && incomingOffers.length > 0 ? `${incomingOffers.length} pending` : null,
+                },
+                { label: 'Settings', href: '/ngo/settings', desc: 'Manage capacity, demand and profile', badge: null },
               ].map((a) => (
                 <Link
                   key={a.href}
@@ -202,7 +237,14 @@ export function NGODashboard() {
                   className="group block"
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-[0.875rem] font-medium text-on-surface group-hover:text-primary transition-colors">{a.label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[0.875rem] font-medium text-on-surface group-hover:text-primary transition-colors">{a.label}</p>
+                      {a.badge && (
+                        <span className="text-[0.6875rem] font-semibold bg-primary text-white px-2 py-0.5 rounded-full font-mono-data">
+                          {a.badge}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[0.875rem] text-outline-variant group-hover:text-primary transition-colors">→</span>
                   </div>
                   <p className="text-[0.8125rem] text-on-surface-variant mt-0.5">{a.desc}</p>

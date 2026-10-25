@@ -191,10 +191,28 @@ async def create_donation(
                 donation.updated_at = ist_now()
                 matched_ngo_id = best.ngo_id
                 await db.commit()
+
+                from app.models import NGO
+                from app.ngos.router import compute_dynamic_ngo_capacity
+                ngo_res = await db.execute(select(NGO).where(or_(NGO.id == best.ngo_id, NGO.user_id == best.ngo_id)))
+                ngo_matched = ngo_res.scalar_one_or_none()
+                new_cap = None
+                if ngo_matched:
+                    new_cap = await compute_dynamic_ngo_capacity(ngo_matched, db, auto_sync_db=True)
+
                 await manager.broadcast("donations", {
                     "event": "donation.matched",
                     "donation_id": donation.id,
                     "ngo_id": best.ngo_id,
+                    "quantity_kg": donation.quantity_kg,
+                    "available_capacity_kg": new_cap,
+                })
+                await manager.broadcast("deliveries", {
+                    "event": "donation.matched",
+                    "donation_id": donation.id,
+                    "ngo_id": best.ngo_id,
+                    "quantity_kg": donation.quantity_kg,
+                    "available_capacity_kg": new_cap,
                 })
 
 
@@ -361,7 +379,8 @@ async def cancel_donation(
 
     if donation.matched_ngo_id:
         from app.models import NGO
-        ngo = await db.get(NGO, donation.matched_ngo_id)
+        ngo_res = await db.execute(select(NGO).where(or_(NGO.id == donation.matched_ngo_id, NGO.user_id == donation.matched_ngo_id)))
+        ngo = ngo_res.scalar_one_or_none()
         if ngo is not None:
             from app.ngos.router import compute_dynamic_ngo_capacity
             await compute_dynamic_ngo_capacity(ngo, db, auto_sync_db=True)

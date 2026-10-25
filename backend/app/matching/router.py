@@ -274,7 +274,9 @@ async def accept_match(
 
     # Recalculate NGO dynamic available capacity and sync to database
     from app.ngos.router import compute_dynamic_ngo_capacity
-    ngo = await db.get(OrmNGO, body.ngo_id)
+    target_id = body.ngo_id or donation.matched_ngo_id
+    ngo_res = await db.execute(select(OrmNGO).where(or_(OrmNGO.id == target_id, OrmNGO.user_id == target_id)))
+    ngo = ngo_res.scalar_one_or_none()
     new_capacity = None
     if ngo is not None:
         new_capacity = await compute_dynamic_ngo_capacity(ngo, db, auto_sync_db=True)
@@ -388,7 +390,8 @@ async def reject_match(
 
     # Recompute capacity for the rejected NGO and sync to database
     from app.ngos.router import compute_dynamic_ngo_capacity
-    rejected_ngo = await db.get(OrmNGO, body.ngo_id)
+    rejected_ngo_res = await db.execute(select(OrmNGO).where(or_(OrmNGO.id == body.ngo_id, OrmNGO.user_id == body.ngo_id)))
+    rejected_ngo = rejected_ngo_res.scalar_one_or_none()
     if rejected_ngo is not None:
         await compute_dynamic_ngo_capacity(rejected_ngo, db, auto_sync_db=True)
 
@@ -411,17 +414,26 @@ async def reject_match(
         donation.matched_ngo_id = rematch_result.matches[0].ngo_id
         donation.updated_at = ist_now()
         await db.commit()
+
+        new_ngo_res = await db.execute(select(OrmNGO).where(or_(OrmNGO.id == donation.matched_ngo_id, OrmNGO.user_id == donation.matched_ngo_id)))
+        new_ngo = new_ngo_res.scalar_one_or_none()
+        new_ngo_cap = None
+        if new_ngo:
+            new_ngo_cap = await compute_dynamic_ngo_capacity(new_ngo, db, auto_sync_db=True)
+
         await manager.broadcast("donations", {
             "event": "donation.rematched",
             "donation_id": donation_id,
             "candidate_count": len(rematch_result.matches),
             "top_ngo_id": rematch_result.matches[0].ngo_id,
+            "available_capacity_kg": new_ngo_cap,
         })
         await manager.broadcast("deliveries", {
             "event": "donation.rematched",
             "donation_id": donation_id,
             "candidate_count": len(rematch_result.matches),
             "top_ngo_id": rematch_result.matches[0].ngo_id,
+            "available_capacity_kg": new_ngo_cap,
         })
 
     return envelope({

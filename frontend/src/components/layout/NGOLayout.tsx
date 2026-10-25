@@ -97,7 +97,11 @@ export function NGOLayout({ children }: NGOLayoutProps) {
             />
           </div>
           <div className="flex justify-between mt-2">
-             <span className="text-[0.6875rem] text-on-surface-variant">Used</span>
+             <span className="text-[0.6875rem] text-on-surface-variant font-mono-data">
+               {profile.storage_capacity_kg > profile.available_capacity_kg 
+                 ? `${(profile.storage_capacity_kg - profile.available_capacity_kg).toFixed(1)} kg used` 
+                 : '0 kg used'}
+             </span>
              <span className="text-[0.6875rem] text-on-surface-variant font-mono-data">{profile.storage_capacity_kg} kg max</span>
           </div>
         </div>

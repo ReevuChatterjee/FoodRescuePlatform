@@ -47,6 +47,7 @@ export function DonorDashboard() {
       const response = await apiClient.get<SuccessEnvelope<Donation[]>>('/api/v1/donations');
       return response.data.data;
     },
+    refetchInterval: 5000,
   });
 
   const donations = data || [];

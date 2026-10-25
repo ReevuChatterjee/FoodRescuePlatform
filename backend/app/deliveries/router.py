@@ -149,7 +149,8 @@ async def deliver(
     await db.refresh(delivery)
 
     # Recompute NGO dynamic available capacity and broadcast
-    ngo = await db.get(NGO, delivery.ngo_id)
+    ngo_res = await db.execute(select(NGO).where(or_(NGO.id == delivery.ngo_id, NGO.user_id == delivery.ngo_id)))
+    ngo = ngo_res.scalar_one_or_none()
     new_capacity = None
     if ngo is not None:
         from app.ngos.router import compute_dynamic_ngo_capacity
@@ -231,7 +232,8 @@ async def handover(
     await db.commit()
 
     # Recompute NGO dynamic available capacity and broadcast
-    ngo = await db.get(NGO, delivery.ngo_id)
+    ngo_res = await db.execute(select(NGO).where(or_(NGO.id == delivery.ngo_id, NGO.user_id == delivery.ngo_id)))
+    ngo = ngo_res.scalar_one_or_none()
     new_capacity = None
     if ngo is not None:
         from app.ngos.router import compute_dynamic_ngo_capacity

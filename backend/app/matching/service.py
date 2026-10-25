@@ -96,10 +96,29 @@ async def run_matching(donation_id: str):
                 orm_donation.weights_version_id = match_result.weights_version_id
                 orm_donation.updated_at = ist_now()
                 await db.commit()
+
+                from app.models import NGO
+                from app.ngos.router import compute_dynamic_ngo_capacity
+                from sqlalchemy import or_
+                ngo_res = await db.execute(select(NGO).where(or_(NGO.id == best_match.ngo_id, NGO.user_id == best_match.ngo_id)))
+                ngo_matched = ngo_res.scalar_one_or_none()
+                new_cap = None
+                if ngo_matched:
+                    new_cap = await compute_dynamic_ngo_capacity(ngo_matched, db, auto_sync_db=True)
+
                 await manager.broadcast("donations", {
                     "event": "donation.matched",
                     "donation_id": donation_id,
                     "ngo_id": match_result.matches[0].ngo_id,
+                    "quantity_kg": orm_donation.quantity_kg,
+                    "available_capacity_kg": new_cap,
+                })
+                await manager.broadcast("deliveries", {
+                    "event": "donation.matched",
+                    "donation_id": donation_id,
+                    "ngo_id": match_result.matches[0].ngo_id,
+                    "quantity_kg": orm_donation.quantity_kg,
+                    "available_capacity_kg": new_cap,
                 })
                 
         except Exception as e:

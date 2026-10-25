@@ -47,13 +47,20 @@ export function useMyNGOProfile() {
   return useQuery({
     queryKey: ['ngo', 'profile'],
     queryFn: async () => {
-      // First, get current user to find ngo_id
+      try {
+        const directRes = await apiClient.get<SuccessEnvelope<NGOProfile>>('/api/v1/ngos/me');
+        if (directRes.data?.data) {
+          return directRes.data.data;
+        }
+      } catch (e) {
+        // Fall back to /auth/me lookup
+      }
       const meRes = await apiClient.get('/api/v1/auth/me');
       const ngoId = meRes.data.data.ngo_id || meRes.data.data.user_id;
       const res = await apiClient.get<SuccessEnvelope<NGOProfile>>(`/api/v1/ngos/${ngoId}`);
       return res.data.data;
     },
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 }
 
@@ -65,7 +72,7 @@ export function useIncomingOffers(ngoId: string | undefined) {
       return res.data.data;
     },
     enabled: !!ngoId,
-    refetchInterval: 10000, // auto-poll for new matches
+    refetchInterval: 5000, // auto-poll every 5s for new matches
   });
 }
 
