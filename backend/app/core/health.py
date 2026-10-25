@@ -62,6 +62,44 @@ async def readiness():
 
     return {"status": "ready", "checks": checks}
 
+
+@router.get("/debug_routing")
+async def debug_routing():
+    """Diagnose the active routing provider and TomTom API key in production."""
+    import os
+    from app.routing.settings import RoutingSettings
+    from app.routing.service import get_provider, calculate_route
+
+    s = RoutingSettings()
+    p = get_provider()
+    key = s.tomtom_api_key
+    masked_key = f"{key[:4]}...{key[-4:]}" if key and len(key) > 8 else ("SET" if key else "NOT_SET")
+
+    test_result = None
+    test_error = None
+    try:
+        est = await calculate_route((12.9352, 77.6245), (12.9716, 77.5946))
+        test_result = {
+            "provider": est.provider,
+            "traffic_source": est.traffic_source,
+            "distance_km": est.distance_km,
+            "duration_minutes": est.duration_minutes,
+        }
+    except Exception as e:
+        test_error = str(e)
+
+    return {
+        "configured_provider": s.provider,
+        "active_provider_name": p.name,
+        "active_provider_class": type(p).__name__,
+        "has_tomtom_key": bool(s.tomtom_api_key),
+        "tomtom_key_preview": masked_key,
+        "env_ROUTING_TOMTOM_API_KEY": bool(os.environ.get("ROUTING_TOMTOM_API_KEY")),
+        "env_TOMTOM_API_KEY": bool(os.environ.get("TOMTOM_API_KEY")),
+        "route_test": test_result,
+        "route_error": test_error,
+    }
+
 @router.get("/debug")
 async def debug_donation():
     from app.core.database import AsyncSessionLocal
