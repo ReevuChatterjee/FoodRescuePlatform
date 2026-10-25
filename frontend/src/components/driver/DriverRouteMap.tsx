@@ -9,9 +9,9 @@
  *   static     — fallback to job.route_to_next_stop geometry (dashed orange)
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ExternalLink, Loader2, AlertTriangle, Zap } from 'lucide-react';
-import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 // @ts-ignore — image imports resolved by Vite
@@ -32,6 +32,100 @@ L.Marker.prototype.options.icon = L.icon({
 
 const toTuple = (p: { latitude: number | null; longitude: number | null } | null | undefined): LatLngTuple | null =>
   p && p.latitude != null && p.longitude != null ? [p.latitude, p.longitude] : null;
+
+/** Calculate compass bearing between two points in degrees (0 = North, 90 = East, 180 = South, 270 = West). */
+function calculateBearing(start: LatLngTuple, end: LatLngTuple): number {
+  const startLat = (start[0] * Math.PI) / 180;
+  const startLng = (start[1] * Math.PI) / 180;
+  const endLat = (end[0] * Math.PI) / 180;
+  const endLng = (end[1] * Math.PI) / 180;
+
+  const dLng = endLng - startLng;
+  const y = Math.sin(dLng) * Math.cos(endLat);
+  const x = Math.cos(startLat) * Math.sin(endLat) - Math.sin(startLat) * Math.cos(endLat) * Math.cos(dLng);
+
+  const bearing = (Math.atan2(y, x) * 180) / Math.PI;
+  return (bearing + 360) % 360;
+}
+
+/** Swiggy/Zomato style animated delivery scooter marker icon with radar pulse & heading arrow */
+function createDriverMarkerIcon(headingDeg: number) {
+  return L.divIcon({
+    className: 'driver-live-marker',
+    html: `
+      <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+        <!-- Pulsing Radar / Sonar Wave Ring (Swiggy/Zomato style) -->
+        <div style="
+          position: absolute;
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: rgba(16, 185, 129, 0.35);
+          animation: driver-radar-pulse 2s infinite ease-out;
+          pointer-events: none;
+        "></div>
+        
+        <!-- Rotating Vehicle Container -->
+        <div style="
+          position: relative;
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          background: #0f172a;
+          border: 2px solid #10b981;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.5), 0 0 0 2px rgba(16, 185, 129, 0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transform: rotate(${Math.round(headingDeg)}deg);
+          transition: transform 0.4s ease-out;
+        ">
+          <!-- Direction Heading Needle -->
+          <div style="
+            position: absolute;
+            top: -6px;
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-bottom: 6px solid #10b981;
+          "></div>
+
+          <!-- Scooter / Delivery Bike SVG -->
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f8fafc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="17" r="3" fill="#10b981" stroke="#ffffff" stroke-width="1.5"/>
+            <circle cx="18" cy="17" r="3" fill="#10b981" stroke="#ffffff" stroke-width="1.5"/>
+            <path d="M6 17h4l3-6h-3" stroke="#f8fafc" stroke-width="2"/>
+            <path d="M14 11l4 6" stroke="#f8fafc" stroke-width="2"/>
+            <path d="M12 6h3" stroke="#f8fafc" stroke-width="2"/>
+            <rect x="4" y="6" width="6" height="5" rx="1" fill="#f59e0b" stroke="#ffffff" stroke-width="1"/>
+          </svg>
+        </div>
+
+        <!-- Live Status Pill -->
+        <div style="
+          position: absolute;
+          bottom: -15px;
+          background: rgba(15, 23, 42, 0.92);
+          color: #ffffff;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+          padding: 1px 5px;
+          border-radius: 9999px;
+          white-space: nowrap;
+          border: 1px solid rgba(16, 185, 129, 0.5);
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          pointer-events: none;
+        ">
+          Live GPS
+        </div>
+      </div>
+    `,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
+  });
+}
 
 /** @deprecated Use trafficSource from useTrafficRoute instead. Kept for backwards-compat with tests. */
 export function isStraightLineEstimate(provider: string | undefined): boolean {
@@ -141,6 +235,28 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
     return rawDriver;
   }, [rawDriver?.[0], rawDriver?.[1], pickup?.[0], pickup?.[1]]);
 
+  // Track heading & previous position to calculate rotation angle
+  const prevPosRef = useRef<LatLngTuple | null>(null);
+  const [heading, setHeading] = useState<number>(0);
+
+  // Simulation drive mode (for testing movement smoothly along the route)
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simIndex, setSimIndex] = useState(0);
+
+  useEffect(() => {
+    if (driver) {
+      if (prevPosRef.current) {
+        const dLat = Math.abs(driver[0] - prevPosRef.current[0]);
+        const dLng = Math.abs(driver[1] - prevPosRef.current[1]);
+        if (dLat > 0.00003 || dLng > 0.00003) {
+          const deg = calculateBearing(prevPosRef.current, driver);
+          setHeading(deg);
+        }
+      }
+      prevPosRef.current = driver;
+    }
+  }, [driver?.[0], driver?.[1]]);
+
   // ── Traffic-aware route ──────────────────────────────────────────────────────
   const effectiveDriver: GeoPoint | null = driver
     ? { latitude: driver[0], longitude: driver[1] }
@@ -153,6 +269,27 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
     [driver, job.next_stop === 'PICKUP' ? pickup : null, dropoff]
       .filter(Boolean) as LatLngTuple[]
   );
+
+  // Simulation step effect along line
+  useEffect(() => {
+    if (!isSimulating || line.length < 2) return;
+    const interval = setInterval(() => {
+      setSimIndex((idx: number) => {
+        const next = (idx + 1) % line.length;
+        if (line[idx] && line[next]) {
+          setHeading(calculateBearing(line[idx], line[next]));
+        }
+        return next;
+      });
+    }, 1200);
+    return () => clearInterval(interval);
+  }, [isSimulating, line]);
+
+  const activeDriverPos: LatLngTuple | null = isSimulating && line.length > 0
+    ? line[simIndex] ?? driver
+    : driver;
+
+  const driverMarkerIcon = useMemo(() => createDriverMarkerIcon(heading), [heading]);
 
   // Only dash if it is genuinely a low-point straight-line estimate (<=8 points), never a real road route.
   const dashed = (trafficSource === 'heuristic' || trafficSource === 'static') && line.length <= 8;
@@ -215,10 +352,16 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
             </Popup>
           </Marker>
         )}
-        {driver && (
-          <CircleMarker center={driver} radius={9} pathOptions={{ color: '#09090b', weight: 3, fillColor: '#10b981', fillOpacity: 1 }}>
-            <Popup>You</Popup>
-          </CircleMarker>
+        {activeDriverPos && (
+          <Marker position={activeDriverPos} icon={driverMarkerIcon} zIndexOffset={1000}>
+            <Popup>
+              <div className="text-xs font-medium">
+                <b className="text-emerald-600 block mb-0.5">🛵 Delivery Partner (Live)</b>
+                <div>Status: Moving with live traffic</div>
+                {heading > 0 && <div className="text-slate-500">Direction: {Math.round(heading)}°</div>}
+              </div>
+            </Popup>
+          </Marker>
         )}
         {line.length > 1 && (
           <Polyline
@@ -300,19 +443,38 @@ export function DriverRouteMap({ job, driverPosition }: Props) {
         <span>{isLoading ? 'Calculating route…' : badge.label}</span>
       </div>
 
-      {/* ── Live ETA chip (top-right) ──────────────────────────────────── */}
-      {routeInfo && !isLoading && (
-        <div
-          className="absolute top-2 right-2 z-[1000] flex items-center gap-1.5 px-2.5 py-1.5 rounded-full shadow-md text-[11px] font-semibold backdrop-blur-sm"
-          style={{ background: 'rgba(9,9,11,0.82)', color: '#f1f5f9', border: '1px solid rgba(255,255,255,0.10)' }}
-          title={`Free-flow: ${Math.round(routeInfo.free_flow_duration_minutes)} min | Provider: ${routeInfo.provider}`}
+      {/* ── Live ETA chip + Simulation toggle (top-right) ─────────────── */}
+      <div className="absolute top-2 right-2 z-[1000] flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => {
+            setIsSimulating((s: boolean) => !s);
+            if (!isSimulating) setSimIndex(0);
+          }}
+          className={`px-2 py-1 rounded-full text-[10px] font-semibold border backdrop-blur-sm transition-all flex items-center gap-1 shadow-sm ${
+            isSimulating
+              ? 'bg-emerald-600 text-white border-emerald-400'
+              : 'bg-slate-900/80 text-slate-300 border-white/10 hover:text-white'
+          }`}
+          title="Toggle movement simulation along the route"
         >
-          <span style={{ color: lineColor }}>⏱</span>
-          <span>~{formatMin(routeInfo.duration_minutes)}</span>
-          <span style={{ color: '#94a3b8' }}>·</span>
-          <span>{routeInfo.distance_km.toFixed(1)} km</span>
-        </div>
-      )}
+          <span>🛵</span>
+          <span>{isSimulating ? 'Moving…' : 'Simulate'}</span>
+        </button>
+
+        {routeInfo && !isLoading && (
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full shadow-md text-[11px] font-semibold backdrop-blur-sm"
+            style={{ background: 'rgba(9,9,11,0.82)', color: '#f1f5f9', border: '1px solid rgba(255,255,255,0.10)' }}
+            title={`Free-flow: ${Math.round(routeInfo.free_flow_duration_minutes)} min | Provider: ${routeInfo.provider}`}
+          >
+            <span style={{ color: lineColor }}>⏱</span>
+            <span>~{formatMin(routeInfo.duration_minutes)}</span>
+            <span style={{ color: '#94a3b8' }}>·</span>
+            <span>{routeInfo.distance_km.toFixed(1)} km</span>
+          </div>
+        )}
+      </div>
 
       {/* ── Google Maps deep-link ──────────────────────────────────────── */}
       {googleMapsUrl && (

@@ -837,3 +837,25 @@ option {
   background-color: var(--bg-panel);
   color: var(--text-primary);
 }
+
+/* Swiggy / Zomato live delivery driver radar pulse */
+@keyframes driver-radar-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  65% {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+}
+
+.driver-live-marker {
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  will-change: transform;
+}
+
