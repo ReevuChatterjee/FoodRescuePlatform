@@ -44,20 +44,20 @@ _provider: RouteProvider | None = None
 
 
 def build_provider(settings: RoutingSettings, heuristic: HeuristicRouteProvider) -> RouteProvider:
-    if settings.provider == "osrm":
-        return FallbackRouteProvider(
-            OSRMRouteProvider(settings.osrm_base_url, settings.timeout_seconds, settings.traffic_model),
-            heuristic,
-        )
-    if settings.provider == "tomtom" or settings.tomtom_api_key:
-        if not settings.tomtom_api_key:
-            logger.warning("ROUTING_PROVIDER=tomtom but ROUTING_TOMTOM_API_KEY is empty; using heuristic")
-            return heuristic
+    if settings.tomtom_api_key:
         osrm = OSRMRouteProvider(settings.osrm_base_url, settings.timeout_seconds, settings.traffic_model)
         tomtom = TomTomRouteProvider(
             settings.tomtom_api_key, settings.tomtom_base_url, settings.timeout_seconds
         )
         return ChainedRouteProvider(tomtom, osrm, heuristic)
+    if settings.provider == "osrm":
+        return FallbackRouteProvider(
+            OSRMRouteProvider(settings.osrm_base_url, settings.timeout_seconds, settings.traffic_model),
+            heuristic,
+        )
+    if settings.provider == "tomtom":
+        logger.warning("ROUTING_PROVIDER=tomtom but ROUTING_TOMTOM_API_KEY is empty; using heuristic")
+        return heuristic
     return heuristic
 
 

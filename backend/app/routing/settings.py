@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,10 +24,16 @@ class RoutingSettings(BaseSettings):
         env_file=(".env", "../.env"), env_file_encoding="utf-8", env_prefix="ROUTING_", extra="ignore"
     )
 
-    provider: Literal["heuristic", "osrm", "tomtom"] = "heuristic"
+    provider: Literal["heuristic", "osrm", "tomtom"] = Field(
+        default="heuristic",
+        validation_alias=AliasChoices("ROUTING_PROVIDER", "PROVIDER", "provider"),
+    )
     osrm_base_url: str = "https://router.project-osrm.org"
     tomtom_base_url: str = "https://api.tomtom.com"
-    tomtom_api_key: str | None = None
+    tomtom_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ROUTING_TOMTOM_API_KEY", "TOMTOM_API_KEY", "tomtom_api_key"),
+    )
     timeout_seconds: float = Field(default=4.0, gt=0)
     # Same 1.3 road-network correction Person 4's placeholder used, so ETAs stay
     # comparable. It is an assumption, not a measured Bengaluru figure.
