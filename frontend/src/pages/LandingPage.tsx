@@ -139,27 +139,27 @@ export function LandingPage() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-surface-container border-b border-outline-variant/30 dark:border-transparent">
         <div className="h-16 w-full max-w-7xl mx-auto px-4 lg:px-8 flex items-center justify-between gap-6">
           <div className="flex items-center gap-3 shrink-0">
-            <Leaf size={24} className="text-primary" />
+            <Leaf size={24} className="text-primary" aria-hidden="true" />
             <span className="font-semibold text-[1.125rem] text-on-surface tracking-tight">
               RePlate
             </span>
           </div>
 
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#how-it-works" className="text-[0.875rem] font-medium text-on-surface-variant hover:text-primary transition-colors">
+            <a href="#how-it-works" className="py-2 text-[0.875rem] font-medium text-on-surface-variant hover:text-primary transition-colors">
               How it works
             </a>
-            <a href="#network-roles" className="text-[0.875rem] font-medium text-on-surface-variant hover:text-primary transition-colors">
+            <a href="#network-roles" className="py-2 text-[0.875rem] font-medium text-on-surface-variant hover:text-primary transition-colors">
               The Network
             </a>
-            <a href="#traceability" className="text-[0.875rem] font-medium text-on-surface-variant hover:text-primary transition-colors">
+            <a href="#traceability" className="py-2 text-[0.875rem] font-medium text-on-surface-variant hover:text-primary transition-colors">
               Traceability
             </a>
           </nav>
 
           <div className="flex items-center gap-4 shrink-0">
             <ThemeToggle />
-            <Link to="/login" className="h-9 px-4 rounded-md text-[0.875rem] font-medium flex items-center justify-center bg-primary text-on-primary hover:bg-primary/90 transition-colors">
+            <Link to="/login" className="h-10 px-5 rounded-md text-[0.875rem] font-medium flex items-center justify-center bg-primary text-on-primary hover:bg-primary/90 transition-colors shadow-sm">
               Logistics Portal
             </Link>
           </div>
@@ -257,7 +257,7 @@ export function LandingPage() {
                    </div>
                    
                    <div className="text-outline-variant bg-surface px-2 py-1 rounded-full relative z-10 mb-6 border border-outline-variant/20 shadow-sm">
-                     <ArrowDown size={16} />
+                     <ArrowDown size={16} aria-hidden="true" />
                    </div>
                    
                    {/* Routing Card */}
@@ -271,7 +271,7 @@ export function LandingPage() {
                    </div>
                    
                    <div className="text-outline-variant bg-surface px-2 py-1 rounded-full relative z-10 mb-6 border border-outline-variant/20 shadow-sm">
-                     <ArrowDown size={16} />
+                     <ArrowDown size={16} aria-hidden="true" />
                    </div>
                    
                    {/* Destination Card */}
@@ -399,7 +399,7 @@ export function LandingPage() {
               
               {/* DESKTOP SVG Curved Path Layer */}
               <div className="hidden lg:block absolute top-[10px] left-0 w-full h-[150px] z-0 pointer-events-none">
-                <svg viewBox="0 0 1200 150" className="w-full h-full overflow-visible" preserveAspectRatio="none">
+                <svg aria-hidden="true" focusable="false" viewBox="0 0 1200 150" className="w-full h-full overflow-visible" preserveAspectRatio="none">
                   
                   <defs>
                     <clipPath id="drawClip1">
@@ -450,7 +450,7 @@ export function LandingPage() {
                   {networkState === 'loop' && (
                     <motion.path 
                       d="M 150 75 C 250 0, 350 0, 450 75 C 550 0, 650 0, 750 75 C 850 0, 950 0, 1050 75" 
-                      fill="none" stroke="#0b5d3b" strokeWidth="6" strokeLinecap="round" 
+                      fill="none" stroke="var(--color-primary, #16a34a)" strokeWidth="6" strokeLinecap="round" 
                       initial={{ pathLength: 0.001, pathSpacing: 1 }}
                       style={{ pathOffset: networkPathOffset, opacity: dotOpacity }} 
                     />
@@ -510,7 +510,7 @@ export function LandingPage() {
                 {networkState === 'loop' && (
                   <div className="absolute left-6 -ml-[4px] top-6 bottom-6 z-10 pointer-events-none">
                      <motion.div 
-                        className="w-2 h-2 bg-[#0b5d3b] rounded-full absolute"
+                        className="w-2.5 h-2.5 bg-primary rounded-full absolute shadow-sm"
                         style={{ top: mobileSignalTop, opacity: dotOpacity }}
                      />
                   </div>
@@ -691,10 +691,10 @@ export function LandingPage() {
             </div>
             
             <div>
-              <span className="text-[0.8125rem] font-semibold text-on-surface uppercase tracking-widest block mb-4">Legal</span>
+              <span className="text-[0.8125rem] font-semibold text-on-surface uppercase tracking-widest block mb-4">Governance</span>
               <ul className="flex flex-col gap-3">
-                <li><a href="#" className="text-[0.875rem] text-on-surface-variant hover:text-primary transition-colors">Privacy policy</a></li>
-                <li><a href="#" className="text-[0.875rem] text-on-surface-variant hover:text-primary transition-colors">Terms of service</a></li>
+                <li><span className="text-[0.875rem] text-on-surface-variant cursor-default">Municipal Data Privacy</span></li>
+                <li><span className="text-[0.875rem] text-on-surface-variant cursor-default">Chain-of-Custody SLA</span></li>
               </ul>
             </div>
           </div>
@@ -825,12 +825,12 @@ function NetworkRoleNode({ title, desc, progress, activeRange, state, disableMot
   
   const iconColor = useTransform(progress,
     [safePre, start, end, safePost],
-    ["transparent", "#0b5d3b", "#0b5d3b", "transparent"]
+    ["transparent", "var(--color-primary, #16a34a)", "var(--color-primary, #16a34a)", "transparent"]
   );
 
   const iconBorderColor = useTransform(progress,
     [safePre, start, end, safePost],
-    ["#2f6f52", "#0b5d3b", "#0b5d3b", "rgba(11, 93, 59, 0.45)"]
+    ["var(--outline-variant)", "var(--color-primary, #16a34a)", "var(--color-primary, #16a34a)", "rgba(22, 163, 74, 0.45)"]
   );
 
   const scale = useTransform(progress,
@@ -841,7 +841,7 @@ function NetworkRoleNode({ title, desc, progress, activeRange, state, disableMot
   if (disableMotion) {
     return (
       <div className="flex flex-col items-center text-center relative z-10">
-        <div className="w-3.5 h-3.5 rounded-full mb-6 border-[2px] bg-[#0b5d3b] border-[#0b5d3b]" />
+        <div className="w-3.5 h-3.5 rounded-full mb-6 border-[2px] bg-primary border-primary" />
         <h3 className="text-[1.125rem] font-semibold text-on-surface mb-3">{title}</h3>
         <p className="text-[0.9375rem] text-on-surface-variant leading-relaxed max-w-[24ch]">
           {desc}
@@ -886,21 +886,21 @@ function NetworkRoleNodeMobile({ title, desc, progress, activeRange, state, disa
     ["var(--on-surface-variant)", "var(--on-surface)", "var(--on-surface)", "var(--on-surface-variant)"]
   );
   
-  const iconColor = useTransform(progress,
-    [safePre, start, end, safePost],
-    ["transparent", "#0b5d3b", "#0b5d3b", "transparent"]
+  const iconColor = useTransform(progress, 
+    [safePre, start, end, safePost], 
+    ["transparent", "var(--color-primary, #16a34a)", "var(--color-primary, #16a34a)", "transparent"]
   );
 
-  const iconBorderColor = useTransform(progress,
-    [safePre, start, end, safePost],
-    ["#2f6f52", "#0b5d3b", "#0b5d3b", "rgba(11, 93, 59, 0.45)"]
+  const iconBorderColor = useTransform(progress, 
+    [safePre, start, end, safePost], 
+    ["var(--outline-variant)", "var(--color-primary, #16a34a)", "var(--color-primary, #16a34a)", "rgba(22, 163, 74, 0.45)"]
   );
 
   if (disableMotion) {
     return (
       <div className="flex items-start relative z-10">
         <div className="w-12 shrink-0 flex justify-center pt-2">
-          <div className="w-3 h-3 rounded-full border-[2px] bg-[#0b5d3b] border-[#0b5d3b]" />
+          <div className="w-3 h-3 rounded-full border-[2px] bg-primary border-primary" />
         </div>
         <div className="flex-1 pr-4">
           <h3 className="text-[1.125rem] font-semibold text-on-surface mb-2">{title}</h3>
@@ -1005,7 +1005,7 @@ function HeroBackgroundMap({ scrollY }: { scrollY: MotionValue<number> }) {
           WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at 30% 40%, rgba(0,0,0,0.5) 0%, rgba(0,0,0,1) 100%)' 
         }}
       >
-        <svg viewBox="0 0 1440 800" className="w-full h-full" preserveAspectRatio="xMidYMid slice">
+        <svg aria-hidden="true" focusable="false" viewBox="0 0 1440 800" className="w-full h-full" preserveAspectRatio="xMidYMid slice">
           
           {/* LAYER 1: Geographic Grid (Opacity: 0.08) */}
           <g opacity="0.08" className="hidden md:inline">
