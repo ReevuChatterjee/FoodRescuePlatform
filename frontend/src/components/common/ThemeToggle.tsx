@@ -22,8 +22,11 @@ export function ThemeToggle({ className = '', style }: ThemeToggleProps) {
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       className={`nav-item-icon ${className}`}
       style={{
-        width: '32px',
-        height: '32px',
+        minWidth: '44px',
+        minHeight: '44px',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         flexShrink: 0,
         color: 'var(--text-muted)',
         transition: 'color 0.15s var(--ease-micro)',
@@ -31,8 +34,8 @@ export function ThemeToggle({ className = '', style }: ThemeToggleProps) {
       }}
     >
       {isDark
-        ? <Sun size={14} />
-        : <Moon size={14} />
+        ? <Sun size={18} />
+        : <Moon size={18} />
       }
     </button>
   );

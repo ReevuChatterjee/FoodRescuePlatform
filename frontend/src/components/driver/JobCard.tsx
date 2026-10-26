@@ -119,7 +119,7 @@ export function JobCard({ job, liveRoute, liveRouteSource = 'none' }: JobCardPro
 
       {/* Handling & Safety (Only if present) */}
       {(job.special_handling || safety) && (
-        <div className="bg-surface-container-lowest p-5 border-l-4 border-l-primary border-y border-y-outline-variant/50 border-r border-r-outline-variant/50 rounded-r space-y-4">
+        <div className="bg-surface-container-lowest p-5 border border-outline-variant/50 rounded space-y-4">
           <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface mb-2">Special Handling</p>
           
           {job.special_handling && (

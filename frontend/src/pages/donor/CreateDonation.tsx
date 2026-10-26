@@ -192,21 +192,21 @@ export function CreateDonation() {
                   <h3 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/30">Donation details</h3>
                   <div className="space-y-5">
                     <div>
-                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Food description</label>
-                      <input {...register('food_name')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="e.g. 50x Assorted sandwiches" />
+                      <label htmlFor="donation-food-name" className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Food description</label>
+                      <input id="donation-food-name" {...register('food_name')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="e.g. 50x Assorted sandwiches" />
                       {errors.food_name && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.food_name.message}</p>}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Food type</label>
-                        <select {...register('food_category')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+                        <label htmlFor="donation-food-category" className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Food type</label>
+                        <select id="donation-food-category" {...register('food_category')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
                           {CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Quantity (kg)</label>
-                        <input {...register('quantity_kg', { valueAsNumber: true })} type="number" step="0.1" min="0.1"
+                        <label htmlFor="donation-quantity-kg" className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Quantity (kg)</label>
+                        <input id="donation-quantity-kg" {...register('quantity_kg', { valueAsNumber: true })} type="number" step="0.1" min="0.1"
                           className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data font-medium text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none" placeholder="e.g. 15.5" />
                         {errors.quantity_kg && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.quantity_kg.message}</p>}
                       </div>
@@ -219,19 +219,19 @@ export function CreateDonation() {
                   <div className="space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Prepared</label>
-                        <input {...register('prepared_at')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                        <label htmlFor="donation-prepared-at" className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Prepared</label>
+                        <input id="donation-prepared-at" {...register('prepared_at')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
                         {errors.prepared_at && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.prepared_at.message}</p>}
                       </div>
                       <div>
-                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Ready for pickup</label>
-                        <input {...register('available_from')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                        <label htmlFor="donation-available-from" className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Ready for pickup</label>
+                        <input id="donation-available-from" {...register('available_from')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
                         {errors.available_from && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.available_from.message}</p>}
                       </div>
                     </div>
                     <div>
-                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Use by</label>
-                      <input {...register('expiry_time')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
+                      <label htmlFor="donation-expiry-time" className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Use by</label>
+                      <input id="donation-expiry-time" {...register('expiry_time')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] font-mono-data text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none" />
                       {errors.expiry_time && <p className="text-[0.75rem] font-medium text-error mt-1.5">{errors.expiry_time.message}</p>}
                     </div>
                   </div>
@@ -244,7 +244,7 @@ export function CreateDonation() {
               <div>
                 <h3 className="text-[0.875rem] font-semibold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/30">Pickup location</h3>
                 <div className="space-y-3">
-                  <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Facility address</label>
+                  <label htmlFor="donation-pickup-address" className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Facility address</label>
                   <div className="w-full">
                     <LocationAutocomplete
                       value={watch('pickup_location.address')}
@@ -274,27 +274,27 @@ export function CreateDonation() {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Storage condition</label>
-                      <select {...register('food_safety_info.storage_temp_required')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+                      <label htmlFor="donation-storage-temp" className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Storage condition</label>
+                      <select id="donation-storage-temp" {...register('food_safety_info.storage_temp_required')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none">
                         {TEMP_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Packaging</label>
-                      <input {...register('food_safety_info.packaging_type')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                      <label htmlFor="donation-packaging-type" className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Packaging</label>
+                      <input id="donation-packaging-type" {...register('food_safety_info.packaging_type')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                         placeholder="e.g. Vacuum-sealed GN pans" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Special handling (Optional)</label>
-                    <input {...register('special_handling')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none"
+                    <label htmlFor="donation-special-handling" className="text-[0.8125rem] font-semibold text-on-surface mb-1.5 block">Special handling (Optional)</label>
+                    <input id="donation-special-handling" {...register('special_handling')} className="w-full h-10 px-3 bg-surface-container-lowest border border-outline-variant rounded text-[0.875rem] text-on-surface placeholder:text-on-surface-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none"
                       placeholder="e.g. Keep horizontal, do not stack" />
                   </div>
 
                   {/* Allergen chips */}
                   <div className="pt-4 border-t border-outline-variant/30">
-                    <label className="text-[0.8125rem] font-semibold text-on-surface mb-3 block">Safety / allergen information</label>
+                    <span className="text-[0.8125rem] font-semibold text-on-surface mb-3 block">Safety / allergen information</span>
                     <div className="flex flex-wrap gap-2">
                       {ALLERGENS.map((a) => {
                         const selected = allergens.includes(a);
@@ -302,6 +302,7 @@ export function CreateDonation() {
                           <button
                             key={a}
                             type="button"
+                            aria-pressed={selected}
                             onClick={() => setAllergens((prev) => selected ? prev.filter((x) => x !== a) : [...prev, a])}
                             className={`px-3 py-1.5 rounded-full text-[0.8125rem] font-medium border transition-colors
                               ${selected ? 'bg-error text-white border-error' : 'bg-surface-container-lowest text-on-surface-variant border-outline-variant/50 hover:border-outline-variant hover:text-on-surface'}`}

@@ -151,29 +151,16 @@ export function IncomingOffers() {
 
       {/* Error state */}
       {!isLoading && offersError && (
-        <div
-          style={{
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-            borderLeft: '3px solid var(--terracotta)',
-            background: 'var(--terracotta-dim)',
-            marginBottom: '16px',
-            borderRadius: '4px',
-          }}
-        >
+        <div className="px-5 py-4 flex items-center justify-between gap-3 border border-error/30 bg-error/10 rounded mb-4">
           <div className="flex items-center gap-3">
-            <AlertTriangle size={16} style={{ color: 'var(--terracotta)' }} />
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+            <AlertTriangle size={16} className="text-error shrink-0" />
+            <p className="text-[0.875rem] font-medium text-on-surface">
               Failed to load incoming dispatch queue.
             </p>
           </div>
           <button
-            className="btn-secondary"
+            className="btn-secondary text-[0.75rem] px-2.5 py-1"
             onClick={() => refetch()}
-            style={{ padding: '4px 10px', fontSize: '0.75rem' }}
           >
             Retry
           </button>

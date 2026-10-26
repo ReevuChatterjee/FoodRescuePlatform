@@ -128,18 +128,9 @@ export function NGOVerificationQueue() {
 
       {/* Empty state — terse, not centered icon-in-circle */}
       {!isLoading && (!pendingNGOs || pendingNGOs.length === 0) && (
-        <div
-          style={{
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            borderLeft: '3px solid var(--success)',
-            background: 'rgba(90,122,93,0.06)',
-          }}
-        >
-          <CheckCircle size={14} style={{ color: 'var(--success)', flexShrink: 0 }} />
-          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+        <div className="px-5 py-4 flex items-center gap-2.5 border border-primary/30 bg-primary/5 rounded">
+          <CheckCircle size={14} className="text-primary shrink-0" />
+          <p className="text-[0.875rem] text-on-surface-variant">
             Queue clear — no pending verifications require action.
           </p>
         </div>
@@ -147,16 +138,7 @@ export function NGOVerificationQueue() {
 
       {/* Main workspace */}
       {!isLoading && pendingNGOs && pendingNGOs.length > 0 && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '5fr 7fr',
-            gap: '20px',
-            height: 'calc(100vh - 14rem)',
-            minHeight: '600px',
-          }}
-          className="grid-cols-1 lg:!grid-cols-[5fr_7fr]"
-        >
+        <div className="grid grid-cols-1 lg:grid-cols-[5fr_7fr] gap-5 min-h-[600px] h-[calc(100vh-14rem)]">
           {/* NGO queue list */}
           <div
             className="surface-dense"

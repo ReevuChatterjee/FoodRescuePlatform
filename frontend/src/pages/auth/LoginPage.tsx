@@ -159,17 +159,17 @@ export function LoginPage() {
 
               <form onSubmit={handleLogin} className="space-y-6">
                 <div>
-                  <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">System email</label>
-                  <input {...loginForm.register('email')} type="email" className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="operator@replate.local" autoComplete="email" />
+                  <label htmlFor="login-email" className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">System email</label>
+                  <input id="login-email" {...loginForm.register('email')} type="email" className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="operator@replate.local" autoComplete="email" />
                   {loginForm.formState.errors.email && (
                     <p className="text-[0.75rem] text-error mt-1.5">{loginForm.formState.errors.email.message}</p>
                   )}
                 </div>
                 <div>
-                  <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Passcode</label>
+                  <label htmlFor="login-password" className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Passcode</label>
                   <div className="relative">
-                    <input {...loginForm.register('password')} type={showPassword ? 'text' : 'password'} className="w-full h-10 px-3 pr-10 rounded text-[0.875rem] font-mono bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="••••••••" autoComplete="current-password" />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+                    <input id="login-password" {...loginForm.register('password')} type={showPassword ? 'text' : 'password'} className="w-full h-10 px-3 pr-11 rounded text-[0.875rem] font-mono bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="••••••••" autoComplete="current-password" />
+                    <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors">
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
@@ -207,33 +207,33 @@ export function LoginPage() {
                   <h3 className="text-[0.75rem] font-bold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/50">Account information</h3>
                   <div className="space-y-5">
                     <div>
-                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Operator name</label>
-                      <input {...registerForm.register('name')} className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="Jane Doe" />
+                      <label htmlFor="register-name" className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Operator name</label>
+                      <input id="register-name" {...registerForm.register('name')} className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="Jane Doe" />
                       {registerForm.formState.errors.name && (
                         <p className="text-[0.75rem] text-error mt-1.5">{registerForm.formState.errors.name.message}</p>
                       )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
-                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Email</label>
-                        <input {...registerForm.register('email')} type="email" className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="node@example.com" />
+                        <label htmlFor="register-email" className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Email</label>
+                        <input id="register-email" {...registerForm.register('email')} type="email" className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="node@example.com" />
                         {registerForm.formState.errors.email && (
                           <p className="text-[0.75rem] text-error mt-1.5">{registerForm.formState.errors.email.message}</p>
                         )}
                       </div>
                       <div>
-                        <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Phone</label>
-                        <input {...registerForm.register('phone')} className="w-full h-10 px-3 rounded text-[0.875rem] font-mono-data bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="9876543210" />
+                        <label htmlFor="register-phone" className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Phone</label>
+                        <input id="register-phone" {...registerForm.register('phone')} className="w-full h-10 px-3 rounded text-[0.875rem] font-mono-data bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="9876543210" />
                         {registerForm.formState.errors.phone && (
                           <p className="text-[0.75rem] text-error mt-1.5">{registerForm.formState.errors.phone.message}</p>
                         )}
                       </div>
                     </div>
                     <div>
-                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Secure passcode</label>
+                      <label htmlFor="register-password" className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Secure passcode</label>
                       <div className="relative">
-                        <input {...registerForm.register('password')} type={showPassword ? 'text' : 'password'} className="w-full h-10 px-3 pr-10 rounded text-[0.875rem] font-mono bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="Min. 8 characters" />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+                        <input id="register-password" {...registerForm.register('password')} type={showPassword ? 'text' : 'password'} className="w-full h-10 px-3 pr-11 rounded text-[0.875rem] font-mono bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow" placeholder="Min. 8 characters" />
+                        <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(!showPassword)} className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors">
                           {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                         </button>
                       </div>
@@ -249,8 +249,8 @@ export function LoginPage() {
                   <h3 className="text-[0.75rem] font-bold text-on-surface uppercase tracking-widest mb-6 pb-2 border-b border-outline-variant/50">Node information</h3>
                   <div className="space-y-5">
                     <div>
-                      <label className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Node designation</label>
-                      <select {...registerForm.register('role')} className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow">
+                      <label htmlFor="register-role" className="text-[0.8125rem] font-semibold text-on-surface mb-2 block">Node designation</label>
+                      <select id="register-role" {...registerForm.register('role')} className="w-full h-10 px-3 rounded text-[0.875rem] bg-surface-container border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-shadow">
                         <option value="DONOR">Commercial Kitchen (Donor)</option>
                         <option value="NGO">Food Program (Recipient)</option>
                         <option value="DRIVER">Transport Fleet (Driver)</option>
