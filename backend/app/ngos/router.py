@@ -24,6 +24,7 @@ from app.core.database import get_db
 from app.core.envelope import api_error, envelope, iso_z
 from app.models import (
     NGO,
+    AuditLog,
     Delivery,
     DeliveryStatus,
     Donation,
@@ -65,6 +66,47 @@ async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db:
     if ngo.user_id and ngo.user_id != ngo.id:
         ngo_identifiers.append(ngo.user_id)
 
+    # Also include any other NGO records for the same user
+    if ngo.user_id:
+        try:
+            extra_ids = (await db.execute(select(NGO.id).where(NGO.user_id == ngo.user_id))).scalars().all()
+            for xid in extra_ids:
+                if xid not in ngo_identifiers:
+                    ngo_identifiers.append(xid)
+        except Exception:
+            pass
+
+    # Auto-heal: verify and restore any donation accepted by this NGO user/ID in audit logs
+    try:
+        audit_res = await db.execute(
+            select(AuditLog.entity_id, AuditLog.payload)
+            .where(
+                AuditLog.entity_type == "donation",
+                AuditLog.event_type == "donation_accepted",
+            )
+        )
+        for entity_id, payload in audit_res.all():
+            if isinstance(payload, dict):
+                accepted_user = payload.get("accepted_by_user")
+                accepted_ngo = payload.get("ngo_id")
+                if (accepted_user and accepted_user == ngo.user_id) or (accepted_ngo and accepted_ngo in ngo_identifiers):
+                    don_row = await db.get(Donation, entity_id)
+                    if don_row:
+                        changed = False
+                        if don_row.matched_ngo_id not in ngo_identifiers:
+                            don_row.matched_ngo_id = ngo.id
+                            changed = True
+                        if don_row.status == DonationStatus.EXPIRED:
+                            don_row.status = DonationStatus.ACCEPTED
+                            changed = True
+                        if changed:
+                            del_res = await db.execute(select(Delivery).where(Delivery.donation_id == entity_id))
+                            for del_row in del_res.scalars().all():
+                                del_row.ngo_id = ngo.id
+                            await db.commit()
+    except Exception:
+        pass
+
     # 1. Deduplicated latest handover quantity per donation
     latest_handover_subquery = (
         select(
@@ -92,7 +134,19 @@ async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db:
         )
     )
 
-    # 2. All donations assigned to this NGO that are active or delivered & non-expired
+    # Active and delivered statuses that occupy storage
+    active_statuses = [
+        DonationStatus.MATCHED,
+        DonationStatus.ACCEPTED,
+        DonationStatus.DRIVER_ASSIGNED,
+        DonationStatus.PICKUP_STARTED,
+        DonationStatus.PICKED_UP,
+        DonationStatus.IN_TRANSIT,
+        DonationStatus.DELIVERED,
+        DonationStatus.PARTIALLY_DELIVERED,
+    ]
+
+    # 2. All donations assigned to this NGO that are active or delivered
     occupied_query = (
         select(
             func.coalesce(
@@ -112,25 +166,7 @@ async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db:
                 Donation.matched_ngo_id.in_(ngo_identifiers),
                 Donation.id.in_(delivery_donation_ids)
             ),
-            or_(
-                # Active pre-delivery statuses: offered/matched, accepted, assigned, in-transit
-                Donation.status.in_([
-                    DonationStatus.MATCHED,
-                    DonationStatus.ACCEPTED,
-                    DonationStatus.DRIVER_ASSIGNED,
-                    DonationStatus.PICKUP_STARTED,
-                    DonationStatus.PICKED_UP,
-                    DonationStatus.IN_TRANSIT,
-                ]),
-                # Delivered statuses (as long as food is not expired)
-                and_(
-                    Donation.status.in_([
-                        DonationStatus.DELIVERED,
-                        DonationStatus.PARTIALLY_DELIVERED,
-                    ]),
-                    or_(Donation.expiry_time == None, Donation.expiry_time > now)
-                )
-            )
+            Donation.status.in_(active_statuses)
         )
     )
 
@@ -273,11 +309,14 @@ async def create_ngo(
 
 @router.get("/me")
 async def get_my_ngo(
-    ngo_user: Annotated[User, Depends(require_role("NGO"))],
+    user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    result = await db.execute(select(NGO).where(NGO.user_id == ngo_user.id))
+    result = await db.execute(select(NGO).where(NGO.user_id == user.id))
     ngo = result.scalar_one_or_none()
+    if ngo is None and user.role == UserRole.ADMIN:
+        result = await db.execute(select(NGO).order_by(NGO.created_at.desc()))
+        ngo = result.scalars().first()
     return envelope(await _to_dict(ngo, db) if ngo is not None else None)
 
 

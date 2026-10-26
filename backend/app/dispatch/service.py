@@ -318,7 +318,12 @@ async def _dispatch_locked(
 
     expiry = as_aware(donation.expiry_time)
     pickup = parse_latlng(donation.pickup_location) or (28.6273, 77.2190)
-    ngo = await db.get(NGO, donation.matched_ngo_id) if donation.matched_ngo_id else None
+    ngo = None
+    if donation.matched_ngo_id:
+        ngo_res = await db.execute(select(NGO).where(or_(NGO.id == donation.matched_ngo_id, NGO.user_id == donation.matched_ngo_id)))
+        ngo = ngo_res.scalar_one_or_none()
+        if ngo and donation.matched_ngo_id != ngo.id:
+            donation.matched_ngo_id = ngo.id
     if ngo is None:
         # Fallback to any registered NGO in the database
         ngo_res = await db.execute(select(NGO).order_by(NGO.created_at.desc()))
@@ -711,7 +716,10 @@ async def confirm_delivery(db: AsyncSession, delivery: Delivery, quantity_handed
         await _set_donation_status(db, delivery.donation_id, DonationStatus(delivery.status.value)),
     ]
     vehicle = await vehicle_for_driver(db, delivery.driver_id)
-    ngo = await db.get(NGO, delivery.ngo_id)
+    ngo = None
+    if delivery.ngo_id:
+        ngo_res = await db.execute(select(NGO).where(or_(NGO.id == delivery.ngo_id, NGO.user_id == delivery.ngo_id)))
+        ngo = ngo_res.scalar_one_or_none()
     if ngo is not None:
         from app.ngos.router import compute_dynamic_ngo_capacity
         ngo.available_capacity_kg = await compute_dynamic_ngo_capacity(ngo, db, auto_sync_db=False)

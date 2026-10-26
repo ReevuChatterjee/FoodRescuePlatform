@@ -240,9 +240,15 @@ async def accept_match(
             f"Donation cannot be accepted from status '{donation.status.value}'.",
         )
 
+    # Resolve canonical NGO ID
+    target_id = body.ngo_id or donation.matched_ngo_id
+    ngo_check = await db.execute(select(OrmNGO).where(or_(OrmNGO.id == target_id, OrmNGO.user_id == target_id)))
+    matched_ngo_entity = ngo_check.scalar_one_or_none()
+    canonical_ngo_id = matched_ngo_entity.id if matched_ngo_entity else body.ngo_id
+
     # Transition
     donation.status = DonationStatus.ACCEPTED
-    donation.matched_ngo_id = body.ngo_id
+    donation.matched_ngo_id = canonical_ngo_id
     donation.match_score = body.match_score
     donation.weights_version_id = body.weights_version_id
     donation.updated_at = ist_now()
