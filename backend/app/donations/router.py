@@ -144,6 +144,8 @@ async def create_donation(
     # which deadlocks on Vercel with NullPool + Supabase pgbouncer.
     # Instead run the full pipeline using the existing `db` session.
     matched_ngo_id: str | None = None
+    matched_driver_id: str | None = None
+    assigned_eta: int | None = None
     final_status = donation.status.value
     try:
         donation.status = DonationStatus.MATCHING
@@ -242,8 +244,8 @@ async def create_donation(
         "id": donation.id,
         "status": final_status,
         "matched_ngo_id": matched_ngo_id,
-        "driver_id": matched_driver_id if 'matched_driver_id' in locals() else None,
-        "eta_minutes": assigned_eta if 'assigned_eta' in locals() else None,
+        "driver_id": matched_driver_id,
+        "eta_minutes": assigned_eta,
         "created_at": iso_z(donation.created_at),
     })
 

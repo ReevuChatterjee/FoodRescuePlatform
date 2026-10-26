@@ -8,7 +8,7 @@ out. No DB session, ORM, HTTP call, or auth check anywhere in here.
 from app.core.time import IST
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from . import scoring

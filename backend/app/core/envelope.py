@@ -1,4 +1,4 @@
-from app.core.time import IST, ist_now
+from app.core.time import IST
 """
 Shared response envelope helpers per Global Conventions §1:
 
@@ -10,7 +10,7 @@ Person 4's admin/analytics routers hand-roll this envelope inline already;
 new routers (auth, donations, ngos, drivers, deliveries) import it from here
 so the shape can never drift between endpoints.
 """
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import uuid4
 from fastapi import HTTPException
 

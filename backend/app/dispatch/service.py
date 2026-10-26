@@ -26,7 +26,7 @@ import logging
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -57,6 +57,8 @@ from app.models import (
     Donation,
     DonationStatus,
     Donor,
+    User,
+    UserRole,
     Vehicle,
 )
 from app.routing.geo import LatLng, format_latlng, haversine_km, is_valid_latlng, parse_latlng

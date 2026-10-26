@@ -18,8 +18,6 @@ from app.auth.dependencies import require_admin
 from app.core.database import get_db
 from app.models import NGO, NGOVerificationStatus, AuditLog
 from app.models.user import User
-import json
-from datetime import datetime
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 

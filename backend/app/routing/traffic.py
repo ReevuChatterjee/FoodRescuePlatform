@@ -17,7 +17,7 @@ only used as the offline fallback.
 """
 from app.core.time import IST
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Literal
 
 TrafficModel = Literal["time_of_day", "city_average", "free_flow"]
@@ -26,8 +26,7 @@ FREE_FLOW_MIN_PER_KM = 2 + 4 / 60  # 2 min 4 s per km
 CITY_AVERAGE_MIN_PER_KM = 3 + 37 / 60  # 3 min 37 s per km
 AVERAGE_CONGESTION_RATIO = CITY_AVERAGE_MIN_PER_KM / FREE_FLOW_MIN_PER_KM  # ~1.75
 
-# India has no daylight saving, so a fixed offset is exact and needs no tzdata.
-IST = timezone(timedelta(hours=5, minutes=30))
+# India has no daylight saving, so IST from app.core.time is exact.
 
 # Relative congestion per local hour at HH:00. 0 = free-flow, 1 = worst hour.
 # ASSUMPTION: replace with hourly data when the team has it.

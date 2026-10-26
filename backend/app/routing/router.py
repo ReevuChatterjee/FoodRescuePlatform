@@ -19,7 +19,6 @@ Response `data`:
 
 Everything after traffic_aware is an additive field (docs/person5-contract-additions.md).
 """
-from app.core.time import IST
 
 from datetime import timezone
 from typing import Annotated

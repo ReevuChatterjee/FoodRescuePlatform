@@ -7,7 +7,7 @@ a second auth mechanism.
 """
 
 from app.core.time import ist_now
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status

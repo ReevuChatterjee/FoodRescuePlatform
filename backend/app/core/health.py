@@ -6,7 +6,8 @@ Per Section I:
   - GET /ready — readiness (DB reachable; Redis checked only when REDIS_URL is set)
 """
 
-from app.core.time import IST
+from datetime import datetime
+from app.core.time import IST, ist_now
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 

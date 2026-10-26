@@ -9,7 +9,6 @@ GET  /auth/me         — current user profile + linked donor_id / ngo_id / driv
 No Authorization header on register/login/refresh, per Global Conventions §1.
 """
 from app.core.time import ist_now
-from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends

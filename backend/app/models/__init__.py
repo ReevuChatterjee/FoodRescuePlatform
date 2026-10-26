@@ -8,7 +8,7 @@ Models match the data model in the project description PDF exactly.
 from app.core.time import ist_now
 from datetime import datetime
 from sqlalchemy import String, Integer, Float, DateTime, JSON, ForeignKey, Enum, Text, Boolean
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 from app.core.database import Base
 import enum
 

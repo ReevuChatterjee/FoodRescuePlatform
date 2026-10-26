@@ -6,7 +6,7 @@ Per Section B: exact calculation logic for each metric.
 """
 
 from datetime import datetime
-from sqlalchemy import select, func, and_, or_, text
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (
@@ -18,7 +18,6 @@ from app.models import (
     Vehicle,
     DonationStatus,
     DeliveryStatus,
-    NGOVerificationStatus,
 )
 
 

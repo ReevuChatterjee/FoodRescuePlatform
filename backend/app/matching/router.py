@@ -25,7 +25,7 @@ Auth summary (per contract):
 from app.core.time import IST
 from app.core.time import ist_now
 
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Annotated
 import uuid
 
@@ -35,7 +35,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
 from app.core.database import get_db
-from app.dispatch.service import run_dispatch  # Person 5: dispatch hook
 from app.core.envelope import api_error, envelope, iso_z
 from app.matching.schemas import AcceptMatchRequest, RejectMatchRequest
 from app.matching_engine import match, rematch, serialize_matching_result

@@ -11,12 +11,11 @@ PATCH /api/v1/ngos/{id}/capacity   — update available capacity (hard-constrain
 GET   /api/v1/ngos/{id}/incoming   — donations currently offered to this NGO
 """
 from app.core.time import ist_now, to_naive_ist
-from datetime import datetime
-from typing import Annotated, Optional
+from typing import Annotated
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import and_, delete, func, or_, select
+from fastapi import APIRouter, Depends
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user, require_role
@@ -57,7 +56,6 @@ async def compute_dynamic_ngo_capacity(ngo: NGO, db: AsyncSession, auto_sync_db:
     do not occupy storage. If delivery/donation records are deleted from the database, available capacity
     immediately returns to 100% of storage_capacity_kg (0% utilized).
     """
-    now = ist_now()
     storage_capacity = float(ngo.storage_capacity_kg or 0.0)
     if storage_capacity <= 0:
         return 0.0

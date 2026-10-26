@@ -11,7 +11,7 @@ is why those lookups live here and not inside optimizer.py.
 """
 from app.core.time import IST
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
 

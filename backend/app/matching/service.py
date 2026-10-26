@@ -1,12 +1,12 @@
 from app.core.time import IST
 from app.core.time import ist_now
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from app.core.database import AsyncSessionLocal
-from app.models import Donation, DonationStatus, NGO
-from app.matching_engine import match, serialize_matching_result
+from app.models import Donation, DonationStatus
+from app.matching_engine import match
 from app.services.matching_service import (
     load_donation,
     load_active_ngos,

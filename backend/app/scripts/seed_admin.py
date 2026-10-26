@@ -12,7 +12,6 @@ Safe to re-run: no-ops if a user with that email already exists.
 from app.core.time import ist_now
 import argparse
 import asyncio
-from datetime import datetime
 
 from passlib.context import CryptContext
 from sqlalchemy import select

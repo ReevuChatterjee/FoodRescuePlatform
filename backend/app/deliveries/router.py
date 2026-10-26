@@ -12,7 +12,6 @@ POST /api/v1/deliveries/{id}/deliver      — driver confirms delivery (idempote
 POST /api/v1/handover/{delivery_id}       — NGO's half of digital sign-off (idempotent)
 """
 from app.core.time import ist_now
-from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends
