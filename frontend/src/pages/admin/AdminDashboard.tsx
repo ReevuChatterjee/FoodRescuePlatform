@@ -75,7 +75,7 @@ export function AdminDashboard() {
         {/* Logistics */}
         <div>
           <h2 className="text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface flex items-center mb-4">
-            <Truck size={12} className="mr-2 inline" /> Logistics Efficiency
+            <Truck size={12} className="mr-2 inline" aria-hidden="true" /> Logistics Efficiency
           </h2>
           <div className="flex flex-col border border-outline-variant/50 rounded-md bg-surface-container-lowest divide-y divide-outline-variant/40">
             {[
@@ -102,7 +102,7 @@ export function AdminDashboard() {
         {/* Social Impact */}
         <div>
           <h2 className="text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface flex items-center mb-4">
-            <Activity size={12} className="mr-2 inline" /> Social Impact
+            <Activity size={12} className="mr-2 inline" aria-hidden="true" /> Social Impact
           </h2>
           <div className="grid grid-cols-2 bg-surface-container-lowest border border-outline-variant/50 rounded-md h-[210px] overflow-hidden">
             <div className="p-5 border-r border-b border-outline-variant/40 flex flex-col justify-center">
@@ -136,10 +136,10 @@ export function AdminDashboard() {
       {/* ── Recent Network Activity ── */}
       <section className="mb-10">
         <h2 className="text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface flex items-center mb-4">
-          <Activity size={12} className="mr-2 inline" /> Recent Network Activity
+          <Activity size={12} className="mr-2 inline" aria-hidden="true" /> Recent Network Activity
         </h2>
         <div className="border border-outline-variant/50 rounded-md bg-surface-container-lowest overflow-hidden">
-          <table className="w-full text-left text-[0.8125rem]">
+          <table className="w-full text-left text-[0.8125rem]" aria-label="Recent Network Activity">
             <thead className="bg-surface-container border-b border-outline-variant/50 text-[0.625rem] font-bold text-on-surface-variant uppercase tracking-widest">
               <tr>
                 <th className="px-4 py-3 font-medium">Time</th>
@@ -164,15 +164,15 @@ export function AdminDashboard() {
         <h2 className="text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Review NGO Verifications', desc: 'Pending approvals', icon: <CheckCircle size={16}/>, href: '/admin/ngos/verify' },
-            { label: 'Review Driver Registrations', desc: 'Background checks', icon: <Truck size={16}/>, href: '/admin/drivers' },
-            { label: 'View Active Deliveries', desc: 'Live routing', icon: <Activity size={16}/>, href: '/admin/deliveries' },
-            { label: 'Inspect Traceability', desc: 'Immutable logs', icon: <Package size={16}/>, href: '/admin/traceability' },
+            { label: 'Review NGO Verifications', desc: 'Pending approvals', icon: <CheckCircle size={16} aria-hidden="true" />, href: '/admin/ngos/verify' },
+            { label: 'Review Driver Registrations', desc: 'Background checks', icon: <Truck size={16} aria-hidden="true" />, href: '/admin/drivers' },
+            { label: 'View Active Deliveries', desc: 'Live routing', icon: <Activity size={16} aria-hidden="true" />, href: '/admin/deliveries' },
+            { label: 'Inspect Traceability', desc: 'Immutable logs', icon: <Package size={16} aria-hidden="true" />, href: '/admin/traceability' },
           ].map(q => (
             <Link key={q.label} to={q.href} className="flex flex-col p-4 border border-outline-variant/50 rounded-md bg-surface-container-lowest hover:bg-surface-container hover:border-primary/50 transition-colors group">
               <div className="flex justify-between items-start mb-6">
                 <div className="text-primary">{q.icon}</div>
-                <ArrowUpRight size={14} className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ArrowUpRight size={14} className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
               </div>
               <span className="text-[0.8125rem] font-bold text-on-surface mb-1 group-hover:text-primary transition-colors leading-tight">{q.label}</span>
               <span className="text-[0.6875rem] text-on-surface-variant">{q.desc}</span>

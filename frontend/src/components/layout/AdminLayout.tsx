@@ -79,7 +79,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         {/* Logo mark */}
         <div className="flex items-center h-16 flex-shrink-0 border-b border-outline-variant px-3.5">
           <div className="w-7 h-7 flex-shrink-0 flex items-center justify-center bg-primary rounded-lg">
-            <Activity size={14} className="text-on-primary" />
+            <Activity size={14} className="text-on-primary" aria-hidden="true" />
           </div>
           {sidebarExpanded && (
             <span className="ml-3 text-[0.6875rem] font-bold whitespace-nowrap text-on-surface-variant tracking-wider uppercase">
@@ -132,11 +132,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <button
             onClick={handleLogout}
             title="Sign out"
+            aria-label="Sign out"
             className="flex items-center w-full rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container transition-colors overflow-hidden"
             style={{ height: '40px' }}
           >
             <div className="w-9 h-full flex items-center justify-center flex-shrink-0">
-              <LogOut size={16} />
+              <LogOut size={16} aria-hidden="true" />
             </div>
             {sidebarExpanded && (
               <span className="text-sm font-semibold whitespace-nowrap pl-1 pr-3 text-error">Sign out</span>
@@ -153,11 +154,17 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <div className="flex items-center justify-between h-14 px-4 border-b border-outline-variant">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 flex-shrink-0 flex items-center justify-center bg-primary rounded-lg">
-                  <Activity size={14} className="text-on-primary" />
+                  <Activity size={14} className="text-on-primary" aria-hidden="true" />
                 </div>
                 <span className="text-sm font-bold text-on-surface tracking-tight">Admin Node</span>
               </div>
-              <button onClick={() => setMobileOpen(false)} className="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-md"><X size={20} /></button>
+              <button
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close navigation menu"
+                className="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:bg-surface-container rounded-md transition-colors"
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
             </div>
             <nav className="flex-1 overflow-y-auto p-3 flex flex-col gap-4">
               {NAV_GROUPS.map((g) => (
@@ -181,8 +188,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               ))}
             </nav>
             <div className="p-4 border-t border-outline-variant">
-              <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold text-error hover:bg-error-container rounded-lg transition-colors">
-                <LogOut size={16} /> Sign out
+              <button onClick={handleLogout} aria-label="Sign out" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-error hover:bg-error-container rounded-lg transition-colors min-h-[44px]">
+                <LogOut size={16} aria-hidden="true" /> Sign out
               </button>
             </div>
           </aside>
@@ -194,14 +201,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Topbar with live ticker */}
         <header className="flex items-center flex-shrink-0 border-b border-outline-variant h-14 px-4 lg:px-6 bg-surface-container-lowest">
-          <button className="p-1.5 lg:hidden mr-3 text-on-surface-variant hover:bg-surface-container rounded-md" onClick={() => setMobileOpen(true)}>
-            <Menu size={20} />
+          <button
+            className="w-11 h-11 flex items-center justify-center lg:hidden mr-2 text-on-surface-variant hover:bg-surface-container rounded-md transition-colors"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open navigation menu"
+          >
+            <Menu size={20} aria-hidden="true" />
           </button>
 
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 flex-1">
             <span className="text-[0.6875rem] font-bold text-on-surface-variant tracking-wider uppercase hidden sm:inline">Admin Node</span>
-            <ChevronRight size={12} className="text-outline hidden sm:block" />
+            <ChevronRight size={12} className="text-outline hidden sm:block" aria-hidden="true" />
             <span className="text-sm font-bold text-on-surface tracking-tight">
               {ALL_NAV.find((n) => isActive(n.href))?.short ?? 'Dashboard'}
             </span>

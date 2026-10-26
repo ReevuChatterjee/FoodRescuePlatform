@@ -26,7 +26,7 @@ function NGORow({ ngo, selected, onClick }: { ngo: NGO; selected: boolean; onCli
         textAlign: 'left',
         borderBottom: '1px solid var(--border-hair)',
         background: selected ? 'var(--bg-hover)' : 'transparent',
-        borderLeft: selected ? '2px solid var(--amber-dim)' : '2px solid transparent',
+        borderLeft: selected ? '1px solid var(--amber-dim)' : '1px solid transparent',
         cursor: 'pointer',
         transition: 'background 0.1s',
       }}
@@ -51,10 +51,10 @@ function NGORow({ ngo, selected, onClick }: { ngo: NGO; selected: boolean; onCli
           style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}
         >
           <span className="flex items-center gap-1">
-            <Weight size={10} /> {ngo.storage_capacity_kg} kg
+            <Weight size={10} aria-hidden="true" /> {ngo.storage_capacity_kg} kg
           </span>
           <span className="flex items-center gap-1">
-            <Calendar size={10} /> {new Date(ngo.created_at).toLocaleDateString()}
+            <Calendar size={10} aria-hidden="true" /> {new Date(ngo.created_at).toLocaleDateString()}
           </span>
         </div>
       </div>
@@ -128,8 +128,8 @@ export function NGOVerificationQueue() {
 
       {/* Empty state — terse, not centered icon-in-circle */}
       {!isLoading && (!pendingNGOs || pendingNGOs.length === 0) && (
-        <div className="px-5 py-4 flex items-center gap-2.5 border border-primary/30 bg-primary/5 rounded">
-          <CheckCircle size={14} className="text-primary shrink-0" />
+        <div className="px-5 py-4 flex items-center gap-2.5 border border-primary/30 bg-primary/5 rounded-md">
+          <CheckCircle size={14} className="text-primary shrink-0" aria-hidden="true" />
           <p className="text-[0.875rem] text-on-surface-variant">
             Queue clear — no pending verifications require action.
           </p>
@@ -278,8 +278,8 @@ export function NGOVerificationQueue() {
 
                   {/* Audit log textarea */}
                   <div className="flex items-center gap-2" style={{ marginBottom: '10px' }}>
-                    <p className="section-label">Audit Note</p>
-                    <AlertTriangle size={11} style={{ color: 'var(--amber-dim)' }} />
+                    <label htmlFor="audit-note" className="section-label cursor-pointer">Audit Note</label>
+                    <AlertTriangle size={11} style={{ color: 'var(--amber-dim)' }} aria-hidden="true" />
                     <span className="section-label" style={{ color: 'var(--amber-dim)' }}>Required</span>
                   </div>
                   <div
@@ -287,6 +287,8 @@ export function NGOVerificationQueue() {
                     style={{ overflow: 'hidden', transition: 'border-color 0.15s' }}
                   >
                     <textarea
+                      id="audit-note"
+                      aria-label="Verification audit note (required)"
                       style={{
                         width: '100%',
                         background: 'transparent',
@@ -346,7 +348,7 @@ export function NGOVerificationQueue() {
                         disabled={!reason.trim()}
                         style={{ padding: '8px 20px' }}
                       >
-                        <XCircle size={14} /> Reject
+                        <XCircle size={14} aria-hidden="true" /> Reject
                       </button>
                       <button
                         className="btn-primary"
@@ -354,7 +356,7 @@ export function NGOVerificationQueue() {
                         disabled={!reason.trim()}
                         style={{ padding: '8px 24px' }}
                       >
-                        <CheckCircle size={14} /> Approve
+                        <CheckCircle size={14} aria-hidden="true" /> Approve
                       </button>
                     </>
                   )}
