@@ -43,7 +43,7 @@ export function AdminDashboard() {
           { label: 'Food Rescued', value: overview?.total_food_rescued_kg ? `${overview.total_food_rescued_kg} kg` : '0 kg' },
           { label: 'Beneficiaries', value: social?.beneficiaries_reached ?? 0 },
         ].map(m => (
-          <div key={m.label} className="flex flex-col border-l-2 border-primary/20 pl-4">
+          <div key={m.label} className="flex flex-col border-l border-outline-variant/40 pl-4">
             <span className="text-[0.625rem] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5">{m.label}</span>
             <span className="text-2xl font-semibold font-mono-data text-on-surface tracking-tight">
               {isLoading ? '—' : m.value}
@@ -164,12 +164,12 @@ export function AdminDashboard() {
         <h2 className="text-[0.6875rem] font-bold tracking-wider uppercase text-on-surface mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Review NGO Verifications', desc: 'Pending approvals', icon: <CheckCircle size={16}/> },
-            { label: 'Review Driver Registrations', desc: 'Background checks', icon: <Truck size={16}/> },
-            { label: 'View Active Deliveries', desc: 'Live routing', icon: <Activity size={16}/> },
-            { label: 'Inspect Traceability', desc: 'Immutable logs', icon: <Package size={16}/> },
+            { label: 'Review NGO Verifications', desc: 'Pending approvals', icon: <CheckCircle size={16}/>, href: '/admin/ngos/verify' },
+            { label: 'Review Driver Registrations', desc: 'Background checks', icon: <Truck size={16}/>, href: '/admin/drivers' },
+            { label: 'View Active Deliveries', desc: 'Live routing', icon: <Activity size={16}/>, href: '/admin/deliveries' },
+            { label: 'Inspect Traceability', desc: 'Immutable logs', icon: <Package size={16}/>, href: '/admin/traceability' },
           ].map(q => (
-            <Link key={q.label} to="#" className="flex flex-col p-4 border border-outline-variant/50 rounded-md bg-surface-container-lowest hover:bg-surface-container hover:border-primary/50 transition-colors group">
+            <Link key={q.label} to={q.href} className="flex flex-col p-4 border border-outline-variant/50 rounded-md bg-surface-container-lowest hover:bg-surface-container hover:border-primary/50 transition-colors group">
               <div className="flex justify-between items-start mb-6">
                 <div className="text-primary">{q.icon}</div>
                 <ArrowUpRight size={14} className="text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity" />

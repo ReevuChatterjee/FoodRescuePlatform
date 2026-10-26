@@ -124,7 +124,7 @@ export function DonorDashboard() {
       {isLoading && (
         <div className="animate-pulse space-y-4 mt-8">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-surface-container rounded-sm border border-outline-variant/30" />
+            <div key={i} className="h-16 bg-surface-container rounded-md border border-outline-variant/30" />
           ))}
         </div>
       )}
@@ -152,7 +152,7 @@ export function DonorDashboard() {
               <span>Match</span>
               <span className="text-right">Details</span>
             </div>
-            <div className="divide-y divide-outline-variant/30 bg-white">
+            <div className="divide-y divide-outline-variant/30 bg-surface-container-lowest">
               {activeDonations.map((donation) => {
                 const isExpiringSoon = new Date(donation.expiry_time) < new Date(Date.now() + 2 * 3600 * 1000);
                 const indicator = getStatusIndicator(donation.status);
@@ -216,7 +216,7 @@ export function DonorDashboard() {
                 <span>Match</span>
                 <span className="text-right">Date</span>
               </div>
-              <div className="divide-y divide-outline-variant/30 bg-white">
+              <div className="divide-y divide-outline-variant/30 bg-surface-container-lowest">
                 {historyDonations.map((donation) => {
                   const indicator = getStatusIndicator(donation.status);
                   

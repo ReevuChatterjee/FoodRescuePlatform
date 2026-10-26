@@ -431,7 +431,7 @@ export function DriverDashboard() {
               </button>
               
               {sopOpen && (
-                <ul className="mt-4 space-y-3 pl-1 border-l-2 border-outline-variant/30">
+                <ul className="mt-4 space-y-3 pl-2 border-l border-outline-variant/30">
                   {SOPS.map((tip, i) => (
                     <li key={i} className="text-[0.8125rem] text-on-surface-variant leading-relaxed pl-3">
                       <span className="font-semibold text-on-surface mr-1">{i + 1}.</span> {tip}

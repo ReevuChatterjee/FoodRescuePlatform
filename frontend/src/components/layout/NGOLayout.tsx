@@ -56,17 +56,17 @@ export function NGOLayout({ children }: NGOLayoutProps) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-6 flex flex-col gap-0.5">
+      <nav className="flex-1 py-6 px-3 flex flex-col gap-1">
         {NAV.map((item) => {
           const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               to={item.href}
-              className={`block px-5 py-2 text-[0.875rem] border-l-[3px] transition-all duration-150 ${
+              className={`block px-3 py-2 rounded-md text-[0.875rem] font-medium transition-colors ${
                 active 
-                  ? 'text-on-surface font-medium border-primary bg-surface-container/50' 
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/30 border-transparent'
+                  ? 'bg-primary/10 text-primary' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
               }`}
               onClick={() => setMobileOpen(false)}
             >

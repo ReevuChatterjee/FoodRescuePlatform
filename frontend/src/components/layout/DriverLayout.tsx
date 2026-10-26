@@ -58,10 +58,10 @@ export function DriverLayout({ children }: DriverLayoutProps) {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`flex items-center gap-3 px-3 py-2 text-[0.9375rem] transition-colors rounded-sm ${
+                className={`flex items-center gap-3 px-3 py-2 text-[0.9375rem] transition-colors rounded-md ${
                   active 
-                    ? 'text-primary font-medium bg-primary/10 border-l-[3px] border-primary' 
-                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-medium border-l-[3px] border-transparent'
+                    ? 'text-primary font-medium bg-primary/10' 
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-medium'
                 }`}
               >
                 {link.label}
@@ -90,10 +90,10 @@ export function DriverLayout({ children }: DriverLayoutProps) {
                     key={link.path}
                     to={link.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2.5 text-[0.9375rem] transition-colors rounded-sm ${
+                    className={`flex items-center gap-3 px-3 py-2.5 text-[0.9375rem] transition-colors rounded-md ${
                       active 
-                        ? 'text-primary font-medium bg-primary/10 border-l-[3px] border-primary' 
-                        : 'text-on-surface-variant font-medium border-l-[3px] border-transparent'
+                        ? 'text-primary font-medium bg-primary/10' 
+                        : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container font-medium'
                     }`}
                   >
                     {link.label}
@@ -130,7 +130,7 @@ export function DriverLayout({ children }: DriverLayoutProps) {
               <button
                 onClick={toggleDuty}
                 disabled={hasJob || setAvailability.isPending}
-                className={`text-[0.6875rem] font-bold tracking-widest uppercase transition-colors px-2.5 py-1 rounded-sm border ${
+                className={`text-[0.6875rem] font-bold tracking-widest uppercase transition-colors px-2.5 py-1 rounded-md border ${
                   online
                     ? 'text-primary border-primary bg-primary/10 hover:bg-primary/20'
                     : 'text-on-surface-variant border-outline-variant/50 bg-surface-container-lowest hover:bg-surface-container'

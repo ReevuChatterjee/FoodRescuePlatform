@@ -10,7 +10,7 @@ export function AdminDeliveries() {
           <p className="text-[0.8125rem] font-medium text-on-surface-variant">Live tracking of all active network deliveries.</p>
         </div>
       </div>
-      <div className="border border-outline-variant/50 rounded-sm bg-surface-container-lowest overflow-hidden flex flex-col items-center justify-center min-h-[400px]">
+      <div className="border border-outline-variant/50 rounded-md bg-surface-container-lowest overflow-hidden flex flex-col items-center justify-center min-h-[400px]">
         <HardHat size={32} className="text-on-surface-variant mb-4 opacity-50" />
         <span className="text-sm font-semibold text-on-surface">Module Under Construction</span>
         <span className="text-xs text-on-surface-variant mt-1">This operational view is currently being implemented.</span>

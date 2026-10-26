@@ -117,7 +117,7 @@ export function AdminDonors() {
         <div className="relative w-full xl:w-72">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
           <input
-            className="w-full h-9 pl-9 pr-3 text-sm bg-surface-container-lowest border border-outline-variant/50 rounded-sm focus:outline-none focus:border-primary/50 text-on-surface placeholder:text-on-surface-variant/70"
+            className="w-full h-9 pl-9 pr-3 text-sm bg-surface-container-lowest border border-outline-variant/50 rounded-md focus:outline-none focus:border-primary/50 text-on-surface placeholder:text-on-surface-variant/70"
             placeholder="Search donor / location / contact"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -129,7 +129,7 @@ export function AdminDonors() {
           {/* Category */}
           <div className="flex items-center text-xs">
             <span className="text-[0.6875rem] font-bold text-on-surface-variant uppercase tracking-wider mr-3">Waste Category</span>
-            <div className="flex rounded-sm overflow-hidden border border-outline-variant/50">
+            <div className="flex rounded-md overflow-hidden border border-outline-variant/50">
               {(['ALL', 'PRODUCE', 'COOKED', 'PACKAGED', 'BAKERY', 'DAIRY'] as CategoryFilter[]).map((f) => (
                 <button
                   key={f}
@@ -149,7 +149,7 @@ export function AdminDonors() {
           {/* Verification */}
           <div className="flex items-center text-xs">
             <span className="text-[0.6875rem] font-bold text-on-surface-variant uppercase tracking-wider mr-3">Verification</span>
-            <div className="flex rounded-sm overflow-hidden border border-outline-variant/50">
+            <div className="flex rounded-md overflow-hidden border border-outline-variant/50">
               {(['ALL', 'VERIFIED', 'PENDING'] as VerificationFilter[]).map((f) => (
                 <button
                   key={f}
@@ -169,7 +169,7 @@ export function AdminDonors() {
           {/* Activity */}
           <div className="flex items-center text-xs">
             <span className="text-[0.6875rem] font-bold text-on-surface-variant uppercase tracking-wider mr-3">Activity</span>
-            <div className="flex rounded-sm overflow-hidden border border-outline-variant/50">
+            <div className="flex rounded-md overflow-hidden border border-outline-variant/50">
               {(['ALL', 'ACTIVE', 'IDLE'] as ActivityFilter[]).map((f) => (
                 <button
                   key={f}
@@ -189,7 +189,7 @@ export function AdminDonors() {
       </div>
 
       {/* ── Table ── */}
-      <div className="border border-outline-variant/50 rounded-sm bg-surface-container-lowest overflow-hidden flex flex-col mb-4">
+      <div className="border border-outline-variant/50 rounded-md bg-surface-container-lowest overflow-hidden flex flex-col mb-4">
         <div className="overflow-x-auto min-h-[400px]">
           <table className="w-full text-left text-[0.8125rem] min-w-[1000px]">
             <thead className="bg-surface-container-lowest border-b border-outline-variant/50 text-[0.625rem] font-bold text-on-surface-variant uppercase tracking-widest whitespace-nowrap">
@@ -295,7 +295,7 @@ export function AdminDonors() {
       </div>
 
       {/* ── Registry Summary ── */}
-      <div className="flex flex-wrap items-center gap-8 bg-surface-container-lowest border border-outline-variant/50 p-4 rounded-sm text-xs font-mono-data text-on-surface-variant">
+      <div className="flex flex-wrap items-center gap-8 bg-surface-container-lowest border border-outline-variant/50 p-4 rounded-md text-xs font-mono-data text-on-surface-variant">
         <span><strong className="text-on-surface font-sans">{stats.total}</strong> registered donors</span>
         <span><strong className="text-on-surface font-sans">{stats.totalBatches}</strong> total donations created</span>
         <span><strong className="text-on-surface font-sans">{stats.totalKg.toFixed(1)} kg</strong> surplus food rescued</span>

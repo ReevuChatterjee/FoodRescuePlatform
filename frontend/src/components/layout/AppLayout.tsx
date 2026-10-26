@@ -110,7 +110,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* User */}
       <div className="p-4 border-t border-[var(--border-subtle)]">
         <div className="bg-[var(--bg-page)] border border-[var(--border-subtle)] rounded-md p-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm bg-[var(--bg-panel-hover)] border border-[var(--border-strong)] flex items-center justify-center text-xs font-semibold text-[var(--text-primary)]">
+          <div className="w-8 h-8 rounded-full bg-[var(--bg-panel-hover)] border border-[var(--border-strong)] flex items-center justify-center text-xs font-semibold text-[var(--text-primary)]">
             {user?.name?.charAt(0)?.toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
@@ -157,7 +157,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           {/* Topbar actions */}
           <button className="btn-ghost p-2 relative" title="Notifications">
             <Bell size={16} />
-            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-none bg-[var(--warning)]" />
+            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[var(--warning)]" />
           </button>
 
           {/* Profile dropdown */}
@@ -166,7 +166,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               className="flex items-center gap-2 btn-ghost px-2 py-1.5 border border-transparent hover:border-[var(--border-strong)]"
               onClick={() => setProfileOpen(!profileOpen)}
             >
-              <div className="w-6 h-6 rounded-sm bg-[var(--bg-panel-hover)] flex items-center justify-center text-xs font-mono text-[var(--text-primary)]">
+              <div className="w-6 h-6 rounded-full bg-[var(--bg-panel-hover)] flex items-center justify-center text-xs font-mono text-[var(--text-primary)]">
                 {user?.name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
               <ChevronDown size={14} className="text-[var(--text-muted)]" />

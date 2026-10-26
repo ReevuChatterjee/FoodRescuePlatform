@@ -15,7 +15,7 @@ export function DriverHistory() {
             <Loader2 className="animate-spin text-primary" size={32} />
           </div>
         ) : deliveries && deliveries.length > 0 ? (
-          <div className="bg-surface-container-lowest border border-outline-variant/50 rounded overflow-hidden">
+          <div className="bg-surface-container-lowest border border-outline-variant/50 rounded-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -66,7 +66,7 @@ export function DriverHistory() {
             </div>
           </div>
         ) : (
-          <div className="p-8 bg-surface-container-lowest border border-outline-variant/50 rounded flex flex-col items-center justify-center text-center">
+          <div className="p-8 bg-surface-container-lowest border border-outline-variant/50 rounded-md flex flex-col items-center justify-center text-center">
             <p className="text-[0.9375rem] font-medium text-on-surface mb-1">No past deliveries</p>
             <p className="text-[0.875rem] text-on-surface-variant max-w-md">
               Once you complete a pickup and handoff, the delivery record will appear in this ledger.

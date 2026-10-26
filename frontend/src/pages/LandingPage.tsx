@@ -499,7 +499,7 @@ export function LandingPage() {
                 {/* Dynamic Vertical Path Drawing */}
                 <div className="absolute left-6 -ml-[1px] top-6 bottom-6 w-[2px] z-0 flex flex-col justify-between overflow-hidden">
                   <motion.div 
-                    className="w-full h-full border-l-[2px] border-dashed border-[#2f6f52] opacity-45 origin-top"
+                    className="w-full h-full border-l-[2px] border-dashed border-primary opacity-45 origin-top"
                     initial={{ height: "0%" }}
                     animate={networkState === 'paths_drawing' || networkState === 'loop' ? { height: "100%" } : { height: "0%" }}
                     transition={{ duration: 2, ease: "easeInOut" }}

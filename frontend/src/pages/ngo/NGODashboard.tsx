@@ -62,7 +62,6 @@ export function NGODashboard() {
       {/* Page header */}
       <div className="mb-10 pb-6 border-b border-outline-variant/30 flex justify-between items-end">
         <div>
-          <p className="text-[0.6875rem] font-bold text-primary tracking-widest uppercase mb-2">NGO Dashboard</p>
           <h1 className="text-[1.375rem] font-semibold text-on-surface mb-1.5 tracking-tight">{profile.organisation_name}</h1>
           <p className="text-[0.875rem] text-on-surface-variant max-w-[50ch] leading-relaxed">{profile.address}</p>
         </div>

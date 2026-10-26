@@ -104,10 +104,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     key={item.href}
                     to={item.href}
                     title={!sidebarExpanded ? item.label : undefined}
-                    className={`flex items-center rounded-r-lg transition-colors overflow-hidden ${
+                    className={`flex items-center rounded-md transition-colors overflow-hidden ${
                       active 
-                        ? 'bg-primary-container border-l-[3px] border-primary text-on-primary-container' 
-                        : 'border-l-[3px] border-transparent text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                        ? 'bg-primary-container text-on-primary-container font-medium' 
+                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                     }`}
                     style={{ height: '36px' }}
                   >
@@ -167,10 +167,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </div>
                   {g.items.map((item) => (
                     <Link key={item.href} to={item.href} 
-                      className={`flex items-center gap-3 px-3 py-2 rounded-r-lg text-sm font-medium transition-colors ${
+                      className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                         isActive(item.href)
-                          ? 'bg-primary-container border-l-[3px] border-primary text-on-primary-container'
-                          : 'border-l-[3px] border-transparent text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                          ? 'bg-primary-container text-on-primary-container'
+                          : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
                       }`}
                       onClick={() => setMobileOpen(false)}
                     >

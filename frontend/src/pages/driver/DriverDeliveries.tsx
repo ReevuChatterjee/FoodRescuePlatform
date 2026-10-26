@@ -17,7 +17,7 @@ export function DriverDeliveries() {
         ) : deliveries && deliveries.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {deliveries.map((delivery) => (
-              <div key={delivery.delivery_id} className="bg-surface-container-lowest border border-outline-variant/50 rounded p-6 shadow-sm flex flex-col h-full">
+              <div key={delivery.delivery_id} className="bg-surface-container-lowest border border-outline-variant/50 rounded-md p-6 shadow-sm flex flex-col h-full">
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-[1.125rem] font-semibold text-on-surface">{delivery.food_name}</h3>
@@ -62,7 +62,7 @@ export function DriverDeliveries() {
             ))}
           </div>
         ) : (
-          <div className="p-8 bg-surface-container-lowest border border-outline-variant/50 rounded flex flex-col items-center justify-center text-center">
+          <div className="p-8 bg-surface-container-lowest border border-outline-variant/50 rounded-md flex flex-col items-center justify-center text-center">
             <p className="text-[0.9375rem] font-medium text-on-surface mb-1">No active deliveries</p>
             <p className="text-[0.875rem] text-on-surface-variant max-w-md">
               When you go on duty, any deliveries assigned to you will appear here and on your dashboard.

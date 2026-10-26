@@ -41,7 +41,7 @@ export function StatusBadge({ status }: Props) {
     label: status,
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 border rounded-sm font-ui text-[0.625rem] font-bold tracking-wider uppercase ${cfg.pillClass}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 border rounded-full font-ui text-[0.625rem] font-bold tracking-wider uppercase ${cfg.pillClass}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${cfg.dotClass}`} />
       {cfg.label}
     </span>

@@ -183,10 +183,11 @@ export function NGOSettings() {
             }
           })} className="pt-6 border-t border-outline-variant/30 flex flex-col sm:flex-row gap-4 items-start sm:items-end">
             <div className="w-full sm:w-[200px]">
-              <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">
+              <label htmlFor="available_capacity_kg" className="text-[0.8125rem] font-medium text-on-surface mb-2 block">
                 Update available mass (kg)
               </label>
               <input
+                id="available_capacity_kg"
                 {...capForm.register('available_capacity_kg', { valueAsNumber: true })}
                 type="number" step="1" min="0" max={profile?.storage_capacity_kg}
                 className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors"
@@ -215,7 +216,7 @@ export function NGOSettings() {
                     type="checkbox"
                     checked={sel}
                     onChange={() => toggleCategory(cat)}
-                    className="hidden"
+                    className="sr-only"
                   />
                   <div className={`w-4 h-4 rounded-sm border flex items-center justify-center transition-colors flex-shrink-0 ${sel ? 'bg-primary border-primary' : 'border-outline-variant bg-surface'}`}>
                      {sel && <Check size={12} className="text-on-primary" strokeWidth={3} />}
@@ -256,14 +257,14 @@ export function NGOSettings() {
           })} className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Classification</label>
-                <select {...demandForm.register('food_category')} className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] text-on-surface focus:outline-none focus:border-primary transition-colors">
+                <label htmlFor="demand_food_category" className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Classification</label>
+                <select id="demand_food_category" {...demandForm.register('food_category')} className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] text-on-surface focus:outline-none focus:border-primary transition-colors">
                   {FOOD_CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Required mass (kg)</label>
-                <input {...demandForm.register('required_quantity_kg', { valueAsNumber: true })}
+                <label htmlFor="demand_required_quantity" className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Required mass (kg)</label>
+                <input id="demand_required_quantity" {...demandForm.register('required_quantity_kg', { valueAsNumber: true })}
                   type="number" step="1" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
                 {demandForm.formState.errors.required_quantity_kg && (
                   <p className="text-error text-[0.8125rem] mt-1">{demandForm.formState.errors.required_quantity_kg.message}</p>
@@ -272,8 +273,8 @@ export function NGOSettings() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
               <div>
-                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Priority level</label>
-                <select {...demandForm.register('priority')} className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] text-on-surface focus:outline-none focus:border-primary transition-colors">
+                <label htmlFor="demand_priority" className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Priority level</label>
+                <select id="demand_priority" {...demandForm.register('priority')} className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] text-on-surface focus:outline-none focus:border-primary transition-colors">
                   <option value="LOW">Low</option>
                   <option value="MEDIUM">Medium</option>
                   <option value="HIGH">High</option>
@@ -281,8 +282,8 @@ export function NGOSettings() {
                 </select>
               </div>
               <div>
-                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Expiration window</label>
-                <input {...demandForm.register('valid_until')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
+                <label htmlFor="demand_valid_until" className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Expiration window</label>
+                <input id="demand_valid_until" {...demandForm.register('valid_until')} type="datetime-local" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
                 {demandForm.formState.errors.valid_until && (
                   <p className="text-error text-[0.8125rem] mt-1">{demandForm.formState.errors.valid_until.message}</p>
                 )}
@@ -314,8 +315,8 @@ export function NGOSettings() {
             }
           })} className="space-y-5">
             <div>
-              <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Node designation</label>
-              <input {...profileForm.register('organisation_name')} className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] text-on-surface focus:outline-none focus:border-primary transition-colors" />
+              <label htmlFor="profile_org_name" className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Node designation</label>
+              <input id="profile_org_name" {...profileForm.register('organisation_name')} className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] text-on-surface focus:outline-none focus:border-primary transition-colors" />
             </div>
             <div>
               <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Facility location</label>
@@ -331,12 +332,12 @@ export function NGOSettings() {
             </div>
             <div className="grid grid-cols-2 gap-5 pt-2">
               <div>
-                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Operational start</label>
-                <input {...profileForm.register('operating_start')} type="time" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
+                <label htmlFor="profile_operating_start" className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Operational start</label>
+                <input id="profile_operating_start" {...profileForm.register('operating_start')} type="time" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
               </div>
               <div>
-                <label className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Operational end</label>
-                <input {...profileForm.register('operating_end')} type="time" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
+                <label htmlFor="profile_operating_end" className="text-[0.8125rem] font-medium text-on-surface mb-2 block">Operational end</label>
+                <input id="profile_operating_end" {...profileForm.register('operating_end')} type="time" className="w-full h-10 px-3 bg-surface-container-low border border-outline-variant rounded-md text-[0.875rem] font-mono-data text-on-surface focus:outline-none focus:border-primary transition-colors" />
               </div>
             </div>
             <div className="pt-4">
