@@ -49,7 +49,8 @@ function ShelfLifeBar({ minutes }: { minutes: number }) {
 export function IncomingOffers() {
   const queryClient = useQueryClient();
   const { data: profile, isLoading: profileLoading } = useMyNGOProfile();
-  const { data: offers, isLoading: offersLoading, refetch } = useIncomingOffers(profile?.ngo_id);
+  const effectiveNgoId = profile?.ngo_id || (profile as any)?.id;
+  const { data: offers, isLoading: offersLoading, refetch, error: offersError } = useIncomingOffers(effectiveNgoId);
   const [actionDonationId, setActionDonationId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
@@ -61,7 +62,7 @@ export function IncomingOffers() {
   const acceptMutation = useMutation({
     mutationFn: async (offer: any) => {
       const payload: any = { 
-        ngo_id: profile?.ngo_id,
+        ngo_id: effectiveNgoId,
         match_score: offer.match_score || 0,
         weights_version_id: offer.weights_version_id || "default"
       };
@@ -91,7 +92,7 @@ export function IncomingOffers() {
   const rejectMutation = useMutation({
     mutationFn: async (donationId: string) => {
       const payload = {
-        ngo_id: profile?.ngo_id,
+        ngo_id: effectiveNgoId,
         reason: 'NGO rejected matched donation — insufficient capacity or category mismatch'
       };
       const res = await apiClient.post(`/api/v1/matching/${donationId}/reject`, payload);
@@ -148,8 +149,39 @@ export function IncomingOffers() {
         </div>
       )}
 
+      {/* Error state */}
+      {!isLoading && offersError && (
+        <div
+          style={{
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            borderLeft: '3px solid var(--terracotta)',
+            background: 'var(--terracotta-dim)',
+            marginBottom: '16px',
+            borderRadius: '4px',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <AlertTriangle size={16} style={{ color: 'var(--terracotta)' }} />
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+              Failed to load incoming dispatch queue.
+            </p>
+          </div>
+          <button
+            className="btn-secondary"
+            onClick={() => refetch()}
+            style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Empty state — terse, no decorative grid background */}
-      {!isLoading && (!offers || offers.length === 0) && (
+      {!isLoading && !offersError && (!offers || offers.length === 0) && (
         <div
           style={{
             padding: '16px 20px',

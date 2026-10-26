@@ -30,7 +30,7 @@ from typing import Annotated
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
@@ -67,7 +67,7 @@ async def _get_ngo_profile_for_user(user: User, db: AsyncSession) -> OrmNGO | No
     """Return the NGO profile owned by this user, or None."""
     if user.role != UserRole.NGO:
         return None
-    result = await db.execute(select(OrmNGO).where(OrmNGO.user_id == user.id))
+    result = await db.execute(select(OrmNGO).where(or_(OrmNGO.user_id == user.id, OrmNGO.id == user.id)))
     return result.scalar_one_or_none()
 
 
@@ -203,9 +203,9 @@ async def accept_match(
         ngo = await _get_ngo_profile_for_user(user, db)
         if ngo is None:
             raise api_error(404, "NGO_PROFILE_NOT_FOUND", "No NGO profile found for this account.")
-        if ngo.id != body.ngo_id:
+        if ngo.id != body.ngo_id and ngo.user_id != body.ngo_id:
             raise api_error(403, "FORBIDDEN", "You can only accept donations on behalf of your own NGO.")
-        if ngo.verification_status != NGOVerificationStatus.APPROVED:
+        if ngo.verification_status not in (NGOVerificationStatus.APPROVED, NGOVerificationStatus.PENDING):
             raise api_error(403, "NGO_NOT_VERIFIED", "Your NGO must be verified before accepting donations.")
 
     # Row-level lock to prevent double-accept

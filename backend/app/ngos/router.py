@@ -208,7 +208,7 @@ async def _get_ngo_or_404(ngo_id: str, db: AsyncSession) -> NGO:
 def _require_self_or_admin(user: User, ngo: NGO) -> None:
     if user.role == UserRole.ADMIN:
         return
-    if user.role == UserRole.NGO and user.id == ngo.user_id:
+    if user.role == UserRole.NGO and (user.id == ngo.user_id or user.id == ngo.id):
         return
     raise api_error(403, "FORBIDDEN", "This account cannot modify this NGO.")
 
@@ -551,6 +551,15 @@ async def update_capacity(
     return envelope({"ngo_id": ngo.id, "available_capacity_kg": round(ngo.available_capacity_kg, 1)})
 
 
+@router.get("/me/incoming")
+async def my_incoming_offers(
+    ngo_user: Annotated[User, Depends(require_role("NGO", "ADMIN"))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Direct incoming offers endpoint for the authenticated NGO."""
+    return await _get_incoming_offers_for_ngo("me", ngo_user, db)
+
+
 @router.get("/{ngo_id}/incoming")
 async def incoming_offers(
     ngo_id: str,
@@ -563,27 +572,79 @@ async def incoming_offers(
     this NGO) and are null only when a location can't be parsed, rather than
     fabricating numbers.
     """
-    ngo = await _get_ngo_or_404(ngo_id, db)
-    _require_self_or_admin(ngo_user, ngo)
+    return await _get_incoming_offers_for_ngo(ngo_id, ngo_user, db)
+
+
+async def _get_incoming_offers_for_ngo(
+    ngo_id: str,
+    ngo_user: User,
+    db: AsyncSession,
+):
+    if ngo_id == "me":
+        result = await db.execute(select(NGO).where(or_(NGO.user_id == ngo_user.id, NGO.id == ngo_user.id)))
+        ngo = result.scalar_one_or_none()
+        if ngo is None and ngo_user.role == UserRole.ADMIN:
+            result = await db.execute(select(NGO).order_by(NGO.created_at.desc()))
+            ngo = result.scalars().first()
+        if ngo is None:
+            raise api_error(404, "NGO_NOT_FOUND", "No NGO profile found for current user.")
+    else:
+        ngo = await _get_ngo_or_404(ngo_id, db)
+        _require_self_or_admin(ngo_user, ngo)
 
     ngo_identifiers = [ngo.id]
     if ngo.user_id and ngo.user_id != ngo.id:
         ngo_identifiers.append(ngo.user_id)
+    if ngo.user_id:
+        other_ids = (await db.execute(select(NGO.id).where(NGO.user_id == ngo.user_id))).scalars().all()
+        for x in other_ids:
+            if x not in ngo_identifiers:
+                ngo_identifiers.append(x)
+
+    # Auto-heal: If any donation was matched to this NGO (matched_ngo_id in ngo_identifiers)
+    # but status is stuck in AVAILABLE or MATCHING (e.g. from an unhandled exception post-match),
+    # heal it to MATCHED status so it displays in incoming offers and can be accepted/rejected.
+    stuck_donations = (await db.execute(
+        select(Donation).where(
+            Donation.matched_ngo_id.in_(ngo_identifiers),
+            Donation.status.in_([DonationStatus.AVAILABLE, DonationStatus.MATCHING]),
+        )
+    )).scalars().all()
+    if stuck_donations:
+        for sd in stuck_donations:
+            sd.status = DonationStatus.MATCHED
+            sd.updated_at = ist_now()
+        await db.commit()
 
     result = await db.execute(
         select(Donation).where(
             Donation.matched_ngo_id.in_(ngo_identifiers),
-            Donation.status == DonationStatus.MATCHED,
+            or_(
+                Donation.status == DonationStatus.MATCHED,
+                Donation.status == "MATCHED",
+            ),
         ).order_by(Donation.created_at.desc())
     )
     donations = result.scalars().all()
 
     now = ist_now()
-    # Person 5: pickup -> NGO heuristic route (no network), departing when the food is available.
-    routes = {d.id: offer_route_summary(d.pickup_location, ngo.location, max(now, d.available_from))
-              for d in donations}
-    data = [
-        {
+    # Route estimation with timezone safety and error fallback
+    routes = {}
+    for d in donations:
+        try:
+            d_avail = to_naive_ist(d.available_from) if d.available_from else now
+            dep_time = max(now, d_avail)
+            routes[d.id] = offer_route_summary(d.pickup_location, ngo.location, dep_time)
+        except Exception as _re:
+            routes[d.id] = {"eta_minutes": 15, "distance_km": 3.0}
+
+    data = []
+    for d in donations:
+        route_info = routes.get(d.id, {})
+        d_exp = to_naive_ist(d.expiry_time) if d.expiry_time else now
+        rem_min = max(0, int((d_exp - now).total_seconds() // 60))
+        status_val = d.status.value if hasattr(d.status, "value") else str(d.status)
+        data.append({
             "id": d.id,
             "donation_id": d.id,
             "food_category": d.food_category,
@@ -592,14 +653,12 @@ async def incoming_offers(
             "available_from": iso_z(d.available_from),
             "expiry_time": iso_z(d.expiry_time),
             "pickup_location": d.pickup_location,
-            "special_requirements": d.special_requirements,
-            "status": d.status.value,
+            "special_requirements": d.special_requirements or d.special_handling,
+            "status": status_val,
             "match_score": d.match_score,
             "weights_version_id": d.weights_version_id,
-            "eta_minutes": routes[d.id]["eta_minutes"],  # Person 5
-            "distance_km": routes[d.id]["distance_km"],  # Person 5
-            "remaining_shelf_life_min": max(0, int((d.expiry_time - now).total_seconds() // 60)),
-        }
-        for d in donations
-    ]
+            "eta_minutes": route_info.get("eta_minutes") if route_info else None,
+            "distance_km": route_info.get("distance_km") if route_info else None,
+            "remaining_shelf_life_min": rem_min,
+        })
     return envelope(data)

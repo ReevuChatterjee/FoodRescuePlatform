@@ -24,7 +24,7 @@ const CATEGORY_DISPLAY: Record<string, string> = {
 
 export function NGODashboard() {
   const { data: profile, isLoading, error } = useMyNGOProfile();
-  const { data: incomingOffers } = useIncomingOffers(profile?.ngo_id);
+  const { data: incomingOffers } = useIncomingOffers(profile?.ngo_id || (profile as any)?.id);
 
   if (isLoading) {
     return (

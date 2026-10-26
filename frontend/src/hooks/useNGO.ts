@@ -64,14 +64,14 @@ export function useMyNGOProfile() {
   });
 }
 
-export function useIncomingOffers(ngoId: string | undefined) {
+export function useIncomingOffers(ngoId?: string) {
   return useQuery({
-    queryKey: ['ngo', 'incoming', ngoId],
+    queryKey: ['ngo', 'incoming', ngoId || 'me'],
     queryFn: async () => {
-      const res = await apiClient.get<SuccessEnvelope<IncomingOffer[]>>(`/api/v1/ngos/${ngoId}/incoming`);
-      return res.data.data;
+      const url = ngoId ? `/api/v1/ngos/${ngoId}/incoming` : '/api/v1/ngos/me/incoming';
+      const res = await apiClient.get<SuccessEnvelope<IncomingOffer[]>>(url);
+      return res.data?.data || [];
     },
-    enabled: !!ngoId,
     refetchInterval: 5000, // auto-poll every 5s for new matches
   });
 }

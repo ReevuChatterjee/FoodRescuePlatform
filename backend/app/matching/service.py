@@ -3,9 +3,9 @@ from app.core.time import ist_now
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from app.core.database import AsyncSessionLocal
-from app.models import Donation, DonationStatus
+from app.models import Donation, DonationStatus, NGO
 from app.matching_engine import match, serialize_matching_result
 from app.services.matching_service import (
     load_donation,
