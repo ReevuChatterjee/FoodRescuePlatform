@@ -241,3 +241,42 @@ export type WebSocketEvent =
   | DeliveryStatusUpdateEvent
   | DriverLocationUpdateEvent
   | NGOVerificationUpdateEvent;
+
+// ============================================================================
+// Registry models
+// ============================================================================
+
+export interface DonorItem {
+  id: string;
+  donor_id: string;
+  user_id: string;
+  organisation_name: string;
+  address: string;
+  location: string;
+  contact_person: string;
+  email?: string | null;
+  phone?: string | null;
+  name?: string | null;
+  verification_status: string;
+  daily_waste_category: string;
+  total_donations: number;
+  total_donated_kg: number;
+  active_donations: number;
+  created_at: string;
+}
+
+export interface DriverItem {
+  driver_id: string;
+  id: string;
+  vehicle_id: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  capacity_kg: number;
+  current_location: string;
+  availability_status: 'AVAILABLE' | 'BUSY' | 'OFFLINE';
+  completed_deliveries_count?: number;
+  active_delivery_id?: string | null;
+  created_at?: string | null;
+}
+

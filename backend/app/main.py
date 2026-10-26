@@ -14,6 +14,7 @@ from app.analytics.router import router as analytics_router
 from app.admin.router import router as admin_router
 from app.auth.router import router as auth_router
 from app.donations.router import router as donations_router
+from app.donors.router import router as donors_router
 from app.ngos.router import router as ngos_router
 from app.drivers.router import router as drivers_router
 from app.deliveries.router import deliveries_router, handover_router
@@ -45,8 +46,9 @@ app.include_router(health_router)
 # Auth (Person 1) — no auth required on register/login/refresh, per §1
 app.include_router(auth_router)
 
-# Core CRUD backbone (Person 1) — donations, NGOs, drivers, deliveries, handover
+# Core CRUD backbone (Person 1) — donations, donors, NGOs, drivers, deliveries, handover
 app.include_router(donations_router)
+app.include_router(donors_router)
 app.include_router(ngos_router)
 app.include_router(drivers_router)
 app.include_router(deliveries_router)
